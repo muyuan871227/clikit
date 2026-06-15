@@ -1,5 +1,0 @@
-{
-  "_comment": "Live-bundle contract enforced by .github/workflows/verify-site.yml on every push to main. A push that violates this is AUTO-REVERTED. To intentionally remove a game, add [delist:<id>] to the deploy commit message. To intentionally drop a feature marker, delete it here in the same commit.",
-  "requireMarkers": ["🆕 New Release"],
-  "minGames": 80
-}

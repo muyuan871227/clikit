@@ -1,6 +1,24 @@
-Car model "sportscar.glb" — CC0 1.0 Universal (Public Domain).
-Source: Quaternius "Cars" pack (https://quaternius.com/packs/cars.html), author @Quaternius.
-License verified from the pack's License.txt: "CC0 1.0 Universal ... Public Domain Dedication".
-Converted from the pack's SportsCar.obj (Blender 2.79 export) to glb via trimesh,
-preserving the 7 named material groups (Orange/DarkOrange body, Windows, Headlights,
-TailLights, Grey, Black) so each part gets its own PBR material at runtime.
+3D MODELS — all CC0 1.0 Universal (Public Domain). No branded/trademarked vehicles.
+
+HERO CAR — "kenney-sedan-sports.glb"
+  Source: Kenney "Car Kit" (3.1) — https://kenney.nl/assets/car-kit , author Kenney (Kenney Vleugels).
+  License: CC0 1.0 Universal (Public Domain) — verified from the pack's License.txt
+    ("License: (Creative Commons Zero, CC0)"). Generic/original low-poly car, NOT a
+    real-world branded model.
+  This is the pack's `sedan-sports.glb` with its sibling `Textures/colormap.png` palette
+  EMBEDDED into the .glb (bufferView image) so it is a single self-contained file.
+  Critically, the model ships its 4 wheels as SEPARATELY NAMED nodes
+  (wheel-front-left/right, wheel-back-left/right) plus `body`+`spoiler`, which is what
+  lets each wheel be driven independently by the Rapier raycast-vehicle controller
+  (steer + spin + suspension), unlike a single welded body mesh.
+
+SCENERY — all from Kenney "Racing Kit" (2.0) — https://kenney.nl/assets/racing-kit ,
+  author Kenney. License: CC0 1.0 Universal (verified from the pack's License.txt).
+  No textures (flat material colours), so each .glb is self-contained:
+    • kenney-treeSmall.glb / kenney-treeLarge.glb — roadside low-poly trees.
+    • kenney-lightPost.glb  — modern roadside light post.
+    • kenney-grandStand.glb  — spectator grandstand for the start/finish straight.
+
+PREVIOUS hero car (no longer used): Quaternius "Cars" pack SportsCar (also CC0) — replaced
+  because its wheels were welded into single per-material meshes and could not be driven
+  independently. Kept out of the build.
