@@ -1,0 +1,4 @@
+PBR textures are CC0 (Public Domain) from ambientCG (https://ambientcg.com/license):
+  - asphalt_*  : "Asphalt026B" (1K-JPG, downscaled to 512) by ambientCG / Lennart Demes
+  - grass_*    : "Grass001"    (1K-JPG, downscaled to 512) by ambientCG / Lennart Demes
+Maps used: Color (albedo, sRGB), NormalGL (OpenGL normal), Roughness (linear).

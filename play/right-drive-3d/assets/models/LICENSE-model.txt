@@ -1,0 +1,6 @@
+Car model "sportscar.glb" — CC0 1.0 Universal (Public Domain).
+Source: Quaternius "Cars" pack (https://quaternius.com/packs/cars.html), author @Quaternius.
+License verified from the pack's License.txt: "CC0 1.0 Universal ... Public Domain Dedication".
+Converted from the pack's SportsCar.obj (Blender 2.79 export) to glb via trimesh,
+preserving the 7 named material groups (Orange/DarkOrange body, Windows, Headlights,
+TailLights, Grey, Black) so each part gets its own PBR material at runtime.

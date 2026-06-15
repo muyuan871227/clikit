@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0a0a14" />
+  <title>Three + Rapier Game</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      width: 100%;
+      height: 100dvh;
+      min-height: -webkit-fill-available;
+      background: #0a0a14;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+    /* Three.js renders into this canvas. We size it to the viewport and let
+       the renderer resize on window-resize via renderer.setSize(). */
+    #renderCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100dvh;
+      display: block;
+      touch-action: none;
+      outline: none;
+    }
+  </style>
+  <script type="module" crossorigin src="./assets/index-xaqhoYam.js"></script>
+</head>
+<body>
+  <!-- Three.js renders into this canvas. ID is required — main.ts looks it up. -->
+  <canvas id="renderCanvas" tabindex="1"></canvas>
+</body>
+</html>
