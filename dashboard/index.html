@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>clikit 工厂监控后台</title>
+<style>
+  :root {
+    --bg:#0a0d14; --panel:#121826; --panel2:#0f1420; --border:#222b3d; --border2:#2c3650;
+    --txt:#cdd8ee; --mut:#6f7c93; --mut2:#46506a; --accent:#5b8cff;
+    --s1:#5b8cff; --s2:#2bd49b; --s3:#ffb454; --s4:#b06bff;
+    --green:#2bd49b; --amber:#ffb454; --red:#ff5d6c; --blue:#5b8cff;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:
+      radial-gradient(1200px 500px at 15% -10%, rgba(91,140,255,.08), transparent),
+      radial-gradient(1000px 500px at 95% 0%, rgba(176,107,255,.06), transparent),
+      var(--bg);
+    color:var(--txt); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+  }
+  .wrap { max-width:1480px; margin:0 auto; padding:22px 26px 60px; }
+  a { color:inherit; }
+  .mono { font-family:"SF Mono",ui-monospace,Menlo,monospace; font-variant-numeric:tabular-nums; }
+
+  /* header */
+  header { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:20px; flex-wrap:wrap; }
+  .brand { display:flex; align-items:center; gap:14px; }
+  .logo { width:42px; height:42px; border-radius:11px; background:linear-gradient(135deg,var(--s1),var(--s4));
+    display:grid; place-items:center; font-size:22px; box-shadow:0 6px 20px rgba(91,140,255,.35); }
+  .brand h1 { font-size:19px; margin:0; letter-spacing:.2px; }
+  .brand .sub { color:var(--mut); font-size:12.5px; margin-top:1px; }
+  .live { display:flex; align-items:center; gap:16px; font-size:12.5px; color:var(--mut); }
+  .live .pill { display:flex; align-items:center; gap:7px; background:var(--panel); border:1px solid var(--border);
+    padding:7px 13px; border-radius:9px; }
+  .dot { width:8px; height:8px; border-radius:50%; box-shadow:0 0 0 3px rgba(43,212,155,.15); }
+  .dot.green{background:var(--green);} .dot.amber{background:var(--amber);box-shadow:0 0 0 3px rgba(255,180,84,.15);}
+  .dot.red{background:var(--red);box-shadow:0 0 0 3px rgba(255,93,108,.15);}
+  .dot.beat{animation:beat 1.6s ease-in-out infinite;}
+  @keyframes beat{0%,100%{opacity:1}50%{opacity:.35}}
+  button.refresh{background:var(--panel);border:1px solid var(--border);color:var(--txt);padding:7px 13px;border-radius:9px;cursor:pointer;font-size:12.5px;}
+  button.refresh:hover{border-color:var(--accent);}
+
+  /* pipeline ribbon */
+  .ribbon { display:flex; gap:0; align-items:stretch; margin-bottom:8px; }
+  .stage { flex:1 1 0; min-width:0; background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--border);
+    border-radius:14px; padding:16px 17px; position:relative; }
+  .stage .top { display:flex; align-items:center; justify-content:space-between; }
+  .stage .nm { font-size:15px; font-weight:700; }
+  .stage .sb { color:var(--mut); font-size:11.5px; margin-top:2px; }
+  .stage .metric { font-size:13px; margin:11px 0 9px; font-weight:600; }
+  .stage .lines { list-style:none; padding:0; margin:0; }
+  .stage .lines li { color:var(--mut); font-size:11.5px; padding:2px 0 2px 12px; position:relative; }
+  .stage .lines li:before { content:""; position:absolute; left:0; top:9px; width:4px; height:4px; border-radius:50%; background:var(--border2); }
+  .stage.s1{border-top:2px solid var(--s1);} .stage.s2{border-top:2px solid var(--s2);}
+  .stage.s3{border-top:2px solid var(--s3);} .stage.s4{border-top:2px solid var(--s4);}
+  .arrow { flex:none; display:grid; place-items:center; color:var(--border2); font-size:20px; width:34px; }
+  .loopback { margin:4px 0 22px; text-align:center; color:var(--mut); font-size:12px; }
+  .loopback b { color:var(--s4); }
+
+  /* funnel */
+  .section-t { font-size:12px; text-transform:uppercase; letter-spacing:1.2px; color:var(--mut); margin:22px 2px 12px; font-weight:700; }
+  .funnel { display:flex; align-items:stretch; gap:0; background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:6px; }
+  .fstep { flex:1; text-align:center; padding:14px 8px; position:relative; }
+  .fstep .c { font-size:30px; font-weight:800; letter-spacing:-.5px; }
+  .fstep .l { color:var(--mut); font-size:12px; margin-top:3px; }
+  .fstep + .fstep:before { content:""; position:absolute; left:0; top:18%; height:64%; width:1px; background:var(--border); }
+  .conv { position:absolute; right:-15px; top:50%; transform:translateY(-50%); z-index:2;
+    background:var(--panel2); border:1px solid var(--border2); border-radius:20px; font-size:10.5px; padding:2px 7px; color:var(--mut); }
+
+  /* kpi tiles */
+  .tiles { display:grid; grid-template-columns:repeat(8,1fr); gap:10px; }
+  .tile { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:13px 14px; }
+  .tile .v { font-size:23px; font-weight:800; letter-spacing:-.5px; }
+  .tile .k { color:var(--mut); font-size:11px; margin-top:2px; }
+
+  /* main grid */
+  .grid { display:grid; grid-template-columns:1fr 360px; gap:18px; margin-top:8px; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  .card .hd { padding:13px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .card .hd h3 { margin:0; font-size:13.5px; } .card .hd .cnt { color:var(--mut); font-size:12px; }
+
+  /* pipeline table */
+  table { width:100%; border-collapse:collapse; }
+  thead th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--mut);
+    padding:10px 14px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--panel); }
+  tbody td { padding:10px 14px; border-bottom:1px solid var(--panel2); font-size:13px; vertical-align:middle; }
+  tbody tr:hover { background:rgba(91,140,255,.04); }
+  .gname { font-weight:600; }
+  .gname .slug { color:var(--mut); font-size:11px; font-weight:400; }
+  .tablewrap { max-height:560px; overflow:auto; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:7px; font-size:12px; font-weight:700; }
+  .b-green{background:rgba(43,212,155,.14);color:var(--green);} .b-amber{background:rgba(255,180,84,.14);color:var(--amber);}
+  .b-red{background:rgba(255,93,108,.14);color:var(--red);} .b-mut{color:var(--mut2,#46506a);}
+  .chips { display:flex; gap:4px; flex-wrap:wrap; }
+  .chip { font-size:10.5px; padding:2px 6px; border-radius:6px; border:1px solid var(--border2); color:var(--mut); }
+  .chip.done{background:rgba(43,212,155,.13);color:var(--green);border-color:transparent;}
+  .chip.ready{background:rgba(255,180,84,.12);color:var(--amber);border-color:transparent;}
+  .chip.manual{background:rgba(91,140,255,.12);color:var(--blue);border-color:transparent;}
+  .stagetag { font-size:11px; font-weight:700; padding:2px 9px; border-radius:20px; }
+  .st-evaluated{background:rgba(111,124,147,.16);color:var(--mut);}
+  .st-built{background:rgba(91,140,255,.14);color:var(--s1);}
+  .st-shipped{background:rgba(43,212,155,.14);color:var(--s2);}
+  .st-ads{background:rgba(255,180,84,.16);color:var(--s3);}
+  .st-live{background:rgba(176,107,255,.16);color:var(--s4);}
+
+  /* activity + data panel */
+  .feed { padding:6px 0; max-height:300px; overflow:auto; }
+  .ev { display:flex; gap:11px; padding:8px 16px; align-items:flex-start; }
+  .ev .ic { width:24px; height:24px; border-radius:7px; display:grid; place-items:center; font-size:12px; flex:none; }
+  .ev.eval .ic{background:rgba(91,140,255,.14);} .ev.ship .ic{background:rgba(43,212,155,.14);} .ev.ads .ic{background:rgba(255,180,84,.14);}
+  .ev .tx { font-size:12.5px; } .ev .tx .g { font-weight:600; } .ev .tx .t { color:var(--mut); }
+  .ev .ago { margin-left:auto; color:var(--mut); font-size:11px; white-space:nowrap; }
+  .data-panel { padding:15px 16px; }
+  .data-panel .warn { display:flex; gap:9px; align-items:center; background:rgba(255,93,108,.08); border:1px solid rgba(255,93,108,.25);
+    border-radius:10px; padding:10px 12px; font-size:12.5px; color:#ffb3bb; margin-bottom:12px; }
+  .data-panel p { color:var(--mut); font-size:12px; margin:0 0 10px; }
+  .schema { background:var(--panel2); border:1px solid var(--border); border-radius:9px; padding:11px 12px; font-size:11.5px; color:var(--mut); overflow:auto; }
+  .schema .k{color:var(--s4);}
+  .empty{color:var(--mut);text-align:center;padding:30px;font-size:13px;}
+  tbody tr.click{cursor:pointer;}
+
+  /* 反编译列表 */
+  .tdlist { padding:4px 0; max-height:240px; overflow:auto; }
+  .td { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 16px; font-size:12.5px; border-bottom:1px solid var(--panel2); }
+  .td .id { font-family:"SF Mono",ui-monospace,Menlo,monospace; color:var(--txt); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .td .at { color:var(--mut); font-size:11px; white-space:nowrap; }
+
+  /* 游戏详情抽屉 */
+  .backdrop { position:fixed; inset:0; background:rgba(4,7,12,.55); opacity:0; pointer-events:none; transition:opacity .2s; z-index:49; backdrop-filter:blur(2px); }
+  .backdrop.open { opacity:1; pointer-events:auto; }
+  .drawer { position:fixed; top:0; right:0; height:100vh; width:430px; max-width:93vw; background:var(--panel);
+    border-left:1px solid var(--border2); box-shadow:-24px 0 70px rgba(0,0,0,.55); transform:translateX(102%);
+    transition:transform .24s cubic-bezier(.4,0,.2,1); z-index:50; overflow-y:auto; }
+  .drawer.open { transform:translateX(0); }
+  .dhd { position:sticky; top:0; background:linear-gradient(180deg,var(--panel),rgba(18,24,38,.96)); padding:18px 20px 15px;
+    border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:flex-start; gap:12px; z-index:1; }
+  .dhd h2 { margin:0; font-size:17px; line-height:1.25; }
+  .x { background:none; border:1px solid var(--border2); color:var(--mut); width:30px; height:30px; border-radius:9px; cursor:pointer; font-size:15px; flex:none; }
+  .x:hover { border-color:var(--accent); color:var(--txt); }
+  .sec { padding:15px 20px; border-bottom:1px solid var(--panel2); }
+  .sec h4 { margin:0 0 11px; font-size:11.5px; text-transform:uppercase; letter-spacing:.7px; color:var(--mut); }
+  .dim { display:grid; grid-template-columns:62px 1fr 30px; gap:10px; align-items:center; margin:6px 0; font-size:12px; }
+  .dim .bar { height:7px; background:var(--panel2); border-radius:5px; overflow:hidden; }
+  .dim .bar i { display:block; height:100%; border-radius:5px; background:linear-gradient(90deg,var(--s1),var(--s4)); }
+  .km { display:flex; flex-wrap:wrap; gap:6px; margin-top:11px; }
+  .km span { font-size:11px; background:var(--panel2); border:1px solid var(--border); border-radius:7px; padding:3px 9px; color:var(--mut); }
+  .km b { color:var(--txt); font-weight:700; }
+  .rk { width:100%; border-collapse:collapse; font-size:11.5px; margin-top:6px; }
+  .rk td { padding:5px 6px; border-bottom:1px solid var(--panel2); }
+  .chrow { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:5px 0; font-size:12.5px; }
+
+  footer{margin-top:26px;color:var(--mut);font-size:11.5px;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo">🏭</div>
+      <div>
+        <h1>clikit 工厂监控后台</h1>
+        <div class="sub">研发 → 上架 → 投放 → 回流 · 全自动游戏工厂全链路监控</div>
+      </div>
+    </div>
+    <div class="live">
+      <span class="pill"><span id="livedot" class="dot green beat"></span><span id="livetxt">实时</span></span>
+      <span class="pill mono">扫描 <span id="scanat">—</span></span>
+      <button class="refresh" onclick="load()">↻ 刷新</button>
+    </div>
+  </header>
+
+  <div id="ribbon" class="ribbon"></div>
+  <div class="loopback">↺ <b>④ 数据回流</b> 的留存/ROI 信号反哺 <b>① 研发</b> 选下一个要改的游戏与素材 —— 这是闭环</div>
+
+  <div class="section-t">转化漏斗 · 游戏在各环的流转与流失</div>
+  <div id="funnel" class="funnel"></div>
+
+  <div class="section-t">核心指标</div>
+  <div id="tiles" class="tiles"></div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="hd"><h3>游戏管线 · 逐游戏跨环状态</h3><span id="gcount" class="cnt"></span></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr>
+            <th>游戏</th><th>① 研发 eval</th><th>② 上架</th><th>③ 投放 CTR</th><th>④ 回流</th><th>当前阶段</th>
+          </tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:18px;">
+        <div class="hd"><h3>最近活动</h3></div>
+        <div id="feed" class="feed"></div>
+      </div>
+      <div class="card">
+        <div class="hd"><h3>④ 数据回流</h3><span class="cnt">M4</span></div>
+        <div id="datapanel" class="data-panel"></div>
+      </div>
+      <div class="card" style="margin-top:18px;">
+        <div class="hd"><h3>反编译竞品 · [RE] 证据</h3><span id="tdcount" class="cnt"></span></div>
+        <div id="tdlist" class="tdlist"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>clikit-v2 / factory-dashboard · 扫描真实工厂产物(evals · ship-report · admaker scores · teardowns),零 mock · 点任一游戏看跨环详情</footer>
+</div>
+
+<div id="backdrop" class="backdrop" onclick="closeGame()"></div>
+<aside id="drawer" class="drawer" aria-hidden="true"><div id="dbody"></div></aside>
+
+<script>window.__STATIC__=true;window.__SNAPSHOT__={"scannedAt":"2026-06-15T06:07:28.956Z","stages":[{"key":"rnd","n":"① AI 研发","sub":"策划 · 代码 · 美术 · 数值","health":"green","metric":"176 评测 · 79 构建 · 7 反编译","lines":["580 次评测,均分 14.9/18,最高 18","反编译竞品 7 款([RE] 证据)","引擎 6 种"]},{"key":"ship","n":"② 自动上架","sub":"构建 · 提审 · 多端分发","health":"green","metric":"1 已发布 · 1 渠道完成","lines":["渠道:webgames / crazygames / itch / ios / googleplay / steam","1 个渠道 done,其余 ready/manual"]},{"key":"ads","n":"③ AI 投放","sub":"素材生成 · 自动出价","health":"green","metric":"1 游戏有素材 · 3 条创意","lines":["最高 CTR 代理分 29/50","自动出价 = M5(待投放账号)"]},{"key":"data","n":"④ 数据回流","sub":"留存 · ROI · 行为分析","health":"red","metric":"🔴 待接入采集端","lines":["M4:平台 CSV/API → factory-kpi.jsonl → 喂 evolve","当前仅内部质量回流(evals)在驱动 evolve"]}],"funnel":[{"key":"evaluated","label":"研发·评测","count":176},{"key":"built","label":"构建·成品","count":79},{"key":"shipped","label":"上架·发布","count":1},{"key":"ads","label":"投放·素材","count":1},{"key":"live","label":"回流·数据","count":0}],"kpis":{"evalsTotal":580,"uniqueGames":176,"avgEval":14.9,"topEval":18,"built":79,"researched":22,"teardowns":7,"shipped":1,"channelsDone":1,"creativeGames":1,"creatives":3,"bestCtr":29,"kpiGames":0,"engines":6},"games":[{"slug":"arrows-escape","name":"Arrows Puzzle Escape","eval":{"total":12,"scores":{"juice":2,"progression":2,"animation":1,"style":3,"audio":3,"pacing":1},"at":"2026-06-15T01:17:55.113Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":21,"particles":16,"sounds":53,"tweens":303,"hitstops":0,"music":8},"progressionFields":["score","remaining","combo","taps","undoDepth"],"difficultyRamp":false,"reachedGameOver":true,"medianFps":44}},"research":true,"fidelity":true,"built":true,"distSize":1731431,"builtAt":"2026-06-15T03:06:03.789Z","ship":{"channels":[{"channel":"webgames","status":"done","next":"kit ready for any platform upload"}],"done":1,"at":"2026-06-15T03:17:30.866Z","declaredOnly":false},"ads":{"best":29,"count":3,"at":"2026-06-15T03:17:30.773Z","hooks":[{"id":"satisfying-clear","headline":"Untangle the knot. Clear it.","cta":"PLAY NOW"},{"id":"logic-challenge","headline":"Master the tangle. Solve it.","cta":"BEAT IT"},{"id":"daily-puzzle","headline":"Daily puzzles, endless logic fun.","cta":"TRY IT"}],"ranking":[{"id":"arrows-escape-satisfying-clear-15s","total":29,"hook":3,"action":4},{"id":"arrows-escape-daily-puzzle-15s","total":28,"hook":4,"action":3},{"id":"arrows-escape-logic-challenge-15s","total":26,"hook":3,"action":2}]},"kpi":null,"stage":"ads"},{"slug":"last-front","name":"Last Front","eval":null,"research":false,"fidelity":false,"built":false,"distSize":0,"builtAt":null,"ship":{"channels":[{"channel":"ios","status":"ready","next":"fill ship.config.json (bundleId/teamId/ASC keys) → /ship-app:ios-app-ship — needs Xcode + Apple Developer account"},{"channel":"googleplay","status":"ready","next":"set ~/.googleplay/service-account.json + keystore → /ship-app:googleplay-autopublish — needs Android SDK + Play Console account"},{"channel":"steam","status":"ready","next":"fill appID/depotID in *.vdf → ./upload-steam.sh — needs Steamworks account + steamcmd"}],"done":0,"at":"2026-06-12T05:24:03.831Z","declaredOnly":false},"ads":null,"kpi":null,"stage":"shipped"},{"slug":"magic-sort","name":"magic-sort","eval":{"total":14,"scores":{"juice":3,"progression":2,"animation":1,"style":3,"audio":3,"pacing":2},"at":"2026-06-15T04:56:54.861Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":56,"particles":398,"sounds":346,"tweens":3384,"hitstops":34,"music":8},"progressionFields":["level","moves","par","tubes","colors","sorted"],"difficultyRamp":true,"reachedGameOver":false,"medianFps":28}},"research":true,"fidelity":true,"built":true,"distSize":3915105,"builtAt":"2026-06-15T04:58:01.384Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"egg-brawl","name":"egg-brawl","eval":{"total":18,"scores":{"juice":3,"progression":3,"animation":3,"style":3,"audio":3,"pacing":3},"at":"2026-06-15T04:43:07.455Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":46,"particles":0,"sounds":194,"tweens":1587,"hitstops":9,"music":18},"progressionFields":["score","distance","stage","stars","totalStars","combo","deaths"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":64}},"research":false,"fidelity":false,"built":true,"distSize":2146117,"builtAt":"2026-06-15T04:37:04.315Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"right-drive-school","name":"right-drive-school","eval":null,"research":false,"fidelity":false,"built":true,"distSize":1475,"builtAt":"2026-06-15T04:28:36.494Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"word-jam","name":"word-jam","eval":{"total":16,"scores":{"juice":3,"progression":3,"animation":2,"style":3,"audio":3,"pacing":2},"at":"2026-06-15T04:14:13.910Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":40,"particles":136,"sounds":242,"tweens":1950,"hitstops":0,"music":12},"progressionFields":["coins","level","wordsFound","wordsTotal","bonusFound"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":20}},"research":true,"fidelity":true,"built":true,"distSize":2557795,"builtAt":"2026-06-15T04:18:59.279Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"meow-mahjong","name":"meow-mahjong","eval":{"total":15,"scores":{"juice":3,"progression":2,"animation":2,"style":3,"audio":3,"pacing":2},"at":"2026-06-15T02:48:17.567Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":25,"particles":84,"sounds":49,"tweens":745,"hitstops":21,"music":2},"progressionFields":["score","remaining","combo","moves"],"difficultyRamp":true,"reachedGameOver":false,"medianFps":15}},"research":true,"fidelity":true,"built":true,"distSize":2998958,"builtAt":"2026-06-15T02:46:12.312Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"right-drive-3d","name":"right-drive-3d","eval":null,"research":false,"fidelity":false,"built":true,"distSize":1460,"builtAt":"2026-06-15T02:43:58.285Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"amaze-go","name":"amaze-go","eval":{"total":13,"scores":{"juice":2,"progression":2,"animation":1,"style":3,"audio":3,"pacing":2},"at":"2026-06-15T02:18:50.269Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":7,"particles":136,"sounds":92,"tweens":422,"hitstops":7,"music":4},"progressionFields":["level","covered","total","progress"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":35}},"research":true,"fidelity":true,"built":true,"distSize":1885522,"builtAt":"2026-06-15T02:19:28.402Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"queendoku","name":"queendoku","eval":{"total":15,"scores":{"juice":3,"progression":2,"animation":1,"style":3,"audio":3,"pacing":3},"at":"2026-06-15T01:34:40.912Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":20,"particles":0,"sounds":79,"tweens":2314,"hitstops":19,"music":3},"progressionFields":["score","filled"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":41}},"research":true,"fidelity":true,"built":true,"distSize":3577227,"builtAt":"2026-06-15T01:36:29.816Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"block-blast","name":"block-blast","eval":null,"research":true,"fidelity":true,"built":true,"distSize":1705281,"builtAt":"2026-06-12T05:35:50.842Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"wardlight","name":"Wardlight","eval":{"total":17,"scores":{"juice":3,"progression":3,"animation":2,"style":3,"audio":3,"pacing":3},"at":"2026-06-11T12:37:43.986Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":60,"particles":964,"sounds":169,"tweens":54,"hitstops":37,"music":6},"progressionFields":["score","beaconHp","coins","timeMs","enemies"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":120}},"research":true,"fidelity":true,"built":true,"distSize":1862825,"builtAt":"2026-06-12T03:13:51.433Z","ship":{"channels":[],"done":0,"at":null,"declaredOnly":true},"ads":null,"kpi":null,"stage":"built"},{"slug":"clikit-cup-trivia","name":"clikit-cup-trivia","eval":{"total":18,"scores":{"juice":3,"progression":3,"animation":3,"style":3,"audio":3,"pacing":3},"at":"2026-06-01T09:12:23.131Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":30,"particles":66,"sounds":74,"tweens":1392,"hitstops":28,"music":6},"progressionFields":["score","best","level","round","tier","timeMs"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":26}},"research":false,"fidelity":false,"built":true,"distSize":2861584,"builtAt":"2026-06-12T01:32:48.911Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"clikit-cup-flagmatch","name":"clikit-cup-flagmatch","eval":{"total":18,"scores":{"juice":3,"progression":3,"animation":3,"style":3,"audio":3,"pacing":3},"at":"2026-06-01T09:17:19.766Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":40,"particles":0,"sounds":163,"tweens":1888,"hitstops":0,"music":6},"progressionFields":["score","level","combo","timeLeft"],"difficultyRamp":true,"reachedGameOver":false,"medianFps":22}},"research":true,"fidelity":true,"built":true,"distSize":2593714,"builtAt":"2026-06-12T01:32:32.449Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"clikit-cup-wave","name":"clikit-cup-wave","eval":{"total":18,"scores":{"juice":3,"progression":3,"animation":3,"style":3,"audio":3,"pacing":3},"at":"2026-06-01T09:22:12.222Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":59,"particles":132,"sounds":130,"tweens":3163,"hitstops":5,"music":8},"progressionFields":["score","best","combo","level","tier"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":35}},"research":false,"fidelity":false,"built":true,"distSize":1814279,"builtAt":"2026-06-12T01:30:45.534Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"clikit-cup-freekick","name":"clikit-cup-freekick","eval":{"total":18,"scores":{"juice":3,"progression":3,"animation":3,"style":3,"audio":3,"pacing":3},"at":"2026-06-01T08:50:20.930Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":13,"particles":0,"sounds":28,"tweens":584,"hitstops":5,"music":5},"progressionFields":["score","best","shots","level","tierIdx","combo","wallCount","keeperReach"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":14}},"research":true,"fidelity":true,"built":true,"distSize":2977684,"builtAt":"2026-06-12T01:30:44.725Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"clikit-cup-tapstriker","name":"clikit-cup-tapstriker","eval":{"total":18,"scores":{"juice":3,"progression":3,"animation":3,"style":3,"audio":3,"pacing":3},"at":"2026-06-01T09:26:10.194Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":76,"particles":402,"sounds":183,"tweens":467,"hitstops":30,"music":6},"progressionFields":["score","best","timeLeft","level","combo","shots"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":38}},"research":false,"fidelity":false,"built":true,"distSize":2293086,"builtAt":"2026-06-12T01:28:59.807Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"clikit-cup-keepyuppy","name":"clikit-cup-keepyuppy","eval":{"total":18,"scores":{"juice":3,"progression":3,"animation":3,"style":3,"audio":3,"pacing":3},"at":"2026-06-01T09:08:21.338Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":36,"particles":0,"sounds":114,"tweens":708,"hitstops":5,"music":4},"progressionFields":["score","level","tierIndex","styleMult","styleStreak"],"difficultyRamp":true,"reachedGameOver":false,"medianFps":32}},"research":true,"fidelity":true,"built":true,"distSize":2241789,"builtAt":"2026-06-12T01:28:52.380Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"clikit-cup-target","name":"clikit-cup-target","eval":{"total":18,"scores":{"juice":3,"progression":3,"animation":3,"style":3,"audio":3,"pacing":3},"at":"2026-06-01T09:25:48.238Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":34,"particles":0,"sounds":54,"tweens":737,"hitstops":17,"music":7},"progressionFields":["score","best","shotsLeft","shot","rank"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":29}},"research":true,"fidelity":true,"built":true,"distSize":2802336,"builtAt":"2026-06-12T01:26:51.693Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"clikit-cup-keeper","name":"clikit-cup-keeper","eval":{"total":18,"scores":{"juice":3,"progression":3,"animation":3,"style":3,"audio":3,"pacing":3},"at":"2026-06-01T09:19:51.650Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":51,"particles":0,"sounds":128,"tweens":1466,"hitstops":14,"music":14},"progressionFields":["score","best","shots","level","wave","difficulty","keeperReach"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":30}},"research":true,"fidelity":true,"built":true,"distSize":2850845,"builtAt":"2026-06-12T01:26:33.610Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"clikit-cup-dribble","name":"clikit-cup-dribble","eval":{"total":18,"scores":{"juice":3,"progression":3,"animation":3,"style":3,"audio":3,"pacing":3},"at":"2026-06-01T08:47:48.494Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":34,"particles":0,"sounds":131,"tweens":707,"hitstops":8,"music":30},"progressionFields":["score","best","level","stage","stampede","powerup"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":10}},"research":true,"fidelity":true,"built":true,"distSize":2348119,"builtAt":"2026-06-12T01:24:50.166Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"clikit-cup-penalty","name":"clikit-cup-penalty","eval":{"total":17,"scores":{"juice":3,"progression":3,"animation":2,"style":3,"audio":3,"pacing":3},"at":"2026-06-01T09:11:15.309Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":28,"particles":0,"sounds":63,"tweens":1438,"hitstops":14,"music":7},"progressionFields":["score","best","shots","level","tier","combo","keeperReach"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":21}},"research":true,"fidelity":true,"built":true,"distSize":2850182,"builtAt":"2026-06-12T01:24:17.631Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"brick-stack-3d","name":"brick-stack-3d","eval":null,"research":false,"fidelity":false,"built":true,"distSize":3001881,"builtAt":"2026-06-11T03:05:48.504Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"2048","name":"2048","eval":null,"research":false,"fidelity":false,"built":true,"distSize":547,"builtAt":"2026-06-11T00:10:46.712Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"lumi-hop","name":"lumi-hop","eval":{"total":15,"scores":{"juice":3,"progression":2,"animation":2,"style":3,"audio":3,"pacing":2},"at":"2026-06-10T03:34:07.335Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":5,"particles":10,"sounds":13,"tweens":90,"hitstops":1,"music":2},"progressionFields":["score","stars","level"],"difficultyRamp":true,"reachedGameOver":false,"medianFps":95}},"research":false,"fidelity":true,"built":true,"distSize":1928466,"builtAt":"2026-06-10T03:32:34.790Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"frog-tongue","name":"frog-tongue","eval":{"total":18,"scores":{"juice":3,"progression":3,"animation":3,"style":3,"audio":3,"pacing":3},"at":"2026-06-10T01:08:42.035Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":20,"particles":46,"sounds":119,"tweens":75,"hitstops":6,"music":6},"progressionFields":["score","best","chapterIndex","combo","bugs"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":120}},"research":false,"fidelity":false,"built":true,"distSize":2040663,"builtAt":"2026-06-10T01:07:13.613Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"kite-flyer","name":"kite-flyer","eval":{"total":18,"scores":{"juice":3,"progression":3,"animation":3,"style":3,"audio":3,"pacing":3},"at":"2026-06-08T04:59:42.333Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":74,"particles":1757,"sounds":168,"tweens":431,"hitstops":3,"music":10},"progressionFields":["score","distance","rings","chapterIndex"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":119}},"research":false,"fidelity":false,"built":true,"distSize":1954200,"builtAt":"2026-06-08T04:57:52.508Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"clikit-ascii-miner","name":"clikit-ascii-miner","eval":{"total":18,"scores":{"readability":3,"depth":2,"progression":3,"feedback":3,"challenge":2,"cohesion":3,"emergence":2},"at":"2026-06-05T09:03:21.535Z","model":"gemini-2.5-flash","keyMetrics":{"progressionFields":["score","o2","turn","dwellers"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":60}},"research":true,"fidelity":false,"built":true,"distSize":44630,"builtAt":"2026-06-06T04:05:44.646Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"bumper-shooter","name":"bumper-shooter","eval":{"total":15,"scores":{"juice":3,"progression":2,"animation":2,"style":3,"audio":3,"pacing":2},"at":"2026-06-06T04:03:46.086Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":48,"particles":170,"sounds":88,"tweens":77,"hitstops":2,"music":4},"progressionFields":["score","level","chapterIndex","pocketsFilled","pocketsTotal","shotsLeft"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":119}},"research":true,"fidelity":false,"built":true,"distSize":1897969,"builtAt":"2026-06-06T04:01:38.981Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"clikit-ascii-hearth","name":"clikit-ascii-hearth","eval":{"total":17,"scores":{"readability":3,"depth":2,"progression":2,"feedback":3,"challenge":2,"cohesion":3,"emergence":2},"at":"2026-06-05T08:14:08.456Z","model":"gemini-2.5-pro","keyMetrics":{"progressionFields":["turn","wood","raiders","kills","hearth"],"difficultyRamp":true,"reachedGameOver":false,"medianFps":60}},"research":true,"fidelity":false,"built":true,"distSize":42898,"builtAt":"2026-06-05T03:46:36.075Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"clikit-ascii-rogue","name":"clikit-ascii-rogue","eval":{"total":17,"scores":{"readability":3,"depth":2,"progression":3,"feedback":3,"challenge":1,"cohesion":3,"emergence":2},"at":"2026-06-11T00:41:51.147Z","model":"gemini-2.5-flash","keyMetrics":{"progressionFields":["turn","kills"],"difficultyRamp":false,"reachedGameOver":false,"medianFps":60}},"research":true,"fidelity":false,"built":true,"distSize":41073,"builtAt":"2026-06-05T02:56:44.609Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"gravity-flip","name":"gravity-flip","eval":{"total":17,"scores":{"juice":3,"progression":3,"animation":3,"style":3,"audio":3,"pacing":2},"at":"2026-06-04T02:53:32.602Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":7,"particles":6330,"sounds":86,"tweens":100,"hitstops":7,"music":15},"progressionFields":["score","distance","speed","gravDir","best"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":120}},"research":false,"fidelity":false,"built":true,"distSize":1906038,"builtAt":"2026-06-04T02:51:45.376Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"tap-dodge","name":"tap-dodge","eval":{"total":16,"scores":{"juice":3,"progression":3,"animation":2,"style":3,"audio":3,"pacing":2},"at":"2026-06-01T03:08:01.499Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":18,"particles":1208,"sounds":155,"tweens":295,"hitstops":14,"music":11},"progressionFields":["score","survivalTime","chapterIndex","combo"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":68}},"research":true,"fidelity":false,"built":true,"distSize":2157530,"builtAt":"2026-06-01T03:06:31.765Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"slide-out","name":"slide-out","eval":null,"research":false,"fidelity":false,"built":true,"distSize":3648639,"builtAt":"2026-05-28T11:35:41.333Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"vampire","name":"vampire","eval":null,"research":false,"fidelity":false,"built":true,"distSize":8971509,"builtAt":"2026-05-28T02:17:10.041Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"mobile-shell-smoketest","name":"mobile-shell-smoketest","eval":null,"research":false,"fidelity":false,"built":true,"distSize":1675008,"builtAt":"2026-05-28T01:27:39.052Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"block-drop","name":"block-drop","eval":null,"research":false,"fidelity":false,"built":true,"distSize":1918334,"builtAt":"2026-05-28T01:26:11.193Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"bridge-builder-seed","name":"bridge-builder-seed","eval":{"total":13,"scores":{"juice":2,"progression":2,"animation":1,"style":3,"audio":3,"pacing":2},"at":"2026-05-27T01:31:14.161Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":177,"particles":1690,"sounds":186,"tweens":302,"hitstops":0,"music":2},"progressionFields":["chasm","level","stage","bridgesBuilt","puzzlesCleared","segmentsUsed","currentSegments","truckX"],"difficultyRamp":true,"reachedGameOver":false,"medianFps":69}},"research":false,"fidelity":false,"built":true,"distSize":2174133,"builtAt":"2026-05-27T01:22:41.083Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-submarine-vertical","name":"_template-seed-submarine-vertical","eval":{"total":17,"scores":{"juice":3,"progression":3,"animation":2,"style":3,"audio":3,"pacing":3},"at":"2026-05-24T03:42:18.237Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":222,"particles":21868,"sounds":292,"tweens":1416,"hitstops":0,"music":2},"progressionFields":["score","level","oxygen","treasure","enemies","torpedoes","enemyShots","pickups"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":119}},"research":false,"fidelity":false,"built":true,"distSize":2031016,"builtAt":"2026-05-24T03:40:34.108Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-boggle","name":"_template-seed-boggle","eval":{"total":14,"scores":{"juice":3,"progression":2,"animation":1,"style":3,"audio":3,"pacing":2},"at":"2026-05-24T02:17:41.165Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":15,"particles":30,"sounds":77,"tweens":243,"hitstops":0,"music":2},"progressionFields":["score","wordsFound","longestWord"],"difficultyRamp":true,"reachedGameOver":false,"medianFps":52}},"research":false,"fidelity":false,"built":true,"distSize":1750149,"builtAt":"2026-05-24T02:13:52.411Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-typing-defense","name":"_template-seed-typing-defense","eval":null,"research":false,"fidelity":false,"built":true,"distSize":2075407,"builtAt":"2026-05-23T08:02:58.527Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-crossy-road","name":"_template-seed-crossy-road","eval":{"total":16,"scores":{"juice":3,"progression":2,"animation":3,"style":3,"audio":3,"pacing":2},"at":"2026-05-23T07:58:02.909Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":19,"particles":0,"sounds":92,"tweens":1092,"hitstops":8,"music":10},"progressionFields":["score","distance","coins"],"difficultyRamp":false,"reachedGameOver":true,"medianFps":113}},"research":false,"fidelity":false,"built":true,"distSize":1848005,"builtAt":"2026-05-23T08:00:17.043Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-catch-falling","name":"_template-seed-catch-falling","eval":null,"research":false,"fidelity":false,"built":true,"distSize":2112246,"builtAt":"2026-05-23T07:51:16.291Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-racing-top-down","name":"_template-seed-racing-top-down","eval":{"total":12,"scores":{"juice":2,"progression":2,"animation":1,"style":2,"audio":3,"pacing":2},"at":"2026-05-23T07:50:42.796Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":1068,"particles":0,"sounds":1070,"tweens":2576,"hitstops":0,"music":2},"progressionFields":["position","lapTime"],"difficultyRamp":false,"reachedGameOver":false,"medianFps":117}},"research":false,"fidelity":false,"built":true,"distSize":1989020,"builtAt":"2026-05-23T07:48:47.338Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-shooting-gallery","name":"_template-seed-shooting-gallery","eval":null,"research":false,"fidelity":false,"built":true,"distSize":2394011,"builtAt":"2026-05-23T07:46:32.851Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-klondike-solitaire","name":"_template-seed-klondike-solitaire","eval":{"total":13,"scores":{"juice":2,"progression":2,"animation":1,"style":3,"audio":3,"pacing":2},"at":"2026-05-23T07:48:25.708Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":11,"particles":6,"sounds":44,"tweens":275,"hitstops":0,"music":2},"progressionFields":["score","moves","foundationsBuilt"],"difficultyRamp":true,"reachedGameOver":false,"medianFps":13}},"research":false,"fidelity":false,"built":true,"distSize":1937122,"builtAt":"2026-05-23T07:46:29.349Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-maze-runner","name":"_template-seed-maze-runner","eval":null,"research":false,"fidelity":false,"built":true,"distSize":2494328,"builtAt":"2026-05-23T07:44:33.196Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"vampire-server-sim","name":"vampire-server-sim","eval":null,"research":false,"fidelity":false,"built":true,"distSize":3466673,"builtAt":"2026-05-23T07:42:54.736Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-slingshot-physics","name":"_template-seed-slingshot-physics","eval":{"total":14,"scores":{"juice":3,"progression":2,"animation":1,"style":3,"audio":3,"pacing":2},"at":"2026-05-23T07:37:35.797Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":79,"particles":0,"sounds":127,"tweens":1327,"hitstops":9,"music":1},"progressionFields":["score","level","shotsLeft","stars","targetsLeft"],"difficultyRamp":true,"reachedGameOver":false,"medianFps":48}},"research":false,"fidelity":false,"built":true,"distSize":2216348,"builtAt":"2026-05-23T07:35:31.676Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-word-search","name":"_template-seed-word-search","eval":{"total":13,"scores":{"juice":2,"progression":2,"animation":1,"style":3,"audio":3,"pacing":2},"at":"2026-05-23T07:36:51.321Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":10,"particles":0,"sounds":75,"tweens":755,"hitstops":0,"music":4},"progressionFields":["wordsFound","totalWords","score"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":13}},"research":false,"fidelity":false,"built":true,"distSize":1736685,"builtAt":"2026-05-23T07:33:56.014Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-sliding-puzzle","name":"_template-seed-sliding-puzzle","eval":{"total":11,"scores":{"juice":1,"progression":2,"animation":1,"style":3,"audio":3,"pacing":1},"at":"2026-05-23T07:38:00.600Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":0,"particles":0,"sounds":73,"tweens":278,"hitstops":0,"music":2},"progressionFields":["moves","percentSorted"],"difficultyRamp":false,"reachedGameOver":false,"medianFps":35}},"research":false,"fidelity":false,"built":true,"distSize":1682355,"builtAt":"2026-05-23T07:31:38.833Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"clikit-royale-server-sim","name":"clikit-royale-server-sim","eval":null,"research":false,"fidelity":false,"built":true,"distSize":2495483,"builtAt":"2026-05-23T07:31:16.761Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-wordle-like","name":"_template-seed-wordle-like","eval":null,"research":false,"fidelity":false,"built":true,"distSize":1755045,"builtAt":"2026-05-23T07:17:01.395Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-pacman-like","name":"_template-seed-pacman-like","eval":null,"research":false,"fidelity":false,"built":true,"distSize":1719004,"builtAt":"2026-05-23T06:58:16.797Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-knife-hit","name":"_template-seed-knife-hit","eval":{"total":14,"scores":{"juice":3,"progression":2,"animation":1,"style":3,"audio":3,"pacing":2},"at":"2026-05-23T06:54:16.286Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":22,"particles":0,"sounds":33,"tweens":279,"hitstops":1,"music":1},"progressionFields":["score","level","knivesLeft","applesHit"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":51}},"research":false,"fidelity":false,"built":true,"distSize":1878017,"builtAt":"2026-05-23T06:52:44.785Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-piano-tiles","name":"_template-seed-piano-tiles","eval":null,"research":false,"fidelity":false,"built":true,"distSize":1856247,"builtAt":"2026-05-23T06:46:42.699Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-flappy","name":"_template-seed-flappy","eval":{"total":15,"scores":{"juice":2,"progression":2,"animation":3,"style":3,"audio":3,"pacing":2},"at":"2026-05-23T06:48:02.400Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":13,"particles":0,"sounds":78,"tweens":621,"hitstops":13,"music":14},"progressionFields":["score","best","distance"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":68}},"research":false,"fidelity":false,"built":true,"distSize":1822273,"builtAt":"2026-05-23T06:45:51.236Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-merge-game","name":"_template-seed-merge-game","eval":{"total":13,"scores":{"juice":2,"progression":2,"animation":1,"style":3,"audio":3,"pacing":2},"at":"2026-05-23T06:45:55.311Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":1,"particles":0,"sounds":30,"tweens":580,"hitstops":0,"music":2},"progressionFields":["score","biggest","dropped"],"difficultyRamp":true,"reachedGameOver":false,"medianFps":12}},"research":false,"fidelity":false,"built":true,"distSize":2213733,"builtAt":"2026-05-23T06:43:55.802Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-tetris","name":"_template-seed-tetris","eval":{"total":12,"scores":{"juice":2,"progression":2,"animation":1,"style":3,"audio":3,"pacing":1},"at":"2026-05-23T06:55:12.450Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":21,"particles":0,"sounds":92,"tweens":411,"hitstops":0,"music":6},"progressionFields":["score","pieces"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":56}},"research":false,"fidelity":false,"built":true,"distSize":1682852,"builtAt":"2026-05-23T06:42:10.076Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-physics-puzzle","name":"_template-seed-physics-puzzle","eval":{"total":15,"scores":{"juice":2,"progression":2,"animation":3,"style":3,"audio":3,"pacing":2},"at":"2026-05-23T06:47:27.499Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":15,"particles":0,"sounds":35,"tweens":250,"hitstops":9,"music":1},"progressionFields":["level","stars","attempts"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":20}},"research":false,"fidelity":false,"built":true,"distSize":2099680,"builtAt":"2026-05-23T06:42:07.260Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-agar-io","name":"_template-seed-agar-io","eval":{"total":13,"scores":{"juice":2,"progression":2,"animation":1,"style":3,"audio":3,"pacing":2},"at":"2026-05-23T06:40:41.656Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":7,"particles":0,"sounds":15,"tweens":604,"hitstops":0,"music":2},"progressionFields":["score","mass","biggestEaten","rank","cells","food"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":76}},"research":false,"fidelity":false,"built":true,"distSize":1859960,"builtAt":"2026-05-23T06:38:54.475Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-pong","name":"_template-seed-pong","eval":null,"research":false,"fidelity":false,"built":true,"distSize":1950242,"builtAt":"2026-05-23T06:37:04.332Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-platformer-2d","name":"_template-seed-platformer-2d","eval":{"total":15,"scores":{"juice":2,"progression":2,"animation":3,"style":3,"audio":3,"pacing":2},"at":"2026-05-23T06:23:41.483Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":1,"particles":0,"sounds":76,"tweens":546,"hitstops":1,"music":2},"progressionFields":["score","coins"],"difficultyRamp":true,"reachedGameOver":false,"medianFps":113}},"research":false,"fidelity":false,"built":true,"distSize":1911417,"builtAt":"2026-05-23T06:30:59.845Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-idle-clicker","name":"_template-seed-idle-clicker","eval":{"total":14,"scores":{"juice":2,"progression":3,"animation":2,"style":3,"audio":3,"pacing":1},"at":"2026-05-23T06:21:49.624Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":38,"particles":0,"sounds":40,"tweens":743,"hitstops":0,"music":2},"progressionFields":["coins","totalClicks"],"difficultyRamp":false,"reachedGameOver":false,"medianFps":42}},"research":false,"fidelity":false,"built":true,"distSize":2567964,"builtAt":"2026-05-23T06:18:56.236Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-bubble-shooter","name":"_template-seed-bubble-shooter","eval":null,"research":false,"fidelity":false,"built":true,"distSize":1704159,"builtAt":"2026-05-23T06:17:11.688Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-2048","name":"_template-seed-2048","eval":null,"research":false,"fidelity":false,"built":true,"distSize":1678575,"builtAt":"2026-05-23T06:16:25.593Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-bullet-hell","name":"_template-seed-bullet-hell","eval":{"total":14,"scores":{"juice":2,"progression":2,"animation":2,"style":3,"audio":3,"pacing":2},"at":"2026-05-23T06:17:04.049Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":41,"particles":0,"sounds":528,"tweens":2277,"hitstops":0,"music":2},"progressionFields":["score","kills","enemies","bullets","enemyShots"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":117}},"research":false,"fidelity":false,"built":true,"distSize":2685066,"builtAt":"2026-05-23T06:15:04.262Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-sokoban","name":"_template-seed-sokoban","eval":null,"research":false,"fidelity":false,"built":true,"distSize":1705003,"builtAt":"2026-05-23T06:12:45.535Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-whack-a-mole","name":"_template-seed-whack-a-mole","eval":null,"research":false,"fidelity":false,"built":true,"distSize":2224254,"builtAt":"2026-05-23T06:10:50.612Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-snake-io","name":"_template-seed-snake-io","eval":null,"research":false,"fidelity":false,"built":true,"distSize":1685126,"builtAt":"2026-05-23T06:07:55.053Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-arena-shooter","name":"_template-seed-arena-shooter","eval":{"total":14,"scores":{"juice":3,"progression":2,"animation":1,"style":3,"audio":3,"pacing":2},"at":"2026-06-06T04:49:30.267Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":441,"particles":3986,"sounds":693,"tweens":1432,"hitstops":96,"music":4},"progressionFields":["score","kills","wave","enemies","bullets"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":120}},"research":false,"fidelity":false,"built":true,"distSize":2487643,"builtAt":"2026-05-23T04:35:43.894Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-match-3","name":"_template-seed-match-3","eval":{"total":14,"scores":{"juice":3,"progression":2,"animation":1,"style":3,"audio":3,"pacing":2},"at":"2026-05-23T04:27:20.906Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":53,"particles":0,"sounds":83,"tweens":941,"hitstops":1,"music":2},"progressionFields":["score","level","movesLeft","combo"],"difficultyRamp":true,"reachedGameOver":false,"medianFps":46}},"research":false,"fidelity":false,"built":true,"distSize":2404753,"builtAt":"2026-05-23T04:22:57.802Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-tower-defense","name":"_template-seed-tower-defense","eval":null,"research":false,"fidelity":false,"built":true,"distSize":2914748,"builtAt":"2026-05-23T04:11:42.990Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-endless-runner","name":"_template-seed-endless-runner","eval":{"total":16,"scores":{"juice":3,"progression":3,"animation":2,"style":3,"audio":3,"pacing":2},"at":"2026-05-23T04:09:25.859Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":31,"particles":0,"sounds":116,"tweens":1094,"hitstops":22,"music":24},"progressionFields":["score","distance","combo","tier","coins"],"difficultyRamp":true,"reachedGameOver":true,"medianFps":120}},"research":false,"fidelity":false,"built":true,"distSize":1903042,"builtAt":"2026-05-23T04:07:20.089Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-brick-breaker","name":"_template-seed-brick-breaker","eval":null,"research":false,"fidelity":false,"built":true,"distSize":2151402,"builtAt":"2026-05-23T04:02:36.866Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"clikit-royale","name":"clikit-royale","eval":null,"research":false,"fidelity":false,"built":true,"distSize":4466772,"builtAt":"2026-05-23T03:48:23.335Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"pitch-survivors","name":"pitch-survivors","eval":{"total":14,"scores":{"juice":2,"progression":3,"animation":1,"style":3,"audio":3,"pacing":2},"at":"2026-05-24T01:30:08.085Z","model":"gemini-2.5-pro","keyMetrics":{"feelSignals":{"shakes":0,"particles":0,"sounds":394,"tweens":550,"hitstops":0,"music":2},"progressionFields":["score","kills","level"],"difficultyRamp":true,"reachedGameOver":false,"medianFps":119}},"research":false,"fidelity":false,"built":true,"distSize":1986693,"builtAt":"2026-05-22T09:49:02.779Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"tactic-eleven","name":"tactic-eleven","eval":null,"research":false,"fidelity":false,"built":true,"distSize":1913281,"builtAt":"2026-05-21T10:01:46.741Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"penalty-king","name":"penalty-king","eval":null,"research":false,"fidelity":false,"built":true,"distSize":2110735,"builtAt":"2026-05-21T10:01:10.873Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"clash-royale-clikit","name":"clash-royale-clikit","eval":null,"research":false,"fidelity":false,"built":true,"distSize":4861294,"builtAt":"2026-05-21T08:35:34.719Z","ship":null,"ads":null,"kpi":null,"stage":"built"},{"slug":"_template-seed-memory-match","name":"_template-seed-memory-match","eval":null,"research":false,"fidelity":false,"built":false,"distSize":0,"builtAt":null,"ship":null,"ads":null,"kpi":null,"stage":"evaluated"},{"slug":"_template-seed-stack-blocks","name":"_template-seed-stack-blocks","eval":null,"research":false,"fidelity":false,"built":false,"distSize":0,"builtAt":null,"ship":null,"ads":null,"kpi":null,"stage":"evaluated"},{"slug":"boss-fight","name":"boss-fight","eval":null,"research":false,"fidelity":false,"built":false,"distSize":0,"builtAt":null,"ship":null,"ads":null,"kpi":null,"stage":"evaluated"},{"slug":"cards","name":"cards","eval":null,"research":false,"fidelity":false,"built":false,"distSize":0,"builtAt":null,"ship":null,"ads":null,"kpi":null,"stage":"evaluated"},{"slug":"pcg-dungeon","name":"pcg-dungeon","eval":null,"research":false,"fidelity":false,"built":false,"distSize":0,"builtAt":null,"ship":null,"ads":null,"kpi":null,"stage":"evaluated"},{"slug":"platformer","name":"platformer","eval":null,"research":false,"fidelity":false,"built":false,"distSize":0,"builtAt":null,"ship":null,"ads":null,"kpi":null,"stage":"evaluated"},{"slug":"ralph-e2e-phaser","name":"ralph-e2e-phaser","eval":null,"research":true,"fidelity":false,"built":false,"distSize":0,"builtAt":null,"ship":null,"ads":null,"kpi":null,"stage":"evaluated"},{"slug":"ralph-e2e-rogue","name":"ralph-e2e-rogue","eval":null,"research":true,"fidelity":false,"built":false,"distSize":0,"builtAt":null,"ship":null,"ads":null,"kpi":null,"stage":"evaluated"},{"slug":"shooter","name":"shooter","eval":null,"research":false,"fidelity":false,"built":false,"distSize":0,"builtAt":null,"ship":null,"ads":null,"kpi":null,"stage":"evaluated"},{"slug":"twin-stick","name":"twin-stick","eval":null,"research":false,"fidelity":false,"built":false,"distSize":0,"builtAt":null,"ship":null,"ads":null,"kpi":null,"stage":"evaluated"},{"slug":"clik-survivors","name":"Clik Survivors","eval":null,"research":false,"fidelity":false,"built":false,"distSize":0,"builtAt":null,"ship":{"channels":[],"done":0,"at":null,"declaredOnly":true},"ads":null,"kpi":null,"stage":"evaluated"},{"slug":"snake-power-up-arena","name":"Snake Power-Up Arena","eval":null,"research":false,"fidelity":false,"built":false,"distSize":0,"builtAt":null,"ship":{"channels":[],"done":0,"at":null,"declaredOnly":true},"ads":null,"kpi":null,"stage":"evaluated"}],"activity":[{"at":"2026-06-15T04:56:54.861Z","type":"eval","game":"clikit-example-magic-sort","text":"评测 14/18"},{"at":"2026-06-15T04:43:07.455Z","type":"eval","game":"clikit-example-egg-brawl","text":"评测 18/18"},{"at":"2026-06-15T04:14:13.910Z","type":"eval","game":"clikit-example-word-jam","text":"评测 16/18"},{"at":"2026-06-15T03:17:30.866Z","type":"ship","game":"arrows-escape","text":"上架 1 渠道"},{"at":"2026-06-15T03:17:30.773Z","type":"ads","game":"arrows-escape","text":"投放素材 3 条,最高 29/50"},{"at":"2026-06-15T02:48:17.567Z","type":"eval","game":"clikit-example-meow-mahjong","text":"评测 15/18"},{"at":"2026-06-15T02:18:50.269Z","type":"eval","game":"clikit-example-amaze-go","text":"评测 13/18"},{"at":"2026-06-15T01:34:40.912Z","type":"eval","game":"clikit-example-queendoku","text":"评测 15/18"},{"at":"2026-06-15T01:17:55.113Z","type":"eval","game":"clikit-example-arrows-escape","text":"评测 12/18"},{"at":"2026-06-12T05:24:03.831Z","type":"ship","game":"last-front","text":"上架 0 渠道"},{"at":"2026-06-11T12:37:43.986Z","type":"eval","game":"clikit-example-wardlight","text":"评测 17/18"},{"at":"2026-06-11T10:07:13.713Z","type":"eval","game":"crowd-runner-3d","text":"评测 15/18"},{"at":"2026-06-11T08:10:21.040Z","type":"eval","game":"ralph-e2e-bramble-knight","text":"评测 16/18"},{"at":"2026-06-11T07:42:08.185Z","type":"eval","game":"ralph-e2e-lantern-keep","text":"评测 17/18"},{"at":"2026-06-11T00:41:51.147Z","type":"eval","game":"clikit-example-clikit-ascii-rogue","text":"评测 17/18"},{"at":"2026-06-10T03:34:07.335Z","type":"eval","game":"clikit-example-lumi-hop","text":"评测 15/18"},{"at":"2026-06-10T01:08:42.035Z","type":"eval","game":"clikit-example-frog-tongue","text":"评测 18/18"},{"at":"2026-06-08T09:24:28.444Z","type":"eval","game":"hole-3d","text":"评测 16/18"},{"at":"2026-06-08T08:17:44.420Z","type":"eval","game":"penalty-shootout","text":"评测 16/18"},{"at":"2026-06-08T06:22:30.326Z","type":"eval","game":"free-kick-curl","text":"评测 12/18"},{"at":"2026-06-08T06:21:03.534Z","type":"eval","game":"juggle-master","text":"评测 14/18"},{"at":"2026-06-08T04:59:42.333Z","type":"eval","game":"clikit-example-kite-flyer","text":"评测 18/18"},{"at":"2026-06-07T10:40:17.017Z","type":"eval","game":"tower-keep","text":"评测 18/18"},{"at":"2026-06-06T05:20:41.750Z","type":"eval","game":"_template-seed-ball-blast","text":"评测 13/18"}],"teardowns":[{"file":"com.hortor.juliancysj.md","id":"com.hortor.juliancysj","at":"2026-06-15T03:25:32.733Z"},{"file":"com.block.juggle.md","id":"com.block.juggle","at":"2026-06-12T06:20:32.261Z"},{"file":"1465860961.md","id":"1465860961","at":"2026-06-11T00:07:46.133Z"},{"file":"1666627988.md","id":"1666627988","at":"2026-06-11T00:07:46.133Z"},{"file":"1453324655.md","id":"1453324655","at":"2026-06-11T00:07:46.132Z"},{"file":"1453651052-v2.md","id":"1453651052-v2","at":"2026-06-11T00:07:46.132Z"},{"file":"1453989822-v2.md","id":"1453989822-v2","at":"2026-06-11T00:07:46.132Z"}],"kpi":{"connected":false},"kpiSchema":{"game":"slug","channel":"applovin|crazygames|…","day":"YYYY-MM-DD","impressions":0,"installs":0,"d1":0,"d7":0,"spend":0,"revenue":0,"roas":0}};</script>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function ago(iso){ if(!iso) return ''; const d=(Date.now()-Date.parse(iso))/1000;
+  if(d<60)return Math.floor(d)+'s'; if(d<3600)return Math.floor(d/60)+'m'; if(d<86400)return Math.floor(d/3600)+'h'; return Math.floor(d/86400)+'d'; }
+const evalClass = (t) => t>=15?'b-green':t>=12?'b-amber':'b-red';
+const STAGE_LBL = {evaluated:'已评测',built:'已构建',shipped:'已上架',ads:'有素材',live:'有数据'};
+const DIMS=[['juice','手感'],['progression','进度'],['animation','动画'],['style','风格'],['audio','音频'],['pacing','节奏']];
+let GAMES={};
+const bar=(v)=>'<div class="bar"><i style="width:'+Math.round((Math.max(0,Math.min(3,v))/3)*100)+'%"></i></div>';
+
+function renderRibbon(stages){
+  const cls={rnd:'s1',ship:'s2',ads:'s3',data:'s4'};
+  let h='';
+  stages.forEach((s,i)=>{
+    h += '<div class="stage '+cls[s.key]+'">'
+       + '<div class="top"><div><div class="nm">'+esc(s.n)+'</div><div class="sb">'+esc(s.sub)+'</div></div>'
+       + '<span class="dot '+s.health+'"></span></div>'
+       + '<div class="metric">'+esc(s.metric)+'</div>'
+       + '<ul class="lines">'+(s.lines||[]).map(l=>'<li>'+esc(l)+'</li>').join('')+'</ul></div>';
+    if(i<stages.length-1) h+='<div class="arrow">→</div>';
+  });
+  $('ribbon').innerHTML=h;
+}
+function renderFunnel(funnel){
+  let h='';
+  funnel.forEach((f,i)=>{
+    let conv='';
+    if(i>0){ const prev=funnel[i-1].count; const pct= prev>0? Math.round(f.count/prev*100):0; conv='<span class="conv">'+pct+'%</span>'; }
+    h += '<div class="fstep"><div class="c mono">'+f.count+'</div><div class="l">'+esc(f.label)+'</div>'+conv+'</div>';
+  });
+  $('funnel').innerHTML=h;
+}
+function renderTiles(k){
+  const tiles=[
+    ['评测次数',k.evalsTotal],['唯一游戏',k.uniqueGames],['均分/18',k.avgEval],['反编译',k.teardowns],
+    ['已发布',k.shipped],['渠道完成',k.channelsDone],['创意条数',k.creatives],['最高CTR',k.bestCtr+'/50'],
+  ];
+  $('tiles').innerHTML = tiles.map(t=>'<div class="tile"><div class="v mono">'+t[1]+'</div><div class="k">'+t[0]+'</div></div>').join('');
+}
+function renderRows(games){
+  $('gcount').textContent = games.length+' 款在管线中';
+  if(!games.length){ $('rows').innerHTML='<tr><td colspan=6 class="empty">暂无在管线中的游戏</td></tr>'; return; }
+  $('rows').innerHTML = games.map(g=>{
+    const ev = g.eval ? '<span class="badge '+evalClass(g.eval.total)+'">'+g.eval.total+'/18</span>' : '<span class="b-mut">—</span>';
+    const ship = g.ship && g.ship.channels.length
+      ? '<div class="chips">'+g.ship.channels.map(c=>'<span class="chip '+c.status+'">'+esc(c.channel)+(c.status==='done'?' ✓':'')+'</span>').join('')+'</div>'
+      : (g.ship && g.ship.declaredOnly ? '<span class="chip">已声明</span>' : '<span class="b-mut">—</span>');
+    const ads = g.ads ? '<span class="badge '+(g.ads.best>=30?'b-green':g.ads.best>=25?'b-amber':'b-red')+'">'+g.ads.best+'/50</span> <span class="b-mut" style="font-size:11px">×'+g.ads.count+'</span>' : '<span class="b-mut">—</span>';
+    const kpi = g.kpi ? '<span class="badge b-green">有</span>' : '<span class="b-mut">待接入</span>';
+    return '<tr class="click" onclick="openGame(\''+g.slug+'\')"><td class="gname">'+esc(g.name)+'<div class="slug mono">'+esc(g.slug)+'</div></td>'
+      + '<td>'+ev+'</td><td>'+ship+'</td><td>'+ads+'</td><td>'+kpi+'</td>'
+      + '<td><span class="stagetag st-'+g.stage+'">'+(STAGE_LBL[g.stage]||g.stage)+'</span></td></tr>';
+  }).join('');
+}
+function renderFeed(activity){
+  const ic={eval:'★',ship:'🚀',ads:'🎬'};
+  $('feed').innerHTML = activity.map(e=>
+    '<div class="ev '+e.type+'"><div class="ic">'+(ic[e.type]||'•')+'</div>'
+    +'<div class="tx"><span class="g">'+esc(e.game)+'</span> <span class="t">'+esc(e.text)+'</span></div>'
+    +'<div class="ago">'+ago(e.at)+'</div></div>').join('') || '<div class="empty">无</div>';
+}
+function renderData(state){
+  const p=$('datapanel');
+  if(state.kpi && state.kpi.connected){ p.innerHTML='<p>采集端已接入,KPI 正在回流。</p>'; return; }
+  const sc=state.kpiSchema||{};
+  const rows=Object.entries(sc).map(([k,v])=>'<span class="k">"'+k+'"</span>: '+(typeof v==='string'?'"'+v+'"':v)).join(',\n  ');
+  p.innerHTML = '<div class="warn"><span class="dot red"></span>采集端未接入(M4) —— 当前仅内部质量回流(evals)在驱动 evolve</div>'
+    + '<p>接平台 CSV/API → 写入 <b>factory-kpi.jsonl</b> → evolve 读 KPI 选下一个要改的游戏/素材,闭环就合上。每行 schema:</p>'
+    + '<pre class="schema mono">{\n  '+rows+'\n}</pre>';
+}
+
+function renderTeardowns(tds){
+  $('tdcount').textContent=(tds||[]).length+' 款';
+  $('tdlist').innerHTML=(tds||[]).map(t=>'<div class="td"><span class="id">'+esc(t.id)+'</span><span class="at">'+ago(t.at)+'</span></div>').join('') || '<div class="empty">无</div>';
+}
+function closeGame(){ $('drawer').classList.remove('open'); $('backdrop').classList.remove('open'); }
+function openGame(slug){
+  const g = GAMES[slug]; if(!g) return;
+  let h='<div class="dhd"><div><h2>'+esc(g.name)+'</h2><div class="slug mono">'+esc(g.slug)+'</div>'
+    +'<span class="stagetag st-'+g.stage+'" style="margin-top:8px;display:inline-block">'+(STAGE_LBL[g.stage]||g.stage)+'</span></div>'
+    +'<button class="x" onclick="closeGame()">✕</button></div>';
+  // ① 研发
+  h+='<div class="sec"><h4>① AI 研发 · 评测 / 构建 / 研究</h4>';
+  if(g.eval){
+    h+='<div style="margin-bottom:10px">总分 <span class="badge '+evalClass(g.eval.total)+'">'+g.eval.total+'/18</span> <span class="b-mut" style="font-size:11px">'+esc(g.eval.model||'')+'</span></div>';
+    const sc=g.eval.scores||{};
+    DIMS.forEach(d=>{ const v=sc[d[0]]??0; h+='<div class="dim"><span>'+d[1]+'</span>'+bar(v)+'<span class="mono">'+v+'/3</span></div>'; });
+    const km=g.eval.keyMetrics||{}, fs=km.feelSignals||{};
+    h+='<div class="km">'
+      +(km.medianFps!=null?'<span>FPS <b>'+km.medianFps+'</b></span>':'')
+      +(fs.particles!=null?'<span>粒子 <b>'+fs.particles+'</b></span>':'')
+      +(fs.shakes!=null?'<span>震屏 <b>'+fs.shakes+'</b></span>':'')
+      +(fs.hitstops!=null?'<span>hitstop <b>'+fs.hitstops+'</b></span>':'')
+      +(fs.sounds!=null?'<span>音效 <b>'+fs.sounds+'</b></span>':'')
+      +(km.difficultyRamp!=null?'<span>难度曲线 <b>'+(km.difficultyRamp?'✓':'✗')+'</b></span>':'')
+      +'</div>';
+  } else { h+='<div class="b-mut" style="font-size:12.5px">未进 eval 流程(可能走 teardown-rebuild,见 FIDELITY.md)</div>'; }
+  h+='<div class="km">'+(g.research?'<span>✓ RESEARCH</span>':'')+(g.fidelity?'<span>✓ FIDELITY</span>':'')
+    +(g.built?'<span>✓ 构建 '+(g.distSize?Math.round(g.distSize/1024)+'KB':'')+'</span>':'<span>未构建</span>')+'</div></div>';
+  // ② 上架
+  h+='<div class="sec"><h4>② 自动上架 · 多端分发</h4>';
+  if(g.ship && g.ship.channels.length){
+    h+=g.ship.channels.map(c=>'<div class="chrow"><span class="chip '+c.status+'">'+esc(c.channel)+(c.status==='done'?' ✓':'')+'</span><span class="b-mut" style="font-size:11px;text-align:right">'+esc(c.next||c.status)+'</span></div>').join('');
+  } else if(g.ship && g.ship.declaredOnly){ h+='<div class="b-mut">已声明 ship.json,未发布</div>'; }
+  else { h+='<div class="b-mut">未上架</div>'; }
+  h+='</div>';
+  // ③ 投放
+  h+='<div class="sec"><h4>③ AI 投放 · 素材 / CTR</h4>';
+  if(g.ads){
+    if(g.ads.hooks && g.ads.hooks.length) h+='<div style="margin-bottom:9px">'+g.ads.hooks.map(hk=>'<div style="font-size:12px;margin:3px 0">▸ <b>'+esc(hk.headline||hk.id)+'</b> <span class="b-mut">/ '+esc(hk.cta||'')+'</span></div>').join('')+'</div>';
+    if(g.ads.ranking && g.ads.ranking.length){
+      h+='<table class="rk"><tr><td class="b-mut">创意</td><td class="b-mut">CTR</td><td class="b-mut">hook</td><td class="b-mut">action</td></tr>'
+        +g.ads.ranking.slice().sort((a,b)=>b.total-a.total).map(r=>'<tr><td>'+esc(String(r.id||'').replace(g.slug+'-','').replace('-15s',''))+'</td><td><b>'+r.total+'</b>/50</td><td>'+r.hook+'</td><td>'+r.action+'</td></tr>').join('')+'</table>';
+    }
+  } else { h+='<div class="b-mut">无投放素材</div>'; }
+  h+='</div>';
+  // ④ 回流
+  h+='<div class="sec"><h4>④ 数据回流 · 留存 / ROI</h4>'+(g.kpi?'<div>有 KPI 数据</div>':'<div class="b-mut">待接入采集端(M4)</div>')+'</div>';
+  $('dbody').innerHTML=h;
+  $('drawer').classList.add('open'); $('backdrop').classList.add('open');
+}
+
+function applyState(s, mode){
+  GAMES={}; (s.games||[]).forEach(g=>GAMES[g.slug]=g);
+  renderRibbon(s.stages); renderFunnel(s.funnel); renderTiles(s.kpis);
+  renderRows(s.games); renderFeed(s.activity); renderData(s); renderTeardowns(s.teardowns||[]);
+  $('scanat').textContent = s.scannedAt ? new Date(s.scannedAt).toLocaleString('zh-CN') : '—';
+  if(mode==='static'){ $('livedot').className='dot amber'; $('livetxt').textContent='快照'; }
+  else { $('livedot').className='dot green beat'; $('livetxt').textContent='实时'; }
+}
+async function load(){
+  // static (GitHub Pages) build: no server — render the baked-in snapshot.
+  if (window.__STATIC__ && window.__SNAPSHOT__){ applyState(window.__SNAPSHOT__, 'static'); return; }
+  try{
+    const r = await fetch('/api/state',{cache:'no-store'});
+    applyState(await r.json(), 'live');
+  }catch(e){
+    if (window.__SNAPSHOT__){ applyState(window.__SNAPSHOT__, 'static'); }
+    else { $('livedot').className='dot red'; $('livetxt').textContent='离线'; }
+  }
+}
+load();
+if (!window.__STATIC__) setInterval(load, 5000); // live mode polls; static is a snapshot
+window.addEventListener('keydown', e=>{ if(e.key==='Escape') closeGame(); });
+</script>
+</body>
+</html>
