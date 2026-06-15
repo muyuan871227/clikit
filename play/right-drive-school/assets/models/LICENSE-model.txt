@@ -1,0 +1,33 @@
+3D MODELS — scenery is CC0; the HERO CAR is CC BY 4.0 (attribution required, given
+in-game + in CREDITS.md/LICENSE). No branded/trademarked vehicles.
+
+HERO CAR — "carconcept.glb"  (CC BY 4.0 — original, NON-branded concept supercar)
+  Source: Khronos glTF Sample Assets "Car Concept" —
+    https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept
+  Artist: Eric Chadwick.  Owner: © 2024 Darmstadt Graphics Group GmbH.
+  License: Creative Commons Attribution 4.0 International (CC BY 4.0), SPDX CC-BY-4.0.
+    Verbatim: '© 2024, Darmstadt Graphics Group GmbH. "CC BY 4.0 International"'
+    (kept as proof in carconcept.LICENSE.md + carconcept.metadata.json, copied from Khronos).
+  ORIGINAL concept car — NOT a replica of any real, trademarked vehicle. (Khronos:
+    "started from a public domain 3D model created by Unity Fan", optimized by E. Chadwick.)
+  Modified for this game: decimated 213,347 -> 61,436 tris (meshopt simplify); textures
+    <=1K WEBP; recentred bottom-at-y0; 4 wheels (WheelFrontL/R, WheelRearL/R) split into
+    independently-driven meshes so the Rapier raycast vehicle can steer/spin/suspend each;
+    interior Khronos emblem + licence plate hidden (no logos). Body re-skinned with PBR
+    clearcoat paint. Attribution shown on the title screen + a persistent HUD credit chip.
+
+PREVIOUS HERO CAR — "kenney-sedan-sports.glb"  (CC0 1.0 — retained, no longer loaded)
+  Source: Kenney "Car Kit" — https://kenney.nl/assets/car-kit , author Kenney. CC0.
+  Replaced by the higher-fidelity CarConcept above (the Kenney car is ~2,088 tris vs
+  ~61,436 for the concept car). Kept in the folder but not referenced by the build.
+
+SCENERY — all from Kenney "Racing Kit" (2.0) — https://kenney.nl/assets/racing-kit ,
+  author Kenney. License: CC0 1.0 Universal (verified from the pack's License.txt).
+  No textures (flat material colours), so each .glb is self-contained:
+    • kenney-treeSmall.glb / kenney-treeLarge.glb — roadside low-poly trees.
+    • kenney-lightPost.glb  — modern roadside light post.
+    • kenney-grandStand.glb  — spectator grandstand for the start/finish straight.
+
+PREVIOUS hero car (no longer used): Quaternius "Cars" pack SportsCar (also CC0) — replaced
+  because its wheels were welded into single per-material meshes and could not be driven
+  independently. Kept out of the build.
