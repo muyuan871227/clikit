@@ -1,0 +1,41 @@
+name: verify-site-bundle
+
+# Guards the live clikit gallery. On every push to main it checks the deployed
+# bundle against .clikit-site/invariant.json + the previous commit's catalog, and
+# AUTO-REVERTS any push that drops a game or removes a required feature (the
+# 🆕 New Release shelf). This makes the multi-session "bundle clobber" impossible
+# even for a session that bypasses clikit-app/site/deploy.mjs and pushes by hand.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: verify-site-bundle
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    # Skip the workflow's own revert push (prevents an infinite loop).
+    if: ${{ !contains(github.event.head_commit.message, '[invariant-revert]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Verify bundle invariant
+        run: node .clikit-site/verify-bundle.mjs
+
+      - name: Auto-revert the offending push (self-heal the live site)
+        if: failure()
+        run: |
+          git config user.name  "clikit-site-guard"
+          git config user.email "noreply@anthropic.com"
+          git revert --no-edit HEAD
+          git commit --amend --no-edit -m "revert: bundle invariant violation [invariant-revert]"
+          git push origin main
+          echo "::error::Push reverted — it dropped a game or the New Release shelf. See the verify step above."
