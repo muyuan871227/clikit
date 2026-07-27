@@ -1,0 +1,18 @@
+{
+  "bg": "#FFFFFF",
+  "stroke_default": "#333333",
+  "stroke_width": 3,
+  "perfect_circle_dash": "#CCCCCC",
+  "perfect_circle_dash_width": 1,
+  "hotspot_color": "#EF4444",
+  "font_score": "system-ui",
+  "font_score_size": 80,
+  "font_prompt": "system-ui",
+  "font_prompt_size": 16,
+  "font_prompt_color": "#999999",
+  "button_height": 44,
+  "corner_radius": 22,
+  "animation_score_roll_ms": 800,
+  "animation_circle_reveal_ms": 500,
+  "animation_particle_lifetime_ms": 1000
+}

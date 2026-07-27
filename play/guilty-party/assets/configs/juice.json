@@ -1,0 +1,119 @@
+{
+  "events": {
+    "juice_search_start": {
+      "particle": "particle_search_dust",
+      "sound": "sfx_search_start",
+      "ui_popup": null,
+      "hit_stop_ms": 0
+    },
+    "juice_search_complete": {
+      "particle": "particle_evidence_sparkle",
+      "sound": "sfx_evidence_found",
+      "screen_shake": 0,
+      "ui_popup": "popup_clue_added"
+    },
+    "juice_evidence_examine": {
+      "sound": "sfx_paper_rustle",
+      "particle": null,
+      "flash_color": "#E8F4FD",
+      "flash_ms": 100
+    },
+    "juice_frame_placed": {
+      "sound": "sfx_dark_whisper",
+      "particle": "particle_shadow_swirl",
+      "flash_color": "#8B0000",
+      "flash_ms": 250,
+      "screen_shake": 3,
+      "ui_popup": "popup_frame_placed"
+    },
+    "juice_tamper": {
+      "sound": "sfx_pen_scratch",
+      "particle": "particle_ink_drop",
+      "flash_color": "#4B0082",
+      "flash_ms": 200
+    },
+    "juice_destroy_evidence": {
+      "sound": "sfx_match_burn",
+      "particle": "particle_burn_ash",
+      "flash_color": "#FF4500",
+      "flash_ms": 400,
+      "screen_shake": 5
+    },
+    "juice_lens_pickup": {
+      "sound": "sfx_chime_bright",
+      "particle": "particle_lens_glint",
+      "flash_color": "#00E5FF",
+      "flash_ms": 250
+    },
+    "juice_lens_use": {
+      "sound": "sfx_reveal_sting",
+      "particle": "particle_truth_ring",
+      "flash_color": "#FFFFFF",
+      "flash_ms": 350,
+      "screen_shake": 4,
+      "hit_stop_ms": 150,
+      "slowmo_scale": 0.4,
+      "slowmo_ms": 500
+    },
+    "juice_lens_fake_detected": {
+      "sound": "sfx_reveal_sting_negative",
+      "particle": "particle_red_truth_ring",
+      "flash_color": "#FF3B30",
+      "flash_ms": 450,
+      "screen_shake": 6,
+      "hit_stop_ms": 200
+    },
+    "juice_vote_cast": {
+      "sound": "sfx_gavel_soft",
+      "particle": "particle_vote_drop",
+      "flash_ms": 150
+    },
+    "juice_elimination": {
+      "sound": "sfx_gavel_heavy",
+      "particle": "particle_smoke_puff",
+      "flash_color": "#000000",
+      "flash_ms": 600,
+      "screen_shake": 8,
+      "hit_stop_ms": 300,
+      "ui_popup": "popup_eliminated"
+    },
+    "juice_round_start": {
+      "sound": "sfx_bell_chime",
+      "ui_popup": "popup_round_banner"
+    },
+    "juice_round_end_timer": {
+      "sound": "sfx_clock_tick_rapid",
+      "flash_color": "#FFFFFF",
+      "flash_ms": 100
+    },
+    "juice_killer_wins": {
+      "sound": "sfx_killer_victory",
+      "particle": "particle_dark_laugh",
+      "flash_color": "#8B0000",
+      "flash_ms": 800,
+      "screen_shake": 10
+    },
+    "juice_detectives_win": {
+      "sound": "sfx_detective_victory",
+      "particle": "particle_light_burst",
+      "flash_color": "#FFD700",
+      "flash_ms": 800,
+      "screen_shake": 6
+    },
+    "juice_alone_in_room_timer": {
+      "sound": "sfx_tension_build",
+      "flash_color": "#4A0E4E",
+      "flash_ms": 100
+    },
+    "juice_room_enter": {
+      "sound": "sfx_footstep_soft",
+      "particle": null
+    },
+    "juice_trial_begin": {
+      "sound": "sfx_court_bell",
+      "ui_popup": "popup_trial_banner",
+      "flash_color": "#FFFFFF",
+      "flash_ms": 400
+    }
+  }
+}

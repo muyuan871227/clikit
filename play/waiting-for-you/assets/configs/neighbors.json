@@ -1,0 +1,28 @@
+{
+  "neighbors": [
+    {
+      "id": "auntie", "name": "邻居阿姨",
+      "visits": [
+        {"day": 5, "action": "带了狗粮来", "emotion": "crying", "pet_dog": true},
+        {"day": 10, "action": "开始每天来喂食", "emotion": "sad_smile", "pet_dog": true},
+        {"day": 15, "action": "给狗狗带了毛毯", "emotion": "gentle", "pet_dog": true},
+        {"day": 18, "action": "圣诞夜放了热食和毛毯", "emotion": "warm", "pet_dog": true},
+        {"day": 20, "action": "坐在门口陪狗狗看花开", "emotion": "peaceful", "pet_dog": true}
+      ]
+    },
+    {
+      "id": "boy", "name": "隔壁小男孩",
+      "visits": [
+        {"day": 8, "action": "隔着院子扔球给狗狗", "emotion": "curious", "pet_dog": false},
+        {"day": 16, "action": "给狗狗带了毛毯", "emotion": "kind", "pet_dog": false}
+      ]
+    },
+    {
+      "id": "adopt_family", "name": "领养家庭",
+      "visits": [
+        {"day": 14, "action": "来看狗狗想领养", "emotion": "hopeful", "pet_dog": false},
+        {"day": 14, "action": "狗狗跑回门口趴着，他们叹了口气走了", "emotion": "disappointed", "pet_dog": false}
+      ]
+    }
+  ]
+}

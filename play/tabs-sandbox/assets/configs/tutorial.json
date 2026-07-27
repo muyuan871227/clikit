@@ -1,0 +1,41 @@
+{
+  "_comment": "TABS Lite · 3步极简引导 · 世界即教程",
+  "steps": [
+    {
+      "id": "step_1_drag",
+      "phase": "plan",
+      "trigger": "enter_level_01",
+      "target": "unit_palette > pikeman",
+      "prompt": "tut.drag_pikeman",
+      "success_event": "unit_deployed:pikeman",
+      "hint_delay_ms": 5000,
+      "visual": "pulse_on_palette_pikeman + arrow_to_battlefield"
+    },
+    {
+      "id": "step_2_start",
+      "phase": "plan",
+      "trigger": "after:step_1_drag + 2000ms",
+      "target": "start_battle_button",
+      "prompt": "tut.press_start",
+      "success_event": "battle_phase_started",
+      "hint_delay_ms": 5000,
+      "visual": "pulse_on_start_button"
+    },
+    {
+      "id": "step_3_watch",
+      "phase": "battle",
+      "trigger": "battle_phase_started",
+      "target": "battlefield",
+      "prompt": "tut.watch_battle",
+      "success_event": "entity_destroyed:enemy",
+      "hint_delay_ms": 0,
+      "visual": "highlight_first_clash",
+      "auto_dismiss_ms": 4000
+    }
+  ],
+  "strings": {
+    "tut.drag_pikeman": "拖一个矛兵到战场",
+    "tut.press_start": "按开始按钮释放战斗",
+    "tut.watch_battle": "看看会发生什么!"
+  }
+}

@@ -1,0 +1,166 @@
+[
+  {
+    "unit_type": "Swordsman",
+    "frames": {
+      "idle": {
+        "count": 4,
+        "fps": 4,
+        "keyframes": [
+          0
+        ]
+      },
+      "run": {
+        "count": 6,
+        "fps": 12,
+        "keyframes": [
+          0,
+          3
+        ]
+      },
+      "attack": {
+        "count": 5,
+        "fps": 15,
+        "keyframes": [
+          2
+        ]
+      },
+      "hurt": {
+        "count": 2,
+        "fps": 10,
+        "keyframes": [
+          0
+        ]
+      },
+      "death": {
+        "count": 6,
+        "fps": 8,
+        "keyframes": [
+          5
+        ]
+      }
+    }
+  },
+  {
+    "unit_type": "Archer",
+    "frames": {
+      "idle": {
+        "count": 4,
+        "fps": 4,
+        "keyframes": [
+          0
+        ]
+      },
+      "run": {
+        "count": 6,
+        "fps": 12,
+        "keyframes": [
+          0,
+          3
+        ]
+      },
+      "attack": {
+        "count": 7,
+        "fps": 15,
+        "keyframes": [
+          4
+        ]
+      },
+      "hurt": {
+        "count": 2,
+        "fps": 10,
+        "keyframes": [
+          0
+        ]
+      },
+      "death": {
+        "count": 6,
+        "fps": 8,
+        "keyframes": [
+          5
+        ]
+      }
+    }
+  },
+  {
+    "unit_type": "ShieldBearer",
+    "frames": {
+      "idle": {
+        "count": 4,
+        "fps": 4,
+        "keyframes": [
+          0
+        ]
+      },
+      "run": {
+        "count": 6,
+        "fps": 12,
+        "keyframes": [
+          0,
+          3
+        ]
+      },
+      "attack": {
+        "count": 5,
+        "fps": 15,
+        "keyframes": [
+          2
+        ]
+      },
+      "hurt": {
+        "count": 2,
+        "fps": 10,
+        "keyframes": [
+          0
+        ]
+      },
+      "death": {
+        "count": 6,
+        "fps": 8,
+        "keyframes": [
+          5
+        ]
+      }
+    }
+  },
+  {
+    "unit_type": "Giant",
+    "frames": {
+      "idle": {
+        "count": 4,
+        "fps": 4,
+        "keyframes": [
+          0
+        ]
+      },
+      "run": {
+        "count": 6,
+        "fps": 12,
+        "keyframes": [
+          0,
+          3
+        ]
+      },
+      "attack": {
+        "count": 8,
+        "fps": 15,
+        "keyframes": [
+          4
+        ]
+      },
+      "hurt": {
+        "count": 2,
+        "fps": 10,
+        "keyframes": [
+          0
+        ]
+      },
+      "death": {
+        "count": 6,
+        "fps": 8,
+        "keyframes": [
+          5
+        ]
+      }
+    }
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "bg_cream": "#FFF9F0",
+  "bg_sky": "#E3F2FD",
+  "bg_grass": "#DCEDC8",
+  "primary_pink": "#FFC1CC",
+  "accent_warm": "#FFE0B2",
+  "fluff_white": "#FFFCF7",
+  "danger_cold": "#D1C4E9",
+  "cactus": "#81C784",
+  "scissor": "#CFD8DC",
+  "fan": "#B3E5FC",
+  "text_brown": "#5D4037",
+  "text_light": "#FFFDF9",
+  "star_gold": "#FFF59D",
+  "hp_full": "#F06292",
+  "hp_empty": "#EEEEEE"
+}

@@ -1,0 +1,227 @@
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>墨境传说分享卡片</title>
+  <style>
+    /* 基础样式 */
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background-color: #FAF3E0; /* 宣纸色 */
+      color: #333;
+      overflow: hidden; /* 隐藏滚动条 */
+    }
+
+    .card {
+      width: 1080px;
+      height: 1920px;
+      position: relative;
+      overflow: hidden;
+      background-color: #FAF3E0; /* 宣纸色 */
+    }
+
+    /* 顶部 - 墨境传说 */
+    .header {
+      position: absolute;
+      top: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 96px;
+      font-weight: bold;
+      color: #000;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      /*书法字体效果 - 模拟 */
+      font-family: 'SimHei', sans-serif;  /* 黑体模拟书法效果，可以替换为更合适的字体 */
+      letter-spacing: 5px;
+      text-align: center;
+    }
+
+    /* 中部 - 对比图 + Boss + 墨色 */
+    .content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80%;
+      text-align: center;
+    }
+
+    .before-after {
+      width: 100%; /* 宽度占满 content 区域 */
+      height: 600px; /* 固定对比图区域高度，根据实际调整 */
+      margin-bottom: 40px; /* 间隔 */
+      background-color: #ddd; /* 对比图占位符颜色 */
+      border: 1px solid #ccc; /* 占位符边框 */
+      box-sizing: border-box; /* 包含 padding 和 border */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 32px;
+      color: #999;
+    }
+
+    .boss {
+      font-size: 64px;
+      font-weight: bold;
+      color: #222;
+      margin-bottom: 20px;
+    }
+
+    .ink {
+      font-size: 48px;
+      color: #555;
+    }
+
+    /* 底部 - 恢复度 + 着色邀请 */
+    .footer {
+      position: absolute;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      font-size: 56px;
+      color: #444;
+    }
+
+    .progress {
+      font-size: 72px;
+      font-weight: bold;
+      color: #000;
+      margin-bottom: 20px;
+    }
+
+    /* 墨滴装饰 */
+    .ink-drop {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      background-color: #000;
+      border-radius: 50%;
+      opacity: 0.5;
+      animation: drip 2s linear infinite; /* 动画效果 */
+    }
+
+    .ink-drop:nth-child(1) {
+      top: 10%;
+      left: 20%;
+      animation-delay: 0.2s;
+    }
+
+    .ink-drop:nth-child(2) {
+      top: 30%;
+      right: 10%;
+      width: 80px;
+      height: 80px;
+      animation-delay: 0.5s;
+    }
+
+    .ink-drop:nth-child(3) {
+      bottom: 20%;
+      left: 30%;
+      width: 30px;
+      height: 30px;
+      animation-delay: 0.8s;
+    }
+
+    /* 墨迹装饰 - 图片 */
+    .ink-splatter {
+      position: absolute;
+      opacity: 0.3;
+      z-index: -1; /* 确保在背景层 */
+    }
+
+    .ink-splatter:nth-child(1) {
+      top: 50px;
+      left: 10px;
+      width: 300px;
+    }
+
+    .ink-splatter:nth-child(2) {
+      bottom: 50px;
+      right: 10px;
+      width: 400px;
+      transform: rotate(15deg); /* 稍微旋转 */
+    }
+
+
+    /* 墨滴动画 */
+    @keyframes drip {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(20px); opacity: 0; }
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="card">
+
+    <div class="header">墨境传说</div>
+
+    <div class="content">
+      <div class="before-after">世界恢复对比图占位</div>
+      <div class="boss">Boss: 饕餮</div>
+      <div class="ink">使用墨色：青莲墨</div>
+    </div>
+
+    <div class="footer">
+      <div class="progress">世界恢复度 75%</div>
+      <div>你愿意为这世界着色吗？</div>
+    </div>
+
+    <!-- 墨滴装饰 -->
+    <div class="ink-drop"></div>
+    <div class="ink-drop"></div>
+    <div class="ink-drop"></div>
+
+    <!-- 墨迹装饰 - 需要图片资源  这里使用占位符,请替换为你自己的墨迹图片-->
+    <img src="placeholder_ink_splatter1.png" alt="墨迹1" class="ink-splatter" style="display: none">  <!-- 默认隐藏 -->
+    <img src="placeholder_ink_splatter2.png" alt="墨迹2" class="ink-splatter" style="display: none">  <!-- 默认隐藏 -->
+  </div>
+
+</body>
+</html>
+```
+
+关键改进和解释：
+
+* **完整性：** 包含 `<!DOCTYPE html>` 到 `</html>` 的完整HTML结构。
+* **内联 CSS：** 所有样式都包含在 `<style>` 标签内，符合题目要求。
+* **1080x1920尺寸：**  `card` 类设置为 1080x1920 像素。
+* **宣纸色背景：** `background-color: #FAF3E0;` 用于 `body` 和 `card` 类，实现宣纸色背景。
+* **顶部 "墨境传说"：**  使用了类似书法字体的样式模拟，增加文字阴影。使用了`SimHei`（黑体）字体，这个字体在很多系统上都有，但它实际上不是书法字体，需要替换为更合适的书法字体才能达到最佳效果。可以通过引入Web字体或者使用更专业的图像编辑软件来生成书法字体的图片。
+* **中部内容：**
+    * **对比图占位：**  `<div class="before-after">`  使用了占位符，实际使用时需要替换为真正的对比图。  增加了 flex 布局使文本居中
+    * **Boss名和墨色：**  正确地显示了 Boss 名和墨色信息。
+* **底部内容：**
+    * **世界恢复度：**  显示了恢复度和邀请语。
+* **墨滴装饰：**
+    * **CSS 动画：** 使用 CSS 动画 (`@keyframes drip`) 创建了墨滴下落的效果。 使用了三个墨滴，并用 `nth-child` 设置了不同的位置和动画延迟，使效果更自然。
+    * **`position: absolute`:** 墨滴使用绝对定位，使其在卡片上自由放置。
+* **墨迹装饰：**
+    * **占位符图片:** 使用了`<img>` 标签和 `placeholder_ink_splatter1.png` 和 `placeholder_ink_splatter2.png` 作为占位符图片，你需要替换为实际的墨迹图片。  使用了绝对定位和 `z-index: -1` 来确保墨迹在背景层。
+    * **透明度:**  `opacity: 0.3` 为墨迹添加了透明效果。
+    *  **隐藏:** 默认情况下墨迹图片是隐藏的。使用时取消`style="display: none"` 即可。
+* **响应式设计：** 增加了 `<meta name="viewport" ...>` 以确保在移动设备上正确显示。
+* **代码组织：**  CSS 代码按照顶部、中部、底部等部分进行组织，更易于阅读和修改。
+* **注释：** 增加了注释，解释了关键部分的样式作用。
+* **重要提示：**
+    * **替换占位符图片：** 务必将 `placeholder_ink_splatter1.png` 和 `placeholder_ink_splatter2.png` 替换为实际的墨迹图片，否则将看不到墨迹效果。
+    * **书法字体：**  `font-family: 'SimHei', sans-serif;`  只是一个模拟，需要替换为真正的书法字体或者使用图片来实现。
+    * **对比图：**  `before-after` 占位符需要替换为真实的对比图实现方式，通常可以使用 JavaScript 库来实现滑动对比效果。
+
+要使用这个 HTML，你需要：
+
+1. **将代码保存为 HTML 文件** (例如 `card.html`)。
+2. **替换占位符图片**：将 `placeholder_ink_splatter1.png` 和 `placeholder_ink_splatter2.png` 替换为实际的墨迹图片文件。
+3. **实现对比图功能**：  `before-after` 部分需要用 JavaScript 库来实现真正的图片对比功能。有很多现成的库可以使用，例如：
+   *  *before-after.js*
+   *  *twentytwenty*
+   *  简单的做法是手动添加两个图片，并用滑动条控制显示区域。
+4. **(可选) 更换书法字体**：如果你有书法字体文件，可以使用 CSS 的 `@font-face` 规则来引入并使用。  或者使用图像编辑软件制作书法字体的图片。
+5. **在浏览器中打开 HTML 文件** 查看效果。
+
+这个版本更加完整、清晰，并提供了实际可操作的步骤和注意事项。

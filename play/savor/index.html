@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>食光 SAVOR</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Canvas for gameplay rendering -->
+        <canvas id="game-canvas"></canvas>
+
+        <!-- UI Overlay layers -->
+        <div id="ui-overlay">
+            <!-- Preview scene (3s food splash) -->
+            <div id="preview-scene" class="scene">
+                <div id="preview-food"></div>
+                <div id="preview-title">食光</div>
+            </div>
+
+            <!-- Main menu -->
+            <div id="menu-scene" class="scene hidden">
+                <div id="menu-header">
+                    <h1 class="game-title">食光<span class="subtitle">SAVOR</span></h1>
+                    <p class="tagline">每一口都在最好的时刻</p>
+                </div>
+                <div id="today-challenge"></div>
+                <div id="menu-buttons">
+                    <button id="btn-start" class="menu-btn primary">开始料理</button>
+                    <button id="btn-cookbook" class="menu-btn">食光图鉴</button>
+                    <button id="btn-settings" class="menu-btn small">设置</button>
+                </div>
+            </div>
+
+            <!-- Dish selection -->
+            <div id="select-scene" class="scene hidden">
+                <div class="scene-header">
+                    <button class="back-btn" data-back="menu">&larr;</button>
+                    <h2>选择菜品</h2>
+                </div>
+                <div id="dish-grid"></div>
+            </div>
+
+            <!-- Cooking HUD (overlays canvas) -->
+            <div id="cooking-hud" class="scene hidden">
+                <div id="heat-gauge-container">
+                    <canvas id="heat-gauge-canvas"></canvas>
+                </div>
+                <div id="dish-info">
+                    <span id="cooking-dish-name"></span>
+                    <span id="cooking-status"></span>
+                </div>
+                <div id="gesture-hint" class="hidden">
+                    <div id="gesture-icon"></div>
+                    <div id="gesture-text"></div>
+                </div>
+            </div>
+
+            <!-- Sensory explosion overlay -->
+            <div id="explosion-overlay" class="hidden">
+                <div id="explosion-food-image"></div>
+                <div id="explosion-particles"></div>
+                <div id="explosion-text"></div>
+                <div id="explosion-flash"></div>
+            </div>
+
+            <!-- Result screen -->
+            <div id="result-scene" class="scene hidden">
+                <div id="result-rating"></div>
+                <div id="result-dish-name"></div>
+                <div id="result-stars"></div>
+                <div id="result-tip"></div>
+                <div id="result-buttons">
+                    <button id="btn-next-dish" class="menu-btn primary">下一道</button>
+                    <button id="btn-back-menu" class="menu-btn">返回菜单</button>
+                </div>
+            </div>
+
+            <!-- Cookbook -->
+            <div id="cookbook-scene" class="scene hidden">
+                <div class="scene-header">
+                    <button class="back-btn" data-back="menu">&larr;</button>
+                    <h2>食光图鉴</h2>
+                    <span id="cookbook-progress"></span>
+                </div>
+                <div id="cookbook-grid"></div>
+                <!-- Detail modal -->
+                <div id="cookbook-detail" class="hidden">
+                    <button class="back-btn" id="detail-close">&times;</button>
+                    <div id="detail-image"></div>
+                    <h3 id="detail-name"></h3>
+                    <div id="detail-rating"></div>
+                    <div id="detail-knowledge"></div>
+                    <div id="detail-story"></div>
+                </div>
+            </div>
+
+            <!-- Settings overlay -->
+            <div id="settings-overlay" class="hidden">
+                <div class="settings-panel">
+                    <div class="scene-header">
+                        <button class="back-btn" id="settings-close">&times;</button>
+                        <h2>设置</h2>
+                    </div>
+                    <div class="setting-row">
+                        <span>难度</span>
+                        <select id="difficulty-select">
+                            <option value="easy">新手</option>
+                            <option value="normal" selected>普通</option>
+                            <option value="hard">挑战</option>
+                        </select>
+                    </div>
+                    <div class="setting-row">
+                        <span>震动反馈</span>
+                        <input type="checkbox" id="vibration-toggle" checked>
+                    </div>
+                    <div class="setting-row">
+                        <span>音效</span>
+                        <input type="checkbox" id="sound-toggle" checked>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/utils.js"></script>
+    <script src="js/data/dishes.js"></script>
+    <script src="js/systems/save.js"></script>
+    <script src="js/systems/audio.js"></script>
+    <script src="js/systems/particles.js"></script>
+    <script src="js/systems/heat.js"></script>
+    <script src="js/systems/gesture.js"></script>
+    <script src="js/systems/explosion.js"></script>
+    <script src="js/scenes/preview.js"></script>
+    <script src="js/scenes/menu.js"></script>
+    <script src="js/scenes/select.js"></script>
+    <script src="js/scenes/cooking.js"></script>
+    <script src="js/scenes/result.js"></script>
+    <script src="js/scenes/cookbook.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

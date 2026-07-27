@@ -1,0 +1,76 @@
+{
+  "yarns": [
+    {
+      "id": "yarn_red",
+      "name": "红莓绒",
+      "hex": "#FF6B6B",
+      "rarity": "common"
+    },
+    {
+      "id": "yarn_orange",
+      "name": "蜜橘绒",
+      "hex": "#FFA36B",
+      "rarity": "common"
+    },
+    {
+      "id": "yarn_yellow",
+      "name": "柠檬绒",
+      "hex": "#FFD93D",
+      "rarity": "common"
+    },
+    {
+      "id": "yarn_green",
+      "name": "抹茶绒",
+      "hex": "#6BCB77",
+      "rarity": "common"
+    },
+    {
+      "id": "yarn_blue",
+      "name": "天空绒",
+      "hex": "#4D96FF",
+      "rarity": "common"
+    },
+    {
+      "id": "yarn_purple",
+      "name": "薰衣草绒",
+      "hex": "#9B72FF",
+      "rarity": "common"
+    },
+    {
+      "id": "yarn_pink",
+      "name": "樱花绒",
+      "hex": "#FFBDD6",
+      "rarity": "rare"
+    },
+    {
+      "id": "yarn_white",
+      "name": "云朵绒",
+      "hex": "#FFFBF5",
+      "rarity": "rare"
+    },
+    {
+      "id": "yarn_gold",
+      "name": "金丝绒",
+      "hex": "#FFD700",
+      "rarity": "epic"
+    },
+    {
+      "id": "yarn_glow",
+      "name": "萤火绒",
+      "hex": "#E0FF4F",
+      "rarity": "epic"
+    },
+    {
+      "id": "yarn_rainbow",
+      "name": "彩虹绒",
+      "hex": "rainbow",
+      "rarity": "legendary"
+    },
+    {
+      "id": "yarn_crystal",
+      "name": "水晶绒",
+      "hex": "#E3F2FD",
+      "rarity": "legendary"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 云朵主体 (圆润堆叠) -->
+  <path d="M12 30C12 25 16 22 20 22C20 16 26 12 32 14C38 16 40 22 38 26C42 26 44 29 44 32C44 36 40 38 36 38H16C12 38 8 35 8 30H12Z" fill="#90A4AE"/>
+  <!-- 雨滴 1 -->
+  <path d="M18 40V44" stroke="#4FC3F7" stroke-width="2" stroke-linecap="round"/>
+  <!-- 雨滴 2 -->
+  <path d="M26 42V46" stroke="#4FC3F7" stroke-width="2" stroke-linecap="round"/>
+  <!-- 雨滴 3 -->
+  <path d="M34 40V44" stroke="#4FC3F7" stroke-width="2" stroke-linecap="round"/>
+  <!-- 眼睛 (赋予生命力) -->
+  <circle cx="24" cy="28" r="1.5" fill="#455A64"/>
+  <circle cx="32" cy="28" r="1.5" fill="#455A64"/>
+</svg>

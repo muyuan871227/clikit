@@ -1,0 +1,75 @@
+{
+  "_comment": "TABS Lite · 6种AI行为模板 · 每种兵引用 ai_behavior 字段",
+  "behaviors": {
+    "melee_charge": {
+      "description": "找最近敌人→直冲→近身攻击",
+      "target_priority": ["nearest_enemy"],
+      "acquire_interval_ms": 500,
+      "move_mode": "straight_to_target",
+      "attack_when": "within_range",
+      "retreat_when": null,
+      "applies_to": ["pikeman"]
+    },
+    "ranged_kite": {
+      "description": "找最近敌人→保持range-20距离→远程射击→敌进我退",
+      "target_priority": ["nearest_enemy"],
+      "acquire_interval_ms": 500,
+      "move_mode": "kite_at_range",
+      "kite_back_distance": 40,
+      "attack_when": "within_range",
+      "retreat_when": "enemy_closer_than_kite_dist",
+      "applies_to": ["archer"]
+    },
+    "charge_heavy": {
+      "description": "加速冲向密集目标→穿透→二次寻敌",
+      "target_priority": ["densest_cluster", "nearest_enemy"],
+      "acquire_interval_ms": 400,
+      "move_mode": "dash_then_attack",
+      "dash_trigger_distance": 200,
+      "attack_when": "within_range",
+      "retreat_when": null,
+      "applies_to": ["cavalry"]
+    },
+    "slow_aoe": {
+      "description": "慢速推进→AOE范围攻击→每次挥棒震地",
+      "target_priority": ["densest_cluster", "nearest_enemy"],
+      "acquire_interval_ms": 800,
+      "move_mode": "straight_to_target",
+      "attack_when": "within_range",
+      "aoe_on_hit": true,
+      "retreat_when": null,
+      "applies_to": ["giant"]
+    },
+    "ranged_aoe": {
+      "description": "远程AOE→优先目标是敌方密集处→慢速后撤保持距离",
+      "target_priority": ["densest_cluster", "highest_hp_enemy"],
+      "acquire_interval_ms": 800,
+      "move_mode": "kite_at_range",
+      "kite_back_distance": 60,
+      "attack_when": "within_range",
+      "retreat_when": "enemy_closer_than_kite_dist",
+      "applies_to": ["mage"]
+    },
+    "tank_hold": {
+      "description": "向前推进但慢→优先挡前排→低伤高防",
+      "target_priority": ["nearest_enemy"],
+      "acquire_interval_ms": 600,
+      "move_mode": "slow_advance",
+      "attack_when": "within_range",
+      "retreat_when": null,
+      "hold_line_y": true,
+      "applies_to": ["shield"]
+    }
+  },
+  "target_algorithms": {
+    "nearest_enemy": "distance_to_all_enemies sorted asc, pick[0]",
+    "densest_cluster": "for each enemy, count enemies within 80px, pick max",
+    "highest_hp_enemy": "sort enemies by hp desc, pick[0]"
+  },
+  "difficulty_modifiers": {
+    "level_1_5": {"enemy_hp_mul": 1.0, "enemy_dmg_mul": 1.0, "description": "前期不加修正"},
+    "level_6_10": {"enemy_hp_mul": 1.05, "enemy_dmg_mul": 1.05},
+    "level_11_15": {"enemy_hp_mul": 1.10, "enemy_dmg_mul": 1.08},
+    "level_16_20": {"enemy_hp_mul": 1.15, "enemy_dmg_mul": 1.10}
+  }
+}

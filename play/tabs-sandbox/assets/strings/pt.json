@@ -1,0 +1,16 @@
+{
+  "game.title": "TABS Lite · Simulador de Batalha Absurdo",
+  "menu.start": "Iniciar",
+  "menu.sandbox": "Arena livre",
+  "menu.continue": "Continuar",
+  "plan.start": "Começar batalha!",
+  "plan.reset": "Reiniciar",
+  "result.victory": "VITÓRIA!",
+  "result.defeat": "DERROTA",
+  "unit.pikeman": "Piqueiro",
+  "unit.archer": "Arqueiro",
+  "unit.cavalry": "Cavalaria",
+  "unit.giant": "Gigante",
+  "unit.mage": "Mago",
+  "unit.shield": "Escudeiro"
+}

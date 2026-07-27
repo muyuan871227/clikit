@@ -1,0 +1,24 @@
+{
+  "player1": {
+    "select_unit_1": ["Digit1"],
+    "select_unit_2": ["Digit2"],
+    "select_unit_3": ["Digit3"],
+    "select_unit_4": ["Digit4"],
+    "select_unit_5": ["Digit5"],
+    "select_unit_6": ["Digit6"],
+    "start_battle": ["Space"],
+    "reset_level": ["KeyR"],
+    "toggle_pause": ["Escape"],
+    "zoom_in": ["Equal"],
+    "zoom_out": ["Minus"]
+  },
+  "mouse": {
+    "drag_deploy": "MouseLeft",
+    "remove_unit_plan_phase": "MouseRight",
+    "pan_camera": "MouseMiddle"
+  },
+  "touch": {
+    "tap_then_tap_deploy": true,
+    "hold_to_remove_plan_phase": true
+  }
+}

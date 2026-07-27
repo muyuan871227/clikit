@@ -1,0 +1,35 @@
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 稍粗糙的石板毡布滤镜 -->
+    <filter id="stoneFelt" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="4" result="noise" />
+      <feDiffuseLighting in="noise" lighting-color="#B0BEC5" surfaceScale="3">
+        <feDistantLight azimuth="225" elevation="50" />
+      </feDiffuseLighting>
+      <feComposite operator="multiply" in2="SourceGraphic" />
+    </filter>
+  </defs>
+
+  <!-- 暗部天空 (1/3) -->
+  <rect width="1080" height="640" fill="#CFD8DC" />
+
+  <!-- 石板地面 (2/3) -->
+  <rect y="640" width="1080" height="1280" fill="#B0BEC5" />
+
+  <!-- 石板拼缝线 (表现出厚实的布艺拼接感) -->
+  <g stroke="#90A4AE" stroke-width="4" opacity="0.6">
+    <!-- 纵向缝线 -->
+    <line x1="360" y1="640" x2="360" y2="1920" stroke-dasharray="10,10" />
+    <line x1="720" y1="640" x2="720" y2="1920" stroke-dasharray="10,10" />
+    <!-- 横向缝线 -->
+    <line x1="0" y1="1000" x2="1080" y2="1000" stroke-dasharray="10,10" />
+    <line x1="0" y1="1400" x2="1080" y2="1400" stroke-dasharray="10,10" />
+    <line x1="0" y1="1800" x2="1080" y2="1800" stroke-dasharray="10,10" />
+  </g>
+  
+  <!-- 装饰性加厚边缘线 -->
+  <line x1="0" y1="640" x2="1080" y2="640" stroke="#78909C" stroke-width="12" />
+
+  <!-- 全局质感覆盖 -->
+  <rect width="1080" height="1920" fill="transparent" filter="url(#stoneFelt)" opacity="0.5" pointer-events="none" />
+</svg>

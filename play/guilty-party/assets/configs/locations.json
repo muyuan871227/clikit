@@ -1,0 +1,82 @@
+{
+  "locations": [
+    {
+      "id": "case_1_tutorial",
+      "name_key": "case.1.name",
+      "description_key": "case.1.desc",
+      "difficulty": 1,
+      "rooms": ["foyer", "library", "kitchen", "dining", "bedroom_a", "study", "garden"],
+      "victim_name_key": "victim.lord_ashford",
+      "victim_location": "study",
+      "murder_weapon_real": "evidence_weapon",
+      "crime_time": "22:15",
+      "clue_distribution": {
+        "foyer": ["evidence_fingerprint", "evidence_physical_trace", "evidence_movement_log"],
+        "library": ["evidence_motive_doc", "evidence_fingerprint", "evidence_movement_log"],
+        "kitchen": ["evidence_weapon", "evidence_time_clue", "evidence_physical_trace"],
+        "dining": ["evidence_movement_log", "evidence_motive_doc", "evidence_fingerprint"],
+        "bedroom_a": ["evidence_fingerprint", "evidence_motive_doc", "evidence_time_clue"],
+        "study": ["evidence_weapon", "evidence_physical_trace", "evidence_time_clue"],
+        "garden": ["evidence_movement_log", "evidence_physical_trace", "evidence_motive_doc"]
+      },
+      "new_element": "tutorial_search_and_lens",
+      "color_temp": "warm",
+      "landmarks": ["grand_chandelier", "bookshelf", "fireplace"],
+      "surprise": "lens_in_garden_reveals_planted_weapon",
+      "music": "bgm_mystery_main",
+      "intro_text_key": "case.1.intro"
+    },
+    {
+      "id": "case_2",
+      "name_key": "case.2.name",
+      "description_key": "case.2.desc",
+      "difficulty": 2,
+      "rooms": ["foyer", "library", "kitchen", "dining", "bedroom_a", "study", "garden"],
+      "victim_name_key": "victim.lady_marchmont",
+      "victim_location": "bedroom_a",
+      "murder_weapon_real": "evidence_weapon",
+      "crime_time": "23:40",
+      "clue_distribution": {
+        "foyer": ["evidence_motive_doc", "evidence_fingerprint", "evidence_movement_log"],
+        "library": ["evidence_weapon", "evidence_physical_trace", "evidence_motive_doc"],
+        "kitchen": ["evidence_fingerprint", "evidence_movement_log", "evidence_time_clue"],
+        "dining": ["evidence_weapon", "evidence_motive_doc", "evidence_physical_trace"],
+        "bedroom_a": ["evidence_physical_trace", "evidence_time_clue", "evidence_fingerprint"],
+        "study": ["evidence_movement_log", "evidence_motive_doc", "evidence_fingerprint"],
+        "garden": ["evidence_physical_trace", "evidence_time_clue", "evidence_weapon"]
+      },
+      "new_element": "killer_can_tamper_documents",
+      "color_temp": "neutral",
+      "landmarks": ["oil_painting", "grandfather_clock", "secret_door"],
+      "surprise": "tampered_log_reveals_itself_via_lens",
+      "music": "bgm_mystery_main",
+      "intro_text_key": "case.2.intro"
+    },
+    {
+      "id": "case_3",
+      "name_key": "case.3.name",
+      "description_key": "case.3.desc",
+      "difficulty": 3,
+      "rooms": ["foyer", "library", "kitchen", "dining", "bedroom_a", "study", "garden"],
+      "victim_name_key": "victim.dr_sinclair",
+      "victim_location": "library",
+      "murder_weapon_real": "evidence_weapon",
+      "crime_time": "01:20",
+      "clue_distribution": {
+        "foyer": ["evidence_fingerprint", "evidence_movement_log", "evidence_motive_doc"],
+        "library": ["evidence_physical_trace", "evidence_time_clue", "evidence_weapon"],
+        "kitchen": ["evidence_motive_doc", "evidence_movement_log", "evidence_fingerprint"],
+        "dining": ["evidence_fingerprint", "evidence_physical_trace", "evidence_time_clue"],
+        "bedroom_a": ["evidence_weapon", "evidence_motive_doc", "evidence_movement_log"],
+        "study": ["evidence_motive_doc", "evidence_fingerprint", "evidence_physical_trace"],
+        "garden": ["evidence_time_clue", "evidence_movement_log", "evidence_weapon"]
+      },
+      "new_element": "killer_uses_destroy_ability",
+      "color_temp": "cool",
+      "landmarks": ["antique_desk", "astrolabe", "hedge_maze_entrance"],
+      "surprise": "false_testimony_reveals_alibi_lie",
+      "music": "bgm_mystery_tense",
+      "intro_text_key": "case.3.intro"
+    }
+  ]
+}

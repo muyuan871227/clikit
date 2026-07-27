@@ -1,0 +1,60 @@
+{
+  "achievements": [
+    {
+      "id": "first_circle",
+      "condition": "total_circles>=1",
+      "reward": "none",
+      "name_zh": "第一个圆",
+      "name_en": "First Circle"
+    },
+    {
+      "id": "heatmap_unlock",
+      "condition": "total_circles>=10",
+      "reward": "feature_heatmap",
+      "name_zh": "偏差热力图",
+      "name_en": "Heatmap"
+    },
+    {
+      "id": "precision_unlock",
+      "condition": "total_circles>=50",
+      "reward": "feature_precision",
+      "name_zh": "精密模式",
+      "name_en": "Precision Mode"
+    },
+    {
+      "id": "daily_unlock",
+      "condition": "best_score>=85",
+      "reward": "feature_daily",
+      "name_zh": "每日挑战",
+      "name_en": "Daily Challenge"
+    },
+    {
+      "id": "versus_unlock",
+      "condition": "best_score>=90",
+      "reward": "feature_versus",
+      "name_zh": "对战模式",
+      "name_en": "VS Mode"
+    },
+    {
+      "id": "gold_pen",
+      "condition": "total_circles>=100",
+      "reward": "pen_gold",
+      "name_zh": "金色画笔",
+      "name_en": "Gold Pen"
+    },
+    {
+      "id": "rainbow_pen",
+      "condition": "total_circles>=500",
+      "reward": "pen_rainbow",
+      "name_zh": "虹彩画笔",
+      "name_en": "Rainbow Pen"
+    },
+    {
+      "id": "master_stamp",
+      "condition": "daily_streak>=7",
+      "reward": "badge_master",
+      "name_zh": "大师印章",
+      "name_en": "Master Stamp"
+    }
+  ]
+}

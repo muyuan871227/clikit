@@ -1,0 +1,33 @@
+{
+  "segments": [
+    {"id": "meadow_easy", "type": "collect", "length": 800, "yarn_count": 8, "obstacle_count": 0},
+    {"id": "meadow_normal", "type": "collect", "length": 600, "yarn_count": 6, "obstacle_count": 1},
+    {"id": "obs_cactus", "type": "danger", "length": 500, "obstacle_types": ["cactus"], "obstacle_count": 4},
+    {"id": "obs_scissor", "type": "danger", "length": 500, "obstacle_types": ["scissor"], "obstacle_count": 3},
+    {"id": "obs_fan", "type": "danger", "length": 400, "fan_zones": 2},
+    {"id": "obs_rain", "type": "weather", "length": 400, "rain": true},
+    {"id": "sprint", "type": "finish", "length": 300, "yarn_count": 3}
+  ],
+  "levels": [
+    {"level": 1, "segments": ["meadow_easy", "meadow_easy", "obs_cactus", "meadow_normal", "sprint"]},
+    {"level": 2, "segments": ["meadow_easy", "obs_cactus", "meadow_normal", "obs_cactus", "sprint"]},
+    {"level": 3, "segments": ["meadow_normal", "obs_cactus", "meadow_easy", "obs_cactus", "meadow_normal", "sprint"]},
+    {"level": 4, "segments": ["meadow_normal", "obs_cactus", "meadow_normal", "obs_cactus", "obs_cactus", "sprint"]},
+    {"level": 5, "segments": ["meadow_normal", "obs_cactus", "meadow_easy", "obs_scissor", "meadow_normal", "sprint"]},
+    {"level": 6, "segments": ["meadow_normal", "obs_scissor", "meadow_normal", "obs_cactus", "obs_scissor", "sprint"]},
+    {"level": 7, "segments": ["meadow_normal", "obs_scissor", "obs_cactus", "meadow_easy", "obs_scissor", "sprint"]},
+    {"level": 8, "segments": ["meadow_normal", "obs_cactus", "obs_scissor", "meadow_normal", "obs_cactus", "obs_scissor", "sprint"]},
+    {"level": 9, "segments": ["meadow_normal", "obs_scissor", "obs_cactus", "obs_scissor", "meadow_normal", "sprint"]},
+    {"level": 10, "segments": ["meadow_normal", "obs_scissor", "obs_fan", "meadow_easy", "obs_cactus", "sprint"]},
+    {"level": 11, "segments": ["meadow_normal", "obs_fan", "obs_scissor", "meadow_normal", "obs_cactus", "obs_fan", "sprint"]},
+    {"level": 12, "segments": ["meadow_normal", "obs_cactus", "obs_fan", "obs_scissor", "meadow_normal", "obs_fan", "sprint"]},
+    {"level": 13, "segments": ["meadow_normal", "obs_fan", "obs_scissor", "obs_fan", "meadow_easy", "obs_cactus", "sprint"]},
+    {"level": 14, "segments": ["meadow_normal", "obs_scissor", "obs_fan", "obs_cactus", "obs_scissor", "meadow_normal", "sprint"]},
+    {"level": 15, "segments": ["meadow_normal", "obs_fan", "obs_cactus", "obs_scissor", "obs_fan", "obs_cactus", "sprint"]},
+    {"level": 16, "segments": ["meadow_normal", "obs_rain", "obs_cactus", "meadow_easy", "obs_scissor", "obs_fan", "sprint"]},
+    {"level": 17, "segments": ["meadow_normal", "obs_scissor", "obs_rain", "obs_fan", "meadow_normal", "obs_cactus", "sprint"]},
+    {"level": 18, "segments": ["meadow_normal", "obs_rain", "obs_fan", "obs_scissor", "obs_cactus", "obs_rain", "sprint"]},
+    {"level": 19, "segments": ["meadow_normal", "obs_cactus", "obs_scissor", "obs_fan", "obs_rain", "obs_scissor", "sprint"]},
+    {"level": 20, "segments": ["meadow_normal", "obs_rain", "obs_scissor", "obs_fan", "obs_cactus", "obs_rain", "obs_scissor", "sprint"]}
+  ]
+}

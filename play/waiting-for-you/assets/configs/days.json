@@ -1,0 +1,166 @@
+{
+  "days": [
+    {
+      "day": 1, "season": "spring",
+      "events": [
+        {"time": "morning", "type": "routine", "desc": "主人出门前摸了你的头，说了句\"回见\"。早餐只吃了一半就走了。", "items": ["breakfast_half"], "hope_change": 0},
+        {"time": "afternoon", "type": "wait", "desc": "你在门口趴了一整天。每一个脚步声都让你竖起耳朵。", "hope_change": 0},
+        {"time": "evening", "type": "door_sound", "desc": "门外有脚步声！你冲到门口——是隔壁的人。不是他。", "hope_change": -5},
+        {"time": "night", "type": "sleep", "desc": "你在门口等到睡着了。他的拖鞋就在旁边。", "item_to_sleep": "slipper"}
+      ]
+    },
+    {
+      "day": 2, "season": "spring",
+      "events": [
+        {"time": "morning", "type": "routine", "desc": "又一个早晨。你去门口闻了闻。没有他的味道。", "hope_change": -2},
+        {"time": "afternoon", "type": "discovery", "desc": "你发现他的手机一直在茶几上响。没有人接。", "env_change": "phone_on_table", "hope_change": 0},
+        {"time": "night", "type": "sleep", "desc": "你叼着拖鞋回到狗窝。", "item_to_sleep": "slipper"}
+      ]
+    },
+    {
+      "day": 3, "season": "spring",
+      "events": [
+        {"time": "morning", "type": "discovery", "desc": "手机又响了。响了很多次。然后……不响了。", "env_change": "phone_stops", "hope_change": 0},
+        {"time": "afternoon", "type": "visitor", "desc": "一个女人来了。她是主人的妈妈。她抱着你哭了很久。", "visitor": "mother", "env_change": "crying_sounds", "hope_change": 5},
+        {"time": "night", "type": "sleep", "desc": "她走了。屋子里又只剩你一个。", "item_to_sleep": "slipper"}
+      ]
+    },
+    {
+      "day": 4, "season": "spring",
+      "events": [
+        {"time": "morning", "type": "routine", "desc": "阳光很好。你趴在窗边晒太阳，眼睛看着门。", "hope_change": -2},
+        {"time": "afternoon", "type": "door_sound", "desc": "邮递员来了！你跳起来冲到门口！——只是几封信从门缝塞进来。", "hope_change": -5},
+        {"time": "night", "type": "sleep", "desc": "你把信叼到门口的鞋垫上。也许他回来会看。", "item_to_sleep": "slipper"}
+      ]
+    },
+    {
+      "day": 5, "season": "spring",
+      "events": [
+        {"time": "morning", "type": "visitor", "desc": "主人的妈妈又来了。这次她带了一个黑色的相框。她把它放在柜子上，站了很久。", "visitor": "mother", "env_change": "photo_frame_placed", "hope_change": 0},
+        {"time": "afternoon", "type": "visitor", "desc": "邻居阿姨来了。她带了狗粮。她蹲下来摸你的头，眼睛红红的。", "visitor": "auntie", "hope_change": 5},
+        {"time": "night", "type": "sleep", "desc": "你蜷在拖鞋旁边。拖鞋上他的味道淡了一点。", "item_to_sleep": "slipper"}
+      ]
+    },
+    {
+      "day": 6, "season": "summer",
+      "events": [
+        {"time": "morning", "type": "routine", "desc": "天变热了。蝉开始叫了。院子里的草长高了，没人剪。", "env_change": "grass_grows", "hope_change": -2},
+        {"time": "afternoon", "type": "discovery", "desc": "信箱满了。信件从缝里掉出来。", "env_change": "mailbox_full", "hope_change": 0},
+        {"time": "night", "type": "sleep", "desc": "太热了。你趴在门口的地砖上。凉一点。", "item_to_sleep": "doormat"}
+      ]
+    },
+    {
+      "day": 7, "season": "summer",
+      "events": [
+        {"time": "morning", "type": "visitor", "desc": "有人来了。他们开始收拾主人的衣服。你看着他们把衣柜搬空。", "visitor": "relatives", "env_change": "clothes_removed", "hope_change": -10},
+        {"time": "afternoon", "type": "discovery", "desc": "你叼着一只拖鞋不放。他们看了看你，叹了口气。把拖鞋留给你了。还留下了一件旧毛衣。", "env_change": "sweater_left", "hope_change": 5},
+        {"time": "night", "type": "sleep", "desc": "你在旧毛衣上闻了很久。上面有他的味道。你蜷在毛衣上睡着了。", "item_to_sleep": "sweater"}
+      ]
+    },
+    {
+      "day": 8, "season": "summer",
+      "events": [
+        {"time": "morning", "type": "routine", "desc": "又一个炎热的早晨。灰尘在阳光里飘。", "hope_change": -2},
+        {"time": "afternoon", "type": "visitor", "desc": "隔壁的小男孩隔着院子扔了一个球过来。你看了看球，又看了看门。", "visitor": "boy", "hope_change": 3},
+        {"time": "night", "type": "sleep", "desc": "你把球叼到门口。也许他回来了可以一起玩。", "item_to_sleep": "sweater"}
+      ]
+    },
+    {
+      "day": 9, "season": "summer",
+      "events": [
+        {"time": "morning", "type": "door_sound", "desc": "门外有脚步声！还有钥匙声！你跳起来冲过去——是房东来检查房子。不是他。", "hope_change": -8},
+        {"time": "afternoon", "type": "routine", "desc": "房东走了。你趴在门口很久很久。", "hope_change": -2},
+        {"time": "night", "type": "sleep", "desc": "你把鼻子埋在毛衣里。味道又淡了一点。", "item_to_sleep": "sweater"}
+      ]
+    },
+    {
+      "day": 10, "season": "summer",
+      "events": [
+        {"time": "morning", "type": "visitor", "desc": "邻居阿姨来了。从今天开始她每天都会来喂你。她在黑色相框前站了一会儿。", "visitor": "auntie", "env_change": "regular_feeding", "hope_change": 5},
+        {"time": "afternoon", "type": "routine", "desc": "你坐在窗边看外面。树叶绿得发亮。去年这个时候你们一起去过公园。", "hope_change": -2},
+        {"time": "night", "type": "sleep", "desc": "阿姨走的时候摸了摸你的头。你看着她走，又转头看门。", "item_to_sleep": "sweater"}
+      ]
+    },
+    {
+      "day": 11, "season": "autumn",
+      "events": [
+        {"time": "morning", "type": "routine", "desc": "树叶开始变黄了。风把落叶吹进了院子。没人打扫。", "env_change": "leaves_falling", "hope_change": -2},
+        {"time": "afternoon", "type": "discovery", "desc": "你发现灰尘很厚了。桌子上有你看不懂的东西——一些信，一些纸。", "env_change": "dust_thick", "hope_change": 0},
+        {"time": "night", "type": "sleep", "desc": "屋子里越来越暗了。你蜷在毛衣上。", "item_to_sleep": "sweater"}
+      ]
+    },
+    {
+      "day": 12, "season": "autumn",
+      "events": [
+        {"time": "morning", "type": "discovery", "desc": "拖鞋被你叼碎了。碎成了好几块。但你还是把碎片一块一块叼到门口摆好。", "env_change": "slipper_destroyed", "hope_change": -3},
+        {"time": "afternoon", "type": "door_sound", "desc": "快递员按了门铃。你冲过去！——他把包裹放在门口就走了。不是他。", "hope_change": -5},
+        {"time": "night", "type": "sleep", "desc": "你趴在拖鞋碎片旁边。", "item_to_sleep": "slipper_pieces"}
+      ]
+    },
+    {
+      "day": 13, "season": "autumn",
+      "events": [
+        {"time": "morning", "type": "routine", "desc": "秋天的阳光变得温柔了。像他的手。", "hope_change": -2},
+        {"time": "afternoon", "type": "discovery", "desc": "收音机不知道怎么开了。你听到有人说话。说到了……\"那场车祸\"。你不懂。", "env_change": "radio_news", "hope_change": 0},
+        {"time": "night", "type": "sleep", "desc": "你蜷在毛衣上。味道越来越淡了。", "item_to_sleep": "sweater"}
+      ]
+    },
+    {
+      "day": 14, "season": "autumn",
+      "events": [
+        {"time": "morning", "type": "visitor", "desc": "一家三口来了。他们看了看屋子，看了看你。小男孩想抱你。", "visitor": "adopt_family", "hope_change": 0},
+        {"time": "afternoon", "type": "routine", "desc": "你从小男孩怀里挣脱出来，跑回门口趴下。你不走。他们叹了口气，走了。", "env_change": "adoption_rejected", "hope_change": -3},
+        {"time": "night", "type": "sleep", "desc": "你必须在这里等。他说过\"回见\"。", "item_to_sleep": "sweater"}
+      ]
+    },
+    {
+      "day": 15, "season": "autumn",
+      "events": [
+        {"time": "morning", "type": "routine", "desc": "最后的秋叶落了。院子里铺满了枯叶。", "env_change": "last_leaves", "hope_change": -2},
+        {"time": "afternoon", "type": "visitor", "desc": "邻居阿姨今天给你带了一条毛毯。她把毛毯铺在门口。你趴了上去。", "visitor": "auntie", "hope_change": 5},
+        {"time": "night", "type": "sleep", "desc": "你在毛毯上蜷成一团。门外的风很大。", "item_to_sleep": "blanket"}
+      ]
+    },
+    {
+      "day": 16, "season": "winter",
+      "events": [
+        {"time": "morning", "type": "discovery", "desc": "下雪了。第一场雪。窗户上结了冰花。屋子里很冷。", "env_change": "first_snow", "hope_change": -2},
+        {"time": "afternoon", "type": "discovery", "desc": "你在衣柜角落找到了他的旧毛衣。你把鼻子埋进去——还有一点点味道。一点点。", "env_change": "found_sweater_deep", "hope_change": 10},
+        {"time": "night", "type": "sleep", "desc": "你蜷在毛衣上。窗外的雪很安静。", "item_to_sleep": "sweater"}
+      ]
+    },
+    {
+      "day": 17, "season": "winter",
+      "events": [
+        {"time": "morning", "type": "routine", "desc": "雪停了。世界很白很安静。去年的圣诞装饰还挂在窗户上。", "env_change": "old_christmas_decor", "hope_change": -2},
+        {"time": "afternoon", "type": "door_sound", "desc": "门外有声音。铲雪的声音。你竖起耳朵——不是他的脚步声。是邻居在铲雪。", "hope_change": -3},
+        {"time": "night", "type": "sleep", "desc": "你看着窗户上的冰花。像他画过的那些画。", "item_to_sleep": "sweater"}
+      ]
+    },
+    {
+      "day": 18, "season": "winter",
+      "events": [
+        {"time": "morning", "type": "routine", "desc": "圣诞夜。远处传来歌声。灯光从窗户外面照进来，五颜六色的。", "hope_change": -2},
+        {"time": "afternoon", "type": "visitor", "desc": "邻居阿姨在门口放了一碗热食和一条新毛毯。小男孩给你带了一个系着铃铛的玩具。", "visitor": "auntie", "hope_change": 5},
+        {"time": "evening", "type": "routine", "desc": "你听着远处的歌声。去年这个时候，他抱着你一起看窗外的雪。", "hope_change": -5},
+        {"time": "night", "type": "sleep", "desc": "圣诞快乐。你蜷在新毛毯里。但鼻子还是埋在旧毛衣上。", "item_to_sleep": "sweater"}
+      ]
+    },
+    {
+      "day": 19, "season": "winter",
+      "events": [
+        {"time": "morning", "type": "discovery", "desc": "毛衣上的味道……几乎没有了。你把鼻子埋在毛衣里很久很久。使劲闻。", "env_change": "scent_almost_gone", "hope_change": -5},
+        {"time": "afternoon", "type": "routine", "desc": "你试着回忆他的味道。但记忆也像味道一样，在慢慢消散。", "hope_change": -3},
+        {"time": "night", "type": "sleep", "desc": "你把毛衣、毛毯、拖鞋碎片都堆在一起，蜷在中间。这些是他留给你的全部了。", "item_to_sleep": "all_items"}
+      ]
+    },
+    {
+      "day": 20, "season": "spring2",
+      "events": [
+        {"time": "morning", "type": "discovery", "desc": "春天又来了。门口的花开了。和去年一样的花。", "env_change": "flowers_bloom_again", "hope_change": 3},
+        {"time": "afternoon", "type": "routine", "desc": "你趴在门口。阳光暖暖的。尾巴偶尔动一下。你老了一点。但你还在等。", "hope_change": 0},
+        {"time": "evening", "type": "door_sound", "desc": "门外有脚步声。你的耳朵竖了起来——", "hope_change": 30, "is_ending": true}
+      ]
+    }
+  ]
+}

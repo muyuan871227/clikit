@@ -1,0 +1,2114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>归途 — The Way Home</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=ZCOOL+XiaoWei&family=Noto+Serif+SC:wght@400;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #2C2C2C; }
+
+#game-canvas {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  image-rendering: auto;
+}
+
+/* ===== UI Overlay ===== */
+#ui-layer {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; font-family: 'Noto Serif SC', 'ZCOOL XiaoWei', serif;
+  color: #3E2723;
+}
+#ui-layer > * { pointer-events: auto; }
+
+/* HUD */
+#hud {
+  position: absolute; top: 0; left: 0; width: 100%; padding: 12px 20px;
+  display: none; pointer-events: none;
+}
+#hud-day {
+  font-family: 'Ma Shan Zheng', cursive; font-size: 22px; color: #EFEBE9;
+  text-shadow: 1px 1px 4px rgba(0,0,0,0.6);
+}
+#hud-weather {
+  font-size: 14px; color: #EFEBE9cc; margin-left: 8px;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+}
+#hud-supplies {
+  position: absolute; left: 20px; bottom: 20px; display: flex; gap: 14px;
+}
+.supply-item {
+  display: flex; align-items: center; gap: 4px;
+  background: rgba(62,39,35,0.6); padding: 4px 10px; border-radius: 12px;
+  color: #EFEBE9; font-size: 14px; backdrop-filter: blur(4px);
+}
+.supply-icon { font-size: 18px; }
+.supply-flash { animation: flash 0.4s ease; }
+@keyframes flash { 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.3); color:#FFB300; } }
+
+#hud-companions {
+  position: absolute; right: 20px; bottom: 20px; display: flex; gap: 8px;
+}
+.companion-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 2px solid #EFEBE9; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; background: rgba(62,39,35,0.6);
+  backdrop-filter: blur(4px); transition: transform 0.2s;
+}
+.companion-avatar:hover { transform: scale(1.15); }
+
+/* Stamina bar */
+#hud-stamina {
+  position: absolute; left: 20px; bottom: 60px;
+  width: 100px; height: 4px; background: rgba(0,0,0,0.3);
+  border-radius: 2px;
+}
+#stamina-fill {
+  height: 100%; background: #7CB342; border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+/* Main Menu */
+#main-menu {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, #EFEBE9 0%, #BCAAA4 40%, #8D8D8D 100%);
+}
+#menu-title {
+  font-family: 'Ma Shan Zheng', cursive; font-size: 72px; color: #3E2723;
+  margin-bottom: 8px; opacity: 0; animation: fadeIn 2s ease forwards;
+}
+#menu-subtitle {
+  font-size: 16px; color: #5D4037; margin-bottom: 60px;
+  opacity: 0; animation: fadeIn 2s ease 0.5s forwards;
+}
+.menu-btn {
+  font-family: 'Noto Serif SC', serif; font-size: 18px; color: #3E2723;
+  background: none; border: none; cursor: pointer;
+  padding: 12px 32px; margin: 6px; position: relative;
+  opacity: 0; animation: fadeIn 1.5s ease 1s forwards;
+  transition: color 0.3s;
+}
+.menu-btn::after {
+  content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+  width: 0; height: 1px; background: #3E2723; transition: width 0.3s;
+}
+.menu-btn:hover { color: #FF8F00; }
+.menu-btn:hover::after { width: 60%; background: #FF8F00; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+/* Encounter Dialog */
+#encounter-panel {
+  display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.4); backdrop-filter: blur(2px);
+  display: none; align-items: center; justify-content: center;
+}
+#encounter-box {
+  background: #EFEBE9; max-width: 560px; width: 90%; padding: 32px;
+  border-radius: 4px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  position: relative;
+  background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.8' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+}
+#encounter-title {
+  font-family: 'Ma Shan Zheng', cursive; font-size: 24px; margin-bottom: 12px;
+  color: #3E2723;
+}
+#encounter-desc {
+  font-size: 15px; line-height: 1.8; color: #4E342E; margin-bottom: 24px;
+}
+#encounter-options { display: flex; flex-direction: column; gap: 10px; }
+.option-btn {
+  font-family: 'Noto Serif SC', serif; font-size: 14px;
+  text-align: left; padding: 12px 16px; background: #D7CCC8;
+  border: 1px solid #BCAAA4; border-radius: 3px; cursor: pointer;
+  color: #3E2723; transition: all 0.2s; line-height: 1.5;
+}
+.option-btn:hover { background: #FFE0B2; border-color: #FF8F00; }
+.option-cost {
+  font-size: 12px; color: #8D6E63; margin-top: 4px;
+}
+
+/* Outcome Panel */
+#outcome-panel {
+  display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.4); align-items: center; justify-content: center;
+}
+#outcome-box {
+  background: #EFEBE9; max-width: 480px; width: 85%; padding: 28px;
+  border-radius: 4px; text-align: center;
+}
+#outcome-text { font-size: 15px; line-height: 1.8; color: #4E342E; margin-bottom: 20px; }
+#outcome-changes { font-size: 13px; color: #8D6E63; margin-bottom: 20px; }
+#outcome-continue {
+  font-family: 'Noto Serif SC', serif; font-size: 15px;
+  background: none; border: 1px solid #8D6E63; color: #3E2723;
+  padding: 8px 28px; cursor: pointer; border-radius: 3px;
+  transition: all 0.2s;
+}
+#outcome-continue:hover { background: #D7CCC8; }
+
+/* Camp Panel */
+#camp-panel {
+  display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5); align-items: center; justify-content: center;
+}
+#camp-box {
+  background: linear-gradient(180deg, #3E2723 0%, #4E342E 100%);
+  max-width: 600px; width: 90%; padding: 28px; border-radius: 6px;
+  color: #EFEBE9;
+}
+#camp-title {
+  font-family: 'Ma Shan Zheng', cursive; font-size: 26px;
+  text-align: center; margin-bottom: 16px; color: #FFB300;
+}
+#camp-summary { font-size: 14px; line-height: 1.7; margin-bottom: 16px; color: #D7CCC8; }
+#camp-companions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.camp-companion-card {
+  flex: 1; min-width: 120px; background: rgba(255,255,255,0.08);
+  padding: 12px; border-radius: 4px; cursor: pointer; transition: all 0.2s;
+  text-align: center;
+}
+.camp-companion-card:hover { background: rgba(255,143,0,0.15); }
+.camp-companion-name { font-size: 15px; margin-bottom: 4px; }
+.camp-companion-role { font-size: 12px; color: #BCAAA4; }
+.camp-companion-trust { font-size: 11px; color: #FFB300; margin-top: 4px; }
+
+#camp-dialogue {
+  display: none; background: rgba(255,255,255,0.05);
+  padding: 16px; border-radius: 4px; margin-bottom: 16px;
+  font-size: 14px; line-height: 1.8; color: #EFEBE9;
+  font-style: italic;
+}
+#camp-rest-btn {
+  display: block; margin: 0 auto;
+  font-family: 'Noto Serif SC', serif; font-size: 15px;
+  background: none; border: 1px solid #8D6E63; color: #EFEBE9;
+  padding: 8px 32px; cursor: pointer; border-radius: 3px;
+  transition: all 0.2s;
+}
+#camp-rest-btn:hover { background: rgba(255,143,0,0.2); border-color: #FFB300; }
+
+/* Night / Memory Panel */
+#night-panel {
+  display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7); align-items: center; justify-content: center;
+}
+#night-box {
+  max-width: 500px; width: 85%; text-align: center; color: #EFEBE9;
+}
+#night-text {
+  font-size: 16px; line-height: 2; opacity: 0;
+  animation: fadeIn 2s ease forwards;
+}
+#night-continue {
+  margin-top: 30px; font-family: 'Noto Serif SC', serif; font-size: 14px;
+  background: none; border: none; color: #8D6E63; cursor: pointer;
+  opacity: 0; animation: fadeIn 1s ease 2s forwards;
+}
+#night-continue:hover { color: #FFB300; }
+
+/* Ending */
+#ending-panel {
+  display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: #EFEBE9; overflow-y: auto;
+}
+#ending-content {
+  max-width: 600px; margin: 0 auto; padding: 40px 20px;
+}
+#ending-title {
+  font-family: 'Ma Shan Zheng', cursive; font-size: 48px; text-align: center;
+  margin-bottom: 8px; opacity: 0; animation: fadeIn 2s ease forwards;
+}
+#ending-subtitle {
+  text-align: center; font-size: 15px; color: #8D6E63; margin-bottom: 40px;
+  opacity: 0; animation: fadeIn 2s ease 0.5s forwards;
+}
+#ending-narration {
+  font-size: 16px; line-height: 2; color: #4E342E; margin-bottom: 40px;
+  opacity: 0; animation: fadeIn 2s ease 1s forwards;
+}
+#ending-stats {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 40px;
+  opacity: 0; animation: fadeIn 1.5s ease 1.5s forwards;
+}
+.stat-card {
+  background: #D7CCC8; padding: 16px; border-radius: 4px; text-align: center;
+}
+.stat-number { font-family: 'Ma Shan Zheng', cursive; font-size: 36px; color: #3E2723; }
+.stat-label { font-size: 13px; color: #8D6E63; margin-top: 4px; }
+
+#ending-timeline {
+  margin-bottom: 40px; opacity: 0; animation: fadeIn 1.5s ease 2s forwards;
+}
+.timeline-day {
+  display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px;
+}
+.timeline-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #8D6E63; margin-top: 4px; flex-shrink: 0;
+}
+.timeline-dot.kind { background: #FF8F00; }
+.timeline-text { font-size: 13px; line-height: 1.6; color: #5D4037; }
+
+#ending-actions {
+  text-align: center; opacity: 0; animation: fadeIn 1s ease 2.5s forwards;
+}
+#replay-btn {
+  font-family: 'Noto Serif SC', serif; font-size: 16px;
+  background: none; border: 1px solid #3E2723; color: #3E2723;
+  padding: 10px 36px; cursor: pointer; border-radius: 3px;
+  transition: all 0.2s;
+}
+#replay-btn:hover { background: #3E2723; color: #EFEBE9; }
+
+/* Companion info popup */
+#companion-info {
+  display: none; position: absolute; right: 20px; bottom: 70px;
+  background: rgba(62,39,35,0.9); color: #EFEBE9; padding: 12px 16px;
+  border-radius: 4px; font-size: 13px; min-width: 160px;
+  backdrop-filter: blur(6px);
+}
+.trust-bar { height: 3px; background: #5D4037; border-radius: 2px; margin-top: 6px; }
+.trust-fill { height: 100%; background: #FFB300; border-radius: 2px; transition: width 0.4s; }
+
+/* Dawn narration */
+#dawn-panel {
+  display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5); align-items: center; justify-content: center;
+}
+#dawn-box {
+  max-width: 500px; width: 85%; text-align: center; color: #EFEBE9;
+}
+#dawn-text {
+  font-size: 17px; line-height: 2; opacity: 0;
+  animation: fadeIn 2s ease forwards;
+}
+#dawn-continue {
+  margin-top: 28px; font-family: 'Noto Serif SC', serif; font-size: 14px;
+  background: none; border: none; color: #BCAAA4; cursor: pointer;
+  opacity: 0; animation: fadeIn 1s ease 1.5s forwards;
+}
+#dawn-continue:hover { color: #FFB300; }
+
+/* Transition overlay */
+#transition {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: #2C2C2C; pointer-events: none; opacity: 0;
+  transition: opacity 1s ease;
+}
+#transition.active { opacity: 1; }
+
+/* Search prompt */
+#search-prompt {
+  display: none; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(62,39,35,0.85); color: #EFEBE9;
+  padding: 16px 24px; border-radius: 6px; text-align: center;
+  font-size: 14px; backdrop-filter: blur(4px);
+}
+#search-prompt button {
+  font-family: 'Noto Serif SC', serif; margin-top: 10px;
+  background: none; border: 1px solid #EFEBE9; color: #EFEBE9;
+  padding: 6px 20px; cursor: pointer; border-radius: 3px; font-size: 13px;
+}
+#search-prompt button:hover { background: rgba(255,255,255,0.1); }
+</style>
+</head>
+<body>
+
+<canvas id="game-canvas"></canvas>
+
+<div id="ui-layer">
+  <!-- HUD -->
+  <div id="hud">
+    <span id="hud-day">第一天</span>
+    <span id="hud-weather"></span>
+  </div>
+  <div id="hud-stamina"><div id="stamina-fill" style="width:100%"></div></div>
+  <div id="hud-supplies"></div>
+  <div id="hud-companions"></div>
+
+  <!-- Main Menu -->
+  <div id="main-menu">
+    <div id="menu-title">归途</div>
+    <div id="menu-subtitle">The Way Home</div>
+    <button class="menu-btn" id="btn-start">开始旅程</button>
+    <button class="menu-btn" id="btn-continue" style="display:none">继续行走</button>
+  </div>
+
+  <!-- Encounter -->
+  <div id="encounter-panel">
+    <div id="encounter-box">
+      <div id="encounter-title"></div>
+      <div id="encounter-desc"></div>
+      <div id="encounter-options"></div>
+    </div>
+  </div>
+
+  <!-- Outcome -->
+  <div id="outcome-panel">
+    <div id="outcome-box">
+      <div id="outcome-text"></div>
+      <div id="outcome-changes"></div>
+      <button id="outcome-continue">继续走</button>
+    </div>
+  </div>
+
+  <!-- Dawn -->
+  <div id="dawn-panel">
+    <div id="dawn-box">
+      <div id="dawn-text"></div>
+      <button id="dawn-continue">出发</button>
+    </div>
+  </div>
+
+  <!-- Camp -->
+  <div id="camp-panel">
+    <div id="camp-box">
+      <div id="camp-title">营火</div>
+      <div id="camp-summary"></div>
+      <div id="camp-companions"></div>
+      <div id="camp-dialogue"></div>
+      <button id="camp-rest-btn">休息</button>
+    </div>
+  </div>
+
+  <!-- Night -->
+  <div id="night-panel">
+    <div id="night-box">
+      <div id="night-text"></div>
+      <button id="night-continue">闭上眼睛</button>
+    </div>
+  </div>
+
+  <!-- Ending -->
+  <div id="ending-panel">
+    <div id="ending-content">
+      <div id="ending-title">归途</div>
+      <div id="ending-subtitle"></div>
+      <div id="ending-narration"></div>
+      <div id="ending-stats"></div>
+      <div id="ending-timeline"></div>
+      <div id="ending-actions">
+        <button id="replay-btn">再走一次</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div id="search-prompt">
+    <div>这里有一片废墟，要搜索一下吗？</div>
+    <button id="search-yes">搜索</button>
+    <button id="search-no">继续走</button>
+  </div>
+
+  <!-- Companion Info -->
+  <div id="companion-info"></div>
+
+  <!-- Transition -->
+  <div id="transition"></div>
+</div>
+
+<script>
+// ============================================================
+// GAME DATA
+// ============================================================
+
+const PALETTE = {
+  ruins: { gray: "#8D8D8D", rust: "#A0522D", char: "#2C2C2C", dust: "#BCAAA4" },
+  nature: { green: "#7CB342", sky: "#64B5F6", flower: "#FFB74D", water: "#4FC3F7" },
+  campfire: { amber: "#FF8F00", warm: "#FFB300", ember: "#E65100" },
+  mood: { kind: "#FFF3E0", cold: "#ECEFF1", sad: "#CFD8DC" },
+  ui: { paper: "#EFEBE9", ink: "#3E2723", highlight: "#FF8F00" }
+};
+
+const DAY_NAMES = ["第一天", "第二天", "第三天", "第四天", "第五天", "第六天", "第七天"];
+
+const LANDSCAPES = [
+  { id: "crater_field", name: "弹坑原野", ground: "#8B7D6B", sky1: "#B0BEC5", sky2: "#78909C",
+    features: "craters", featureColor: "#6D6050", detailColor: "#7CB342", weather: "clear" },
+  { id: "ruined_town", name: "废墟城镇", ground: "#9E9E9E", sky1: "#90A4AE", sky2: "#607D8B",
+    features: "ruins", featureColor: "#757575", detailColor: "#A0522D", weather: "overcast" },
+  { id: "forest_path", name: "森林小径", ground: "#5D4037", sky1: "#81C784", sky2: "#388E3C",
+    features: "trees", featureColor: "#2E7D32", detailColor: "#8BC34A", weather: "rain" },
+  { id: "river_valley", name: "河谷", ground: "#8D6E63", sky1: "#64B5F6", sky2: "#1976D2",
+    features: "river", featureColor: "#42A5F5", detailColor: "#7CB342", weather: "clear" },
+  { id: "mountain", name: "山岭", ground: "#78909C", sky1: "#CFD8DC", sky2: "#90A4AE",
+    features: "mountains", featureColor: "#546E7A", detailColor: "#FAFAFA", weather: "snow" },
+  { id: "plains", name: "平原", ground: "#A1887F", sky1: "#FFE0B2", sky2: "#FF8F00",
+    features: "grass", featureColor: "#8BC34A", detailColor: "#FFB74D", weather: "clear" },
+  { id: "hometown", name: "家", ground: "#8D6E63", sky1: "#FFF3E0", sky2: "#FFB74D",
+    features: "home", featureColor: "#5D4037", detailColor: "#7CB342", weather: "clear" }
+];
+
+const TIME_OF_DAY = {
+  dawn:  { skyMul: [1.1, 1.0, 0.9], overlay: "rgba(255,183,77,0.12)", name: "黎明" },
+  noon:  { skyMul: [1.0, 1.0, 1.0], overlay: "rgba(255,255,255,0.05)", name: "正午" },
+  dusk:  { skyMul: [1.0, 0.8, 0.7], overlay: "rgba(255,111,0,0.15)", name: "黄昏" },
+  night: { skyMul: [0.4, 0.4, 0.6], overlay: "rgba(0,0,40,0.35)", name: "夜晚" }
+};
+
+const LORE = {
+  backstory: "战争持续了四年。你记不清开始的原因了。你只记得最后一声枪响后的寂静——那种寂静比任何炮声都要响。\n\n现在，你要回家。三百公里。七天。",
+  day_dawn: [
+    "东方有光。你背起行囊，踩过弹坑，开始走。空气里还有硝烟的味道，但远处有鸟在叫。",
+    "废墟。曾经是一个镇子。邮局的招牌还挂着，歪歪斜斜。你从瓦砾间穿过。",
+    "树林的边缘。被烧过的树干旁，居然长出了新叶。你停下来看了很久。",
+    "河谷。水声代替了炮声。你站在断桥边，需要找到过河的路。",
+    "山路。风变冷了。脚下是碎石，头上是灰色的天。最艰难的一天。",
+    "平原。天终于晴了。远处是无尽的地平线，草地开始出现。你走得快了一些。",
+    "你看到了。远处的轮廓——那棵老树，那个烟囱。你的脚步停了一秒，然后，你开始跑。"
+  ],
+  day_dusk: [
+    "第一天结束了。你找到一小块平地，点起火。火光映着弹坑里积水的倒影。你四年来第一次不用警戒。",
+    "你在一堵还立着的墙边扎营。墙上有人用粉笔写着一个名字和一个日期。",
+    "林间空地，落叶铺成毯子。虫鸣声让你想起小时候的夏天。",
+    "河边扎营。水声很好听。对岸有什么在闪光——是月光照在铁轨上。",
+    "山洞里避风。大家挤在一起。有人开始轻声唱歌。",
+    "最后一个营地。草地上，星星很亮。明天就到了。没有人说话，但每个人都醒着。",
+    ""
+  ],
+  day_night: [
+    "你闭上眼。但你没有做梦。你只是听着风声，想着家里的门是什么颜色。",
+    "你梦到了战前。你在厨房里，闻到了妈妈做的汤。你醒来时发现自己在笑。",
+    "你开始想，路上遇到的那些人，他们也在找回家的路吗？",
+    "你梦到了河。河水很清。你看到了自己的倒影——比你记忆中老了很多。",
+    "风在山洞外呼啸。你想起了战场上那些再也回不了家的人。你替他们看了今晚的星星。",
+    "你没有睡。你坐在草地上，看着东方，等待日出。最后一次等待。",
+    ""
+  ],
+  endings: {
+    kind: "你回来了。你没有独自走完这条路。在你身后，是你一路上选择守护的人。\n\n家也许变了，但你知道——家不是一个地方，是你愿意为之走三百公里的人。",
+    mixed: "你回来了。路上你做了一些选择，有些你至今不确定对不对。但你到了。\n\n门还在那里。你推开门，深吸了一口气。里面的空气，和你记忆中一样。",
+    cold: "你回来了。独自一人。行囊比出发时轻了很多——你没有分出去太多。\n\n门还在。但推开门的那一刻，你突然不确定，你有没有资格说'我回来了'。"
+  }
+};
+
+const COMPANIONS_DATA = [
+  { id: "anna", name: "安娜", age: 8, icon: "👧", role: "失去母亲的女孩",
+    skill: "唱歌 — 全队士气恢复+15", dailyCost: { food: 0.5 },
+    trust_dialogues: {
+      low: "……她不说话，只是牵着你的衣角走。",
+      mid: "「妈妈说等战争结束就回来。」她低着头，「已经结束了，对吧？」",
+      high: "「我知道妈妈不会回来了。但我还是每天往东看。万一呢。」她的声音很轻。",
+      max: "「你能当我的家人吗？」她抬起头，第一次笑了。布偶脏兮兮的，但她抱得很紧。"
+    },
+    leave_dialogue: "她放下布偶，转身跑开了。你追不上她。布偶留在路边，看着你。"
+  },
+  { id: "old_chen", name: "老陈", age: 60, icon: "👴", role: "退伍老兵",
+    skill: "搜索 — 废墟搜索效率×2", dailyCost: { food: 1, water: 1 },
+    trust_dialogues: {
+      low: "他走在最后面，眼神警觉地扫着四周。老习惯了。",
+      mid: "「我打了二十年仗。最后一仗，我的连只剩四个人。」他点了根烟。",
+      high: "「我儿子也当了兵。我不知道他在哪个方向回家。也许……也许他已经到了。」",
+      max: "「小子，你知道我为什么跟着你走吗？因为你让我想起了他。一样倔。」他别过头，擦了擦眼睛。"
+    },
+    leave_dialogue: "「你不用管我了。我老了，走不动了。」他坐在路边，朝你挥手。"
+  },
+  { id: "maria", name: "玛丽亚", age: 30, icon: "👩‍⚕️", role: "战地医生",
+    skill: "治疗 — 药品效果×2", dailyCost: { food: 1, medicine: 0.5 },
+    trust_dialogues: {
+      low: "她检查了你的旧伤，没说话，但轻轻摇了摇头。",
+      mid: "「我救过三百多个人。但你知道我记住的是谁吗？是我没救活的那七个。」",
+      high: "「战争最后一天，他们把伤员抬到我面前。我的药用完了。我只能坐在那里，看着他们。」",
+      max: "「谢谢你。不是谢你带上我——是谢你让我觉得，我还可以救人。不是因为不得不，而是因为想要。」"
+    },
+    leave_dialogue: "「我听说南边有难民营需要医生。」她把最后一管药膏留给了你。"
+  },
+  { id: "yuri", name: "尤里", age: 25, icon: "🧑", role: "逃兵",
+    skill: "警觉 — 避开地雷和危险区", dailyCost: { food: 1.5 },
+    trust_dialogues: {
+      low: "他低着头走路，不和任何人对视。",
+      mid: "「你觉得我是懦夫吗？」他突然问。然后又说，「没关系，我自己也觉得。」",
+      high: "「那天晚上命令是向平民开枪。我跑了。我的战友没跑。我不知道谁做了对的选择。」",
+      max: "「也许回到家，我可以重新开始。种地什么的。我再也不想拿枪了。」他的手在发抖。"
+    },
+    leave_dialogue: "他消失在夜里。没有告别。地上只留下半块面包——那是你前天分给他的。"
+  },
+  { id: "carpenter_li", name: "李伯", age: 50, icon: "👨‍🔧", role: "木匠",
+    skill: "修缮 — 修桥搭棚", dailyCost: { food: 1, water: 1 },
+    trust_dialogues: {
+      low: "他一路上都在看路边的木头。职业病。",
+      mid: "「我的作坊被炸了。四十年的工具，一晚上就没了。」他叹了口气。",
+      high: "「战前最后做的活是给邻居家小孩做了个木马。不知道那孩子还在不在。」",
+      max: "「到了家，我要重新开作坊。第一件活——给你做把椅子。你坐下来歇歇。你走得够远了。」"
+    },
+    leave_dialogue: "「路上有座桥需要修。你们先走，我修完就追上来。」他没有追上来。"
+  },
+  { id: "teacher_zhao", name: "赵老师", age: 45, icon: "👨‍🏫", role: "小学教师",
+    skill: "讲故事 — 同行者信任+5/天", dailyCost: { food: 1 },
+    trust_dialogues: {
+      low: "他嘴里总在念叨什么，好像在备课。",
+      mid: "「我们学校在战争第一天就被征用做了仓库。孩子们回家了。不知道他们都回了哪个家。」",
+      high: "「最后一堂课我教的是向日葵怎么追着太阳转。现在想想，也许我该教他们怎么活下去。」",
+      max: "「你知道我为什么一直走吗？因为我答应过他们——等战争结束了，老师会回来继续上课。」"
+    },
+    leave_dialogue: "「前面有几个流浪的孩子，我留下来教他们认字。你替我走完剩下的路吧。」"
+  },
+  { id: "mother_lin", name: "林嫂", age: 35, icon: "🤰", role: "怀孕的母亲",
+    skill: "缝补 — 修复背包+2格", dailyCost: { food: 1.5, water: 1 },
+    trust_dialogues: {
+      low: "她走得很慢，一只手护着肚子。",
+      mid: "「他去打仗之前说，回来的时候孩子应该会叫爸爸了。他没回来。孩子也还没生。」",
+      high: "「有时候肚子里踢一下，我就觉得，还有人需要我活着。这就够了。」",
+      max: "「如果是男孩，我想叫他'归'。归来的归。」她摸着肚子，笑了。"
+    },
+    leave_dialogue: "「我走不动了。你帮我记住这条路。等孩子大了，我带他再走一遍。」"
+  },
+  { id: "priest_peter", name: "彼得神父", age: 55, icon: "⛪", role: "教堂牧师",
+    skill: "祈祷 — 全队恢复体力+10", dailyCost: { food: 0.5, water: 0.5 },
+    trust_dialogues: {
+      low: "他安静地走着，偶尔低头祈祷。",
+      mid: "「有人问我上帝在哪里。我说我不知道。但我知道他不在战场上。」",
+      high: "「教堂被炸了那天，我在废墟里找到了一本完好的圣经。我不知道该高兴还是该哭。」",
+      max: "「也许上帝不在天上。也许他在这条路上。在你每次分出去的面包里。在你每次停下来等人的脚步里。」"
+    },
+    leave_dialogue: "「前面有个废墟，我想在那里建一个小教堂。路过的人需要一个地方坐下来。」"
+  },
+  { id: "journalist_liu", name: "小刘", age: 28, icon: "📝", role: "战地记者",
+    skill: "记录 — 记忆旅程细节(结局更丰富)", dailyCost: { food: 1 },
+    trust_dialogues: {
+      low: "她一直在本子上写写画画。",
+      mid: "「我拍过上千张照片。但有些画面不需要相机——它们已经刻在脑子里了。」",
+      high: "「最后一张照片是两个敌对的士兵在分一根烟。编辑说不能发。」她苦笑。",
+      max: "「我要把这条路写下来。不是给报纸——给以后的人。让他们知道回家的路有多远。」"
+    },
+    leave_dialogue: "「我得去另一个方向。那里还有人的故事需要被写下来。」她留下了她的笔记本。"
+  },
+  { id: "musician_ivan", name: "伊万", age: 40, icon: "🎵", role: "手风琴手",
+    skill: "演奏 — 营火对话深度+1", dailyCost: { food: 1, water: 0.5 },
+    trust_dialogues: {
+      low: "他背着一架破旧的手风琴，琴声已经有些走调。",
+      mid: "「战前我在酒馆演奏。战争开始后，我给伤兵演奏。曲子是一样的，但没有人跳舞了。」",
+      high: "「我用手风琴换过一块面包。然后又用两块面包换回来。有些东西不能用来交换。」",
+      max: "「等到了家，我请你喝酒。我拉琴，你听。就我们两个。不谈战争。只听音乐。」"
+    },
+    leave_dialogue: "远处传来手风琴的声音。越来越远。他没有回头。但曲子你听了很久。"
+  },
+  { id: "farmer_wang", name: "老王", age: 55, icon: "🌾", role: "农民",
+    skill: "辨识 — 野外找到食物概率+30%", dailyCost: { food: 1 },
+    trust_dialogues: {
+      low: "他走路的时候总是看着地面，像在找什么。",
+      mid: "「地里的庄稼全被炸了。但你看，旁边已经长出了野草。地不会死。」",
+      high: "「我种了三十年地。这是第一次，地里长出来的不是庄稼，是弹壳。」他蹲下来，捡起一棵野菜。",
+      max: "「回去了我就翻地。先种土豆——长得快。然后种麦子。明年你来，我请你吃新面做的馒头。」"
+    },
+    leave_dialogue: "「这片地还能种东西。我留下来。你到了家记得种棵树。」"
+  },
+  { id: "boy_ming", name: "小明", age: 14, icon: "👦", role: "失去家人的少年",
+    skill: "跑腿 — 行走速度+10%", dailyCost: { food: 1 },
+    trust_dialogues: {
+      low: "他假装很坚强，但走路的时候偷偷在擦眼睛。",
+      mid: "「我爸说男子汉不能哭。但我爸也不在了。所以我可以哭了吧？」",
+      high: "「你长得不像我爸。但你走路的样子像。就是那个——不管多累都不停下来的样子。」",
+      max: "「以后我长大了也要走很远的路。但不是逃跑——是去看看世界。你陪我吗？」"
+    },
+    leave_dialogue: "「我不走了。这里有其他小孩，他们比我更需要人陪。」他朝你敬了个歪歪扭扭的军礼。"
+  },
+  { id: "nurse_helen", name: "海伦", age: 33, icon: "👩‍⚕", role: "红十字会护士",
+    skill: "急救 — 体力下限提高到20", dailyCost: { food: 1, water: 0.5 },
+    trust_dialogues: {
+      low: "她走路很快，像习惯了在枪声中跑的人。",
+      mid: "「红十字不选边。但炮弹不认袖章。我们丢了一半的人。」",
+      high: "「有个伤兵在我怀里断气的时候，最后说的是'告诉我妈我没受苦'。他全身都是血。」",
+      max: "「回去以后我不想再当护士了。我想开一家花店。让手上沾的不再是血，而是花粉。」"
+    },
+    leave_dialogue: "「路边有人需要急救。你先走。救人的事，等不了。」"
+  },
+  { id: "dog", name: "小黄", age: 3, icon: "🐕", role: "流浪狗",
+    skill: "嗅觉 — 提前发现遭遇", dailyCost: { food: 0.5 },
+    trust_dialogues: {
+      low: "它跟在你身后，保持三步的距离。",
+      mid: "它终于肯让你摸它的头了。尾巴摇了两下。",
+      high: "它把一根骨头叼到你脚边。这是它最珍贵的东西。",
+      max: "它趴在你的脚上睡着了。你不忍心动。你已经很久没有被这样信任过了。"
+    },
+    leave_dialogue: "它闻到了什么，转身跑向另一个方向。也许那里有它一直在找的人。"
+  },
+  { id: "grandma_sun", name: "孙奶奶", age: 70, icon: "👵", role: "失明的老人",
+    skill: "倾听 — 同行者不会因不满离开", dailyCost: { food: 0.5 },
+    trust_dialogues: {
+      low: "她拉着你的胳膊走。虽然看不见，但脚步很稳。",
+      mid: "「我眼睛是炮弹震瞎的。但我耳朵好使。我能听见你心跳。你现在很紧张。」",
+      high: "「我活了七十年。战争让我失去了眼睛，但没有失去记忆。我还记得和平时候天空的颜色。」",
+      max: "「孩子，你带我走了这么远。到了家，你念给我听——门口那棵树还在不在。我想听。」"
+    },
+    leave_dialogue: "「我走不了了。但你帮我看着路。把你看到的好东西，替我记着。」"
+  }
+];
+
+const ENCOUNTERS = [
+  // === 求助类 (12) ===
+  { id: "e001", type: "help", dayRange: [1,3], title: "河边的男人",
+    desc: "一个男人坐在河边，盯着手里的一张照片。他的腿断了。他说他不想走了。",
+    options: [
+      { text: "坐下来陪他说话", cost: {}, gain: { story: "他告诉你照片里是他的女儿，在另一个城市" }, trustAll: 5, outcome: "你们聊了很久。他最终站了起来，朝另一个方向走了。" },
+      { text: "把你的绷带给他", cost: { medicine: 1 }, gain: { companion: "carpenter_li" }, trustAll: 10, outcome: "你帮他包扎了伤口。他说他是个木匠，想跟你一起走。" },
+      { text: "留下一份食物，继续走", cost: { food: 1 }, gain: {}, trustAll: 3, outcome: "他没说话，只是点了点头。你继续走。回头看时，他还坐在那里。" }
+    ]
+  },
+  { id: "e002", type: "help", dayRange: [1,2], title: "哭泣的女孩",
+    desc: "废墟下传来哭声——一个小女孩抱着一只脏兮兮的布偶。她说妈妈去找水了，三天没回来。",
+    options: [
+      { text: "分给她一些水，带她一起走", cost: { water: 1 }, gain: { companion: "anna" }, trustAll: 10, outcome: "她擦了擦眼泪，牵住了你的衣角。布偶贴在胸口。" },
+      { text: "告诉她在这里等妈妈", cost: {}, gain: {}, trustAll: -5, outcome: "她点了点头，继续等。你走了很远还能听到她的哭声。" },
+      { text: "留下所有的水，继续走", cost: { water: 2 }, gain: { story: "后来你听说有人找到了她" }, trustAll: 8, outcome: "你把水壶放在她面前。她不哭了。你继续走，喉咙很干。" }
+    ]
+  },
+  { id: "e003", type: "help", dayRange: [2,4], title: "受伤的士兵",
+    desc: "路边躺着一个穿军装的年轻人，腿上有弹片伤口在发炎。他的眼睛已经开始发烧。",
+    options: [
+      { text: "用药品帮他处理伤口", cost: { medicine: 1 }, gain: {}, trustAll: 15, outcome: "你清理了伤口，敷上药膏。他在发烧中喃喃叫着一个名字。" },
+      { text: "把他扶起来，一起走", cost: { food: 1 }, gain: { companion: "yuri" }, trustAll: 10, outcome: "他很重。但你一步一步地走。他说他是逃兵。你没问为什么。" },
+      { text: "留下一份食物和水", cost: { food: 1, water: 1 }, gain: {}, trustAll: 5, outcome: "你在他身边放下补给。他没有醒。你希望他能撑过今晚。" }
+    ]
+  },
+  { id: "e004", type: "help", dayRange: [2,5], title: "饥饿的老人",
+    desc: "一位老人坐在路中间，手里拿着一个空碗。他已经好几天没吃东西了，但他没有乞求——只是安静地坐着。",
+    options: [
+      { text: "分享你的食物", cost: { food: 2 }, gain: { companion: "grandma_sun" }, trustAll: 15, outcome: "他慢慢吃完，站起来。他说他看不见了，但他能走。他问能不能跟着你。" },
+      { text: "坐下来陪他", cost: {}, gain: { story: "他讲了一个关于和平年代的故事" }, trustAll: 5, outcome: "你们坐了很久。他给你讲了战前的事——那些已经像梦一样远的事。" },
+      { text: "绕过去", cost: {}, gain: {}, trustAll: -10, outcome: "你低着头走过去。你没有回头看。但你知道他还在那里坐着。" }
+    ]
+  },
+  { id: "e005", type: "help", dayRange: [3,5], title: "怀孕的女人",
+    desc: "一个挺着大肚子的女人靠在断墙上喘气。她说她走不了远路了，能不能带上她。",
+    options: [
+      { text: "当然，我们一起走", cost: { food: 1 }, gain: { companion: "mother_lin" }, trustAll: 15, outcome: "她站起来的时候，你注意到她的手在发抖。但她的眼神很坚定。" },
+      { text: "给她一些补给，告诉她前面有人会帮忙", cost: { food: 1, water: 1 }, gain: {}, trustAll: 5, outcome: "她接过食物，点了点头。你希望前面真的有人能帮她。" },
+      { text: "你走不了。这太危险了。", cost: {}, gain: {}, trustAll: -15, outcome: "她什么都没说。你走了之后才想到——也许你才是走不了的那个人。" }
+    ]
+  },
+  { id: "e006", type: "help", dayRange: [1,4], title: "困在废墟中的人",
+    desc: "瓦砾下面有敲击声——有人被埋了。你能听到微弱的呼救。但挖掘需要很大力气。",
+    options: [
+      { text: "拼尽全力去挖", cost: { stamina: 30 }, gain: { companion: "old_chen" }, trustAll: 20, outcome: "你挖了很久。手磨出了血。最终，一个灰头土脸的老人被拉了出来。他抓着你的手说：谢谢。" },
+      { text: "喊其他人来帮忙", cost: {}, gain: {}, trustAll: 5, outcome: "你大声呼喊。过了一会儿，有几个路过的人来帮忙了。那个人被救了出来。" },
+      { text: "你没有足够的力气，继续走", cost: {}, gain: {}, trustAll: -10, outcome: "敲击声在你身后渐渐变弱。你加快了脚步。" }
+    ]
+  },
+  { id: "e007", type: "help", dayRange: [2,5], title: "发烧的孩子",
+    desc: "一个男孩蜷缩在路边，脸烧得通红。他旁边没有大人——一张纸条上写着'拜托谁来救救他'。",
+    options: [
+      { text: "用药品帮他退烧", cost: { medicine: 1 }, gain: { companion: "boy_ming" }, trustAll: 20, outcome: "药起了效。他睁开眼，看了看你，说：'你是来救我的人吗？'" },
+      { text: "把他背上，边走边照顾", cost: { stamina: 20, water: 1 }, gain: { companion: "boy_ming" }, trustAll: 15, outcome: "他很轻。轻得让你心疼。" },
+      { text: "留下水和食物，希望有人来", cost: { food: 1, water: 1 }, gain: {}, trustAll: 0, outcome: "你把东西放在他身边。继续走。一步一步。不敢回头。" }
+    ]
+  },
+  { id: "e008", type: "help", dayRange: [3,6], title: "绝望的逃兵",
+    desc: "一个年轻人坐在路边，手里拿着一把生锈的枪。他的眼神空洞。他没有瞄准任何人——他在瞄准自己。",
+    options: [
+      { text: "慢慢走过去，坐在他旁边", cost: {}, gain: { companion: "yuri" }, trustAll: 20, outcome: "你什么都没说。只是坐在他旁边。很久之后，他把枪放下了。" },
+      { text: "给他食物和水，让他知道有人在乎", cost: { food: 1, water: 1 }, gain: {}, trustAll: 10, outcome: "他看着你留下的东西，哭了。你走远了之后，听到身后的脚步声——他跟上来了。" },
+      { text: "这不是你能管的事", cost: {}, gain: {}, trustAll: -15, outcome: "你走开了。身后很安静。你不知道安静意味着什么。你不敢想。" }
+    ]
+  },
+  { id: "e009", type: "help", dayRange: [4,6], title: "路边的教堂",
+    desc: "一座被炸掉了一半的教堂。一个穿黑袍的人在里面收拾。他在为路过的人祈祷。",
+    options: [
+      { text: "进去坐一会儿", cost: {}, gain: { stamina: 20, companion: "priest_peter" }, trustAll: 10, outcome: "你在长椅上坐下来。光从破碎的彩窗透进来。他说：'你需要休息。上帝也需要。'" },
+      { text: "帮他收拾废墟", cost: { stamina: 15 }, gain: { story: "废墟下找到了一本完好的书" }, trustAll: 10, outcome: "你们一起搬了几块大石头。废墟下面，居然有一棵小苗在长。" },
+      { text: "继续走，没有时间停留", cost: {}, gain: {}, trustAll: 0, outcome: "你路过教堂。他在身后说了句什么。你没听清。也许是祝福。" }
+    ]
+  },
+  { id: "e010", type: "help", dayRange: [3,6], title: "迷路的记者",
+    desc: "一个背着相机的女人坐在岔路口，翻着一张已经模糊的地图。她说她想记录这条路上的故事。",
+    options: [
+      { text: "让她加入你们，一起走", cost: { food: 1 }, gain: { companion: "journalist_liu" }, trustAll: 10, outcome: "她笑了——这条路上很少有人笑。她说：'我来记录你们的故事。'" },
+      { text: "给她指路", cost: {}, gain: {}, trustAll: 5, outcome: "她朝你指的方向走了。她说这条路上还有很多人的故事需要被讲出来。" }
+    ]
+  },
+  { id: "e011", type: "help", dayRange: [1,4], title: "受伤的狗",
+    desc: "路边有一条瘦弱的狗，前腿被什么东西割伤了。它看到你，尾巴轻轻摇了一下。",
+    options: [
+      { text: "用绷带帮它包扎", cost: { medicine: 1 }, gain: { companion: "dog" }, trustAll: 10, outcome: "你包扎好之后，它站起来，走到你身边。从此它再也没有离开过。" },
+      { text: "把食物分给它", cost: { food: 1 }, gain: {}, trustAll: 5, outcome: "它小心翼翼地吃完，看了你一眼，然后消失在废墟里。" },
+      { text: "你没有多余的给它", cost: {}, gain: {}, trustAll: -5, outcome: "你走了。它没有跟上来。它继续趴在那里，看着路过的每一个人。" }
+    ]
+  },
+  { id: "e012", type: "help", dayRange: [4,7], title: "路边的红十字",
+    desc: "一个穿白大褂的女人正在给几个伤员换药。她的脸上全是疲惫，但手很稳。补给快用完了。",
+    options: [
+      { text: "给她你的药品", cost: { medicine: 2 }, gain: { companion: "nurse_helen" }, trustAll: 15, outcome: "她接过药品，深吸一口气。'谢谢。我可以再救三个人了。'她看了看你的方向——'我能跟你走吗？'" },
+      { text: "帮她照顾伤员", cost: { stamina: 15 }, gain: {}, trustAll: 10, outcome: "你帮忙换了几个小时的药。这让你想起，帮助别人是这个世界上最简单也最难的事。" },
+      { text: "你的药也不多了", cost: {}, gain: {}, trustAll: -5, outcome: "她什么都没说。只是继续低头换药。" }
+    ]
+  },
+  // === 交换类 (6) ===
+  { id: "e013", type: "trade", dayRange: [2,6], title: "流浪商人",
+    desc: "一个推着独轮车的人挡住了路。车上堆着各种东西。他龇牙笑着说：'做笔生意？'",
+    options: [
+      { text: "用2份食物换1份药品", cost: { food: 2 }, gain: { medicine: 1 }, trustAll: 0, outcome: "他数了数食物，丢给你一管药膏。'祝你好运，走路的人。'" },
+      { text: "用1份药品换3份食物", cost: { medicine: 1 }, gain: { food: 3 }, trustAll: 0, outcome: "他把食物码在你面前。罐头，干肉，半条面包。成色不错。" },
+      { text: "不了，谢谢", cost: {}, gain: {}, trustAll: 0, outcome: "他耸耸肩，推着车继续走了。轮子在碎石路上嘎吱作响。" }
+    ]
+  },
+  { id: "e014", type: "trade", dayRange: [1,5], title: "另一群旅人",
+    desc: "一队人从对面走来——他们在往相反的方向走。领头的人说他们有多余的水，但缺食物。",
+    options: [
+      { text: "用2份食物换3份水", cost: { food: 2 }, gain: { water: 3 }, trustAll: 5, outcome: "你们交换了东西。他们继续走。你们挥了挥手。不知道他们在找什么。" },
+      { text: "分享信息，不交换物资", cost: {}, gain: { story: "他们告诉你前方有一条近路" }, trustAll: 5, outcome: "他们告诉你前面的路况。你记了下来。信息有时候比食物更有价值。" },
+      { text: "各走各的", cost: {}, gain: {}, trustAll: 0, outcome: "两队人擦肩而过。你们在同一条路上，但方向相反。" }
+    ]
+  },
+  { id: "e015", type: "trade", dayRange: [3,6], title: "废墟里的农民",
+    desc: "一个农民守着一小块田地——居然在废墟旁边种出了东西。他说可以用水换食物。",
+    options: [
+      { text: "用2份水换3份食物", cost: { water: 2 }, gain: { food: 3 }, trustAll: 5, outcome: "他递给你新鲜的土豆和一些干粮。'这是战后第一批庄稼。'他很骄傲。" },
+      { text: "帮他浇水，不求回报", cost: { water: 1, stamina: 10 }, gain: { food: 2, companion: "farmer_wang" }, trustAll: 15, outcome: "你帮他浇了一下午的水。他煮了土豆给你们吃。他说他想跟你们走。" },
+      { text: "继续走", cost: {}, gain: {}, trustAll: 0, outcome: "你路过他的田。绿色从灰色的废墟中冒出来。这是你见过最美的颜色。" }
+    ]
+  },
+  { id: "e016", type: "trade", dayRange: [2,5], title: "手风琴手",
+    desc: "一个男人坐在路边拉手风琴。琴声有些走调，但旋律很美。他说已经两天没吃东西了。",
+    options: [
+      { text: "给他食物，请他加入", cost: { food: 1 }, gain: { companion: "musician_ivan" }, trustAll: 10, outcome: "他吃了面包，擦了擦手，拉了一首曲子。你们一路上不再那么安静了。" },
+      { text: "给他食物", cost: { food: 1 }, gain: {}, trustAll: 5, outcome: "他吃完，对你鞠了一躬，继续拉琴。琴声在你身后越来越远。" },
+      { text: "停下来听一首曲子", cost: {}, gain: { stamina: 10 }, trustAll: 5, outcome: "你坐下来听。曲子很简单，但你的眼睛湿了。很久没有人为你演奏了。" }
+    ]
+  },
+  { id: "e017", type: "trade", dayRange: [3,7], title: "小学老师",
+    desc: "一个戴眼镜的男人坐在废墟前，手里拿着粉笔。他在断墙上写字——教几个孩子认字。",
+    options: [
+      { text: "给孩子们分食物，邀请老师同行", cost: { food: 2 }, gain: { companion: "teacher_zhao" }, trustAll: 15, outcome: "孩子们吃完就跑了。老师看着他们的背影，说：'我想跟你走。路上也许还有需要学习的孩子。'" },
+      { text: "给他们食物", cost: { food: 1 }, gain: {}, trustAll: 10, outcome: "他把食物平分给每个孩子。最后一份，他没有自己留。" },
+      { text: "停下来看看", cost: {}, gain: { story: "他在教孩子写'家'字" }, trustAll: 5, outcome: "粉笔在墙上写出一个字：家。几个孩子歪歪扭扭地模仿着。" }
+    ]
+  },
+  { id: "e018", type: "trade", dayRange: [4,6], title: "铁匠的摊位",
+    desc: "一个铁匠在路边摆了个简陋的摊子。他用炮弹壳做了一些工具。他说可以帮你修补背包。",
+    options: [
+      { text: "用1份食物修补背包（容量+2）", cost: { food: 1 }, gain: { backpack: 2 }, trustAll: 0, outcome: "他叮叮当当地修了半小时。你的背包多了两个口袋。" },
+      { text: "用1份食物换一把小刀", cost: { food: 1 }, gain: { tool: "knife" }, trustAll: 0, outcome: "这把小刀是用弹壳做的。手柄上刻着一朵花。" },
+      { text: "聊聊天", cost: {}, gain: { story: "战前他给教堂做了一口钟" }, trustAll: 5, outcome: "他说战前他做的最后一样东西是一口钟。现在他用钟的碎片做刀。" }
+    ]
+  },
+  // === 危险类 (4) ===
+  { id: "e019", type: "danger", dayRange: [3,6], title: "强盗",
+    desc: "三个蒙面的人挡住了路。他们拿着棍棒。'把食物留下，人可以走。'",
+    options: [
+      { text: "交出部分食物", cost: { food: 3 }, gain: {}, trustAll: -5, outcome: "他们拿了食物就走了。你看着他们的背影——也是一群饿坏了的人。" },
+      { text: "试着谈判", cost: {}, gain: {}, trustAll: 5, outcome: "你说路上还有很多人需要帮助。他们沉默了。最终只拿了一份食物。", costActual: { food: 1 } },
+      { text: "拒绝，准备对峙", cost: { stamina: 25 }, gain: {}, trustAll: 10, outcome: "你站在原地没动。他们犹豫了。最终他们转身离开了。也许是因为你身后的人。" }
+    ]
+  },
+  { id: "e020", type: "danger", dayRange: [2,5], title: "地雷区",
+    desc: "前方的路上有警告标志——但很旧了，字迹模糊。地面上有些可疑的隆起。",
+    options: [
+      { text: "小心翼翼地穿过", cost: { stamina: 20 }, gain: {}, trustAll: 5, outcome: "每一步都很慢。你听到了几次'咔'的声音，但什么都没发生。你活着走出来了。" },
+      { text: "绕远路", cost: { stamina: 10 }, gain: {}, trustAll: 0, outcome: "多走了两个小时，但更安全。有时候远路才是近路。" },
+      { text: "标记下来，提醒后面的人", cost: { stamina: 15 }, gain: {}, trustAll: 10, outcome: "你用石头垒了路标，箭头指向安全的路。也许能救后面的人一条命。" }
+    ]
+  },
+  { id: "e021", type: "danger", dayRange: [5,5], title: "暴风雪",
+    desc: "风突然变大了。气温骤降。雪开始横着飞。你必须找到避风的地方——否则撑不过今晚。",
+    options: [
+      { text: "在岩石下搭简易避风所", cost: { stamina: 25 }, gain: {}, trustAll: 10, outcome: "你和同行者们挤在一起。很冷，但没有人冻死。风声外面，有人在唱歌。" },
+      { text: "继续走，找更好的地方", cost: { stamina: 35, food: 1 }, gain: {}, trustAll: -5, outcome: "你走了一个小时才找到山洞。大家冻得不行。但至少是安全的。" },
+      { text: "把毛毯分给同行者，自己扛着", cost: { stamina: 30 }, gain: {}, trustAll: 20, outcome: "你把所有能保暖的东西给了他们。你冷得发抖，但每个人都活着。" }
+    ]
+  },
+  { id: "e022", type: "danger", dayRange: [4,4], title: "断桥",
+    desc: "桥只剩一半了。对面是回家的方向。水流很急。你需要想办法过河。",
+    options: [
+      { text: "修补桥面（需要木匠或花大量体力）", cost: { stamina: 35 }, gain: {}, trustAll: 15, outcome: "你花了半天时间。手磨出了血泡。但桥修好了。后面的人也能过了。" },
+      { text: "涉水过河", cost: { stamina: 20 }, gain: {}, trustAll: 5, outcome: "水很冷，很急。你差点被冲走。但你过来了。浑身湿透，但你过来了。" },
+      { text: "沿河找其他渡口", cost: { stamina: 15 }, gain: { story: "你在下游找到一条废弃的小船" }, trustAll: 0, outcome: "走了两个小时，找到一条旧船。够用了。" }
+    ]
+  },
+  // === 发现类 (5) ===
+  { id: "e023", type: "discover", dayRange: [1,7], title: "废墟中的信件",
+    desc: "废墟里散落着一堆信件。有一封没有寄出去的——墨水已经晕开了，但还能读。",
+    options: [
+      { text: "读这封信", cost: {}, gain: { story: "'亲爱的，战争什么时候结束？孩子会走路了。他每天朝门口看。'" }, trustAll: 5, outcome: "信的最后一行是：'你答应过春天回来。花已经开了三次了。'" },
+      { text: "收起来，也许能找到收信人", cost: {}, gain: { item: "letter" }, trustAll: 5, outcome: "你小心地把信折好放进口袋。也许路上能遇到那个在等信的人。" }
+    ]
+  },
+  { id: "e024", type: "discover", dayRange: [2,5], title: "被烧的照片",
+    desc: "在一间被炸毁的房子里，你看到了一张半烧焦的全家福。四个人，笑得很开心。",
+    options: [
+      { text: "把照片收好", cost: {}, gain: { item: "photo" }, trustAll: 5, outcome: "你不知道他们是谁。但你记住了他们的笑容。" },
+      { text: "把照片放回原处", cost: {}, gain: {}, trustAll: 5, outcome: "你把照片放在一块完整的砖头上。也许有人会回来找它。" }
+    ]
+  },
+  { id: "e025", type: "discover", dayRange: [3,6], title: "废墟中的钢琴",
+    desc: "一架三角钢琴立在废墟中间。一面墙倒了，但琴还在。你按了一下琴键——居然还有声音。",
+    options: [
+      { text: "弹一曲", cost: {}, gain: { stamina: 25 }, trustAll: 15, outcome: "你弹了一首简单的曲子。音符在废墟中回荡。同行者们都停下来听。有人哭了。" },
+      { text: "让大家都来试试", cost: {}, gain: { stamina: 15 }, trustAll: 10, outcome: "每个人都弹了几个音符。有的乱七八糟，有的意外好听。大家笑了——很久没笑了。" }
+    ]
+  },
+  { id: "e026", type: "discover", dayRange: [2,4], title: "收音机",
+    desc: "碎石堆里有一台收音机。你拧了几下旋钮——突然传来一个声音，虽然有杂音但很清楚。",
+    options: [
+      { text: "听一会儿", cost: {}, gain: { stamina: 15 }, trustAll: 10, outcome: "——'战争已经结束。各方已签署停战协议。请所有人保持冷静。回家。'\n你关掉了收音机。你已经在回家的路上了。" },
+      { text: "把收音机带上", cost: {}, gain: { stamina: 5 }, trustAll: 5, outcome: "它很重，但有时候听到人声是一种奢侈。" }
+    ]
+  },
+  { id: "e027", type: "discover", dayRange: [3,7], title: "弹坑里的花",
+    desc: "一个弹坑里积满了雨水。水边，长出了一朵小黄花。在灰色的废墟中，它是唯一的颜色。",
+    options: [
+      { text: "停下来看一会儿", cost: {}, gain: { stamina: 20 }, trustAll: 10, outcome: "你蹲下来，看着这朵花。战争没有杀死所有东西。有些事物比炮弹更顽强。" },
+      { text: "摘下来", cost: {}, gain: {}, trustAll: -5, outcome: "你摘了它。放在口袋里。几个小时后它就蔫了。也许你不该摘的。" }
+    ]
+  },
+  // === 重逢类 (3) ===
+  { id: "e028", type: "reunion", dayRange: [5,7], title: "熟悉的面孔",
+    desc: "路边有人在朝你挥手。你认出了他——是你之前帮助过的人。他看起来好多了。",
+    options: [
+      { text: "走过去打招呼", cost: {}, gain: { food: 2, water: 1 }, trustAll: 10, outcome: "他把省下来的食物给了你。'你帮了我。现在轮到我了。'他的眼眶红了。" },
+      { text: "笑着挥挥手，继续走", cost: {}, gain: { stamina: 15 }, trustAll: 5, outcome: "你们远远地对视。不需要说什么。知道他还活着就够了。" }
+    ]
+  },
+  { id: "e029", type: "reunion", dayRange: [6,7], title: "修好的桥",
+    desc: "你走到一座桥前——这座桥是新修的。桥头立着一块木牌，上面刻着一句话。",
+    options: [
+      { text: "读木牌上的字", cost: {}, gain: { stamina: 20 }, trustAll: 15, outcome: "木牌上写着：'致所有回家的人——有人替你修了路。'\n你不知道是谁修的。但你知道这世界还有好人。" },
+      { text: "从桥上走过", cost: {}, gain: { stamina: 10 }, trustAll: 5, outcome: "桥很结实。你走到桥中间停了一秒。低头看河水。一条鱼跳出了水面。" }
+    ]
+  },
+  { id: "e030", type: "reunion", dayRange: [6,7], title: "路边的碑",
+    desc: "路边立着一块小小的石碑。上面刻着一个名字，和一行字：'他把最后的面包给了一个陌生人。'",
+    options: [
+      { text: "在碑前站一会儿", cost: {}, gain: { stamina: 15 }, trustAll: 10, outcome: "你站了很久。你不认识这个名字。但你认识他做的事。" },
+      { text: "在碑上加一行字", cost: {}, gain: {}, trustAll: 15, outcome: "你用石头刻了一行字：'你没有白给。有人记得。'" }
+    ]
+  }
+];
+
+const SUPPLIES_CONFIG = {
+  backpackCapacity: 10,
+  initialLoadout: { food: 5, water: 5, medicine: 2 },
+  dailyCostBase: { food: 1, water: 1, medicine: 0 }
+};
+
+const VFX_CONFIG = {
+  ash: { color: "#9E9E9E", count: 8, speed: 0.3, size: 2, type: "fall" },
+  rain: { color: "#90CAF9", count: 40, speed: 6, size: 1, type: "fall" },
+  snow: { color: "#FAFAFA", count: 20, speed: 0.8, size: 3, type: "drift" },
+  ember: { color: "#FF8F00", count: 10, speed: -0.5, size: 2, type: "rise" },
+  leaves: { color: "#8D6E63", count: 5, speed: 0.5, size: 4, type: "drift" }
+};
+
+// ============================================================
+// GAME ENGINE
+// ============================================================
+
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ============================================================
+// PARTICLE SYSTEM
+// ============================================================
+
+class Particle {
+  constructor(config) {
+    this.x = Math.random() * W;
+    this.y = Math.random() * H;
+    this.size = config.size + Math.random() * 2;
+    this.speed = config.speed * (0.5 + Math.random());
+    this.color = config.color;
+    this.type = config.type;
+    this.life = 1;
+    this.drift = (Math.random() - 0.5) * 0.5;
+    this.opacity = 0.3 + Math.random() * 0.5;
+  }
+
+  update(dt) {
+    if (this.type === 'fall') {
+      this.y += this.speed * dt * 60;
+      this.x += this.drift * dt * 60;
+    } else if (this.type === 'drift') {
+      this.y += this.speed * dt * 60;
+      this.x += Math.sin(Date.now() * 0.001 + this.drift * 10) * 0.5;
+    } else if (this.type === 'rise') {
+      this.y += this.speed * dt * 60;
+      this.x += Math.sin(Date.now() * 0.002 + this.x) * 0.3;
+    }
+    if (this.y > H + 10) { this.y = -10; this.x = Math.random() * W; }
+    if (this.y < -10) { this.y = H + 10; this.x = Math.random() * W; }
+    if (this.x > W + 10) this.x = -10;
+    if (this.x < -10) this.x = W + 10;
+  }
+
+  draw(ctx) {
+    ctx.fillStyle = this.color;
+    ctx.globalAlpha = this.opacity;
+    ctx.fillRect(this.x, this.y, this.size, this.type === 'fall' ? this.size * 3 : this.size);
+    ctx.globalAlpha = 1;
+  }
+}
+
+class ParticleSystem {
+  constructor() { this.particles = []; }
+
+  setWeather(weather) {
+    this.particles = [];
+    const cfg = weather === 'rain' ? VFX_CONFIG.rain :
+                weather === 'snow' ? VFX_CONFIG.snow :
+                weather === 'overcast' ? VFX_CONFIG.ash : null;
+    if (cfg) {
+      for (let i = 0; i < cfg.count; i++) {
+        this.particles.push(new Particle(cfg));
+      }
+    }
+  }
+
+  addEmbers() {
+    const cfg = VFX_CONFIG.ember;
+    for (let i = 0; i < cfg.count; i++) {
+      const p = new Particle(cfg);
+      p.x = W * 0.3 + Math.random() * W * 0.4;
+      p.y = H * 0.7 + Math.random() * H * 0.2;
+      this.particles.push(p);
+    }
+  }
+
+  update(dt) { this.particles.forEach(p => p.update(dt)); }
+  draw(ctx) { this.particles.forEach(p => p.draw(ctx)); }
+}
+
+// ============================================================
+// BACKGROUND RENDERER
+// ============================================================
+
+function drawLandscape(landscape, timeOfDay, scrollX) {
+  const ls = landscape;
+  const tod = TIME_OF_DAY[timeOfDay];
+
+  // Sky gradient
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.65);
+  skyGrad.addColorStop(0, ls.sky1);
+  skyGrad.addColorStop(1, ls.sky2);
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H * 0.65);
+
+  // Sun/Moon
+  if (timeOfDay === 'dawn' || timeOfDay === 'noon') {
+    const sunX = timeOfDay === 'dawn' ? W * 0.15 : W * 0.5;
+    const sunY = timeOfDay === 'dawn' ? H * 0.35 : H * 0.15;
+    const sunGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 60);
+    sunGrad.addColorStop(0, 'rgba(255,224,130,0.8)');
+    sunGrad.addColorStop(1, 'rgba(255,224,130,0)');
+    ctx.fillStyle = sunGrad;
+    ctx.fillRect(sunX - 80, sunY - 80, 160, 160);
+  } else if (timeOfDay === 'dusk') {
+    const sunGrad = ctx.createRadialGradient(W * 0.8, H * 0.3, 0, W * 0.8, H * 0.3, 80);
+    sunGrad.addColorStop(0, 'rgba(255,111,0,0.6)');
+    sunGrad.addColorStop(1, 'rgba(255,111,0,0)');
+    ctx.fillStyle = sunGrad;
+    ctx.fillRect(W * 0.65, H * 0.1, W * 0.35, H * 0.5);
+  } else if (timeOfDay === 'night') {
+    // Stars
+    ctx.fillStyle = '#FAFAFA';
+    for (let i = 0; i < 30; i++) {
+      const sx = (i * 137.5 + scrollX * 0.01) % W;
+      const sy = (i * 97.3) % (H * 0.4);
+      ctx.globalAlpha = 0.3 + Math.sin(Date.now() * 0.001 + i) * 0.3;
+      ctx.fillRect(sx, sy, 2, 2);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Far mountains/hills (parallax layer 1)
+  ctx.fillStyle = ls.featureColor + '40';
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.5);
+  for (let x = 0; x <= W; x += 40) {
+    const noise = Math.sin((x + scrollX * 0.1) * 0.005) * 40 +
+                  Math.sin((x + scrollX * 0.1) * 0.013) * 20;
+    ctx.lineTo(x, H * 0.45 + noise);
+  }
+  ctx.lineTo(W, H * 0.65);
+  ctx.lineTo(0, H * 0.65);
+  ctx.fill();
+
+  // Mid features (parallax layer 2)
+  drawFeatures(ls, scrollX);
+
+  // Ground
+  const groundGrad = ctx.createLinearGradient(0, H * 0.65, 0, H);
+  groundGrad.addColorStop(0, ls.ground);
+  groundGrad.addColorStop(1, adjustColor(ls.ground, -30));
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(0, H * 0.65, W, H * 0.35);
+
+  // Ground texture
+  ctx.fillStyle = adjustColor(ls.ground, -15) + '60';
+  for (let x = 0; x < W; x += 20) {
+    const gx = (x + scrollX * 0.8) % (W + 100) - 50;
+    const gy = H * 0.7 + Math.sin(gx * 0.1) * 5;
+    ctx.fillRect(gx, gy, 8, 2);
+  }
+
+  // Time of day overlay
+  ctx.fillStyle = tod.overlay;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawFeatures(ls, scrollX) {
+  const feat = ls.features;
+
+  if (feat === 'craters') {
+    // Craters
+    ctx.fillStyle = adjustColor(ls.ground, -20) + '80';
+    for (let i = 0; i < 8; i++) {
+      const cx = ((i * 237 + scrollX * 0.4) % (W + 200)) - 100;
+      const cy = H * 0.6 + (i % 3) * 20;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 30 + i * 5, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Small flower
+    ctx.fillStyle = ls.detailColor;
+    const flowerX = ((500 + scrollX * 0.4) % (W + 200)) - 100;
+    ctx.fillRect(flowerX, H * 0.62, 2, 8);
+    ctx.beginPath();
+    ctx.arc(flowerX + 1, H * 0.61, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#FFB74D';
+    ctx.fill();
+  }
+  else if (feat === 'ruins') {
+    // Broken buildings
+    ctx.fillStyle = '#757575';
+    for (let i = 0; i < 6; i++) {
+      const bx = ((i * 320 + scrollX * 0.3) % (W + 400)) - 200;
+      const bh = 40 + (i * 17) % 60;
+      ctx.fillRect(bx, H * 0.65 - bh, 35 + (i * 7) % 25, bh);
+      // Broken top
+      ctx.fillStyle = '#616161';
+      ctx.beginPath();
+      ctx.moveTo(bx, H * 0.65 - bh);
+      ctx.lineTo(bx + 15, H * 0.65 - bh - 10 - (i % 3) * 8);
+      ctx.lineTo(bx + 30, H * 0.65 - bh + 5);
+      ctx.fill();
+      ctx.fillStyle = '#757575';
+    }
+    // Graffiti on wall
+    ctx.fillStyle = ls.detailColor;
+    const gx = ((800 + scrollX * 0.3) % (W + 400)) - 200;
+    ctx.fillRect(gx + 5, H * 0.58, 2, 2);
+    ctx.fillRect(gx + 9, H * 0.57, 2, 3);
+    ctx.fillRect(gx + 13, H * 0.58, 2, 2);
+  }
+  else if (feat === 'trees') {
+    for (let i = 0; i < 10; i++) {
+      const tx = ((i * 200 + scrollX * 0.35) % (W + 300)) - 150;
+      const th = 60 + (i * 23) % 40;
+      // Burnt trunk
+      ctx.fillStyle = '#4E342E';
+      ctx.fillRect(tx, H * 0.65 - th, 6, th);
+      // New leaves
+      if (i % 2 === 0) {
+        ctx.fillStyle = ls.detailColor + 'A0';
+        ctx.beginPath();
+        ctx.arc(tx + 3, H * 0.65 - th - 10, 15, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    // Sunbeams
+    ctx.fillStyle = 'rgba(255,224,130,0.06)';
+    for (let i = 0; i < 5; i++) {
+      const bx = ((i * 350 + scrollX * 0.2) % (W + 200)) - 100;
+      ctx.beginPath();
+      ctx.moveTo(bx, 0);
+      ctx.lineTo(bx - 20, H * 0.65);
+      ctx.lineTo(bx + 20, H * 0.65);
+      ctx.fill();
+    }
+  }
+  else if (feat === 'river') {
+    // River
+    ctx.fillStyle = ls.featureColor + '80';
+    ctx.beginPath();
+    ctx.moveTo(0, H * 0.6);
+    for (let x = 0; x <= W; x += 10) {
+      ctx.lineTo(x, H * 0.58 + Math.sin((x + scrollX * 0.3 + Date.now() * 0.001) * 0.03) * 8);
+    }
+    ctx.lineTo(W, H * 0.65);
+    ctx.lineTo(0, H * 0.65);
+    ctx.fill();
+    // River sparkle
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    for (let i = 0; i < 10; i++) {
+      const rx = ((i * 190 + scrollX * 0.3 + Date.now() * 0.02) % W);
+      ctx.fillRect(rx, H * 0.59 + Math.sin(rx * 0.05) * 3, 3, 1);
+    }
+  }
+  else if (feat === 'mountains') {
+    // Mountain peaks
+    ctx.fillStyle = ls.featureColor;
+    for (let i = 0; i < 5; i++) {
+      const mx = ((i * 400 + scrollX * 0.15) % (W + 500)) - 250;
+      const mh = 80 + (i * 37) % 60;
+      ctx.beginPath();
+      ctx.moveTo(mx - 80, H * 0.65);
+      ctx.lineTo(mx, H * 0.65 - mh);
+      ctx.lineTo(mx + 80, H * 0.65);
+      ctx.fill();
+      // Snow cap
+      ctx.fillStyle = '#FAFAFA';
+      ctx.beginPath();
+      ctx.moveTo(mx - 15, H * 0.65 - mh + 20);
+      ctx.lineTo(mx, H * 0.65 - mh);
+      ctx.lineTo(mx + 15, H * 0.65 - mh + 20);
+      ctx.fill();
+      ctx.fillStyle = ls.featureColor;
+    }
+  }
+  else if (feat === 'grass') {
+    // Grass tufts
+    ctx.fillStyle = ls.featureColor;
+    for (let i = 0; i < 30; i++) {
+      const gx = ((i * 67 + scrollX * 0.5) % (W + 100)) - 50;
+      const gy = H * 0.63 + (i % 4) * 5;
+      ctx.beginPath();
+      ctx.moveTo(gx, gy);
+      ctx.lineTo(gx + 3, gy - 8 - (i % 3) * 3);
+      ctx.lineTo(gx + 6, gy);
+      ctx.fill();
+    }
+    // Sunset glow
+    const sgGrad = ctx.createRadialGradient(W * 0.7, H * 0.4, 0, W * 0.7, H * 0.4, W * 0.4);
+    sgGrad.addColorStop(0, 'rgba(255,183,77,0.15)');
+    sgGrad.addColorStop(1, 'rgba(255,183,77,0)');
+    ctx.fillStyle = sgGrad;
+    ctx.fillRect(0, 0, W, H * 0.65);
+  }
+  else if (feat === 'home') {
+    // House silhouette
+    const hx = ((W * 0.7 + scrollX * 0.1) % (W + 300));
+    ctx.fillStyle = ls.featureColor;
+    ctx.fillRect(hx, H * 0.55, 40, 30);
+    // Roof
+    ctx.beginPath();
+    ctx.moveTo(hx - 5, H * 0.55);
+    ctx.lineTo(hx + 20, H * 0.45);
+    ctx.lineTo(hx + 45, H * 0.55);
+    ctx.fill();
+    // Chimney
+    ctx.fillRect(hx + 30, H * 0.45, 8, 15);
+    // Smoke
+    ctx.fillStyle = 'rgba(200,200,200,0.3)';
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.arc(hx + 34 + Math.sin(Date.now() * 0.001 + i) * 5, H * 0.42 - i * 12, 5 + i * 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Tree
+    ctx.fillStyle = '#5D4037';
+    ctx.fillRect(hx - 40, H * 0.52, 6, 28);
+    ctx.fillStyle = '#7CB342';
+    ctx.beginPath();
+    ctx.arc(hx - 37, H * 0.48, 18, 0, Math.PI * 2);
+    ctx.fill();
+    // Fence
+    ctx.fillStyle = '#8D6E63';
+    for (let i = 0; i < 6; i++) {
+      ctx.fillRect(hx + 55 + i * 15, H * 0.6, 3, 18);
+    }
+    ctx.fillRect(hx + 55, H * 0.63, 80, 2);
+    ctx.fillRect(hx + 55, H * 0.69, 80, 2);
+  }
+}
+
+function adjustColor(hex, amount) {
+  const num = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, Math.max(0, (num >> 16) + amount));
+  const g = Math.min(255, Math.max(0, ((num >> 8) & 0xFF) + amount));
+  const b = Math.min(255, Math.max(0, (num & 0xFF) + amount));
+  return `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`;
+}
+
+// ============================================================
+// CHARACTER RENDERER
+// ============================================================
+
+function drawCharacter(x, y, walking, icon, scale = 1) {
+  const bobY = walking ? Math.sin(Date.now() * 0.005) * 3 : 0;
+  const legPhase = walking ? Math.sin(Date.now() * 0.008) * 0.3 : 0;
+  const s = scale;
+
+  ctx.save();
+  ctx.translate(x, y + bobY);
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.beginPath();
+  ctx.ellipse(0, 12 * s, 10 * s, 3 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (icon) {
+    // Companion: just draw emoji
+    ctx.font = `${28 * s}px serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(icon, 0, 0);
+  } else {
+    // Main character - simple figure
+    // Legs
+    ctx.strokeStyle = '#5D4037';
+    ctx.lineWidth = 2.5 * s;
+    ctx.beginPath();
+    ctx.moveTo(-3 * s, 2 * s);
+    ctx.lineTo(-3 * s + Math.sin(legPhase) * 4 * s, 12 * s);
+    ctx.moveTo(3 * s, 2 * s);
+    ctx.lineTo(3 * s - Math.sin(legPhase) * 4 * s, 12 * s);
+    ctx.stroke();
+
+    // Body
+    ctx.fillStyle = '#5D6037';
+    ctx.fillRect(-5 * s, -10 * s, 10 * s, 14 * s);
+
+    // Backpack
+    ctx.fillStyle = '#8D6E63';
+    ctx.fillRect(-8 * s, -8 * s, 4 * s, 10 * s);
+
+    // Head
+    ctx.fillStyle = '#D7CCC8';
+    ctx.beginPath();
+    ctx.arc(0, -14 * s, 6 * s, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hair
+    ctx.fillStyle = '#4E342E';
+    ctx.beginPath();
+    ctx.arc(0, -16 * s, 6 * s, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    // Arms
+    ctx.strokeStyle = '#D7CCC8';
+    ctx.lineWidth = 2 * s;
+    const armSwing = walking ? Math.sin(Date.now() * 0.008) * 0.2 : 0;
+    ctx.beginPath();
+    ctx.moveTo(-5 * s, -6 * s);
+    ctx.lineTo(-9 * s + Math.sin(armSwing) * 3 * s, 2 * s);
+    ctx.moveTo(5 * s, -6 * s);
+    ctx.lineTo(9 * s - Math.sin(armSwing) * 3 * s, 2 * s);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+// ============================================================
+// GAME STATE
+// ============================================================
+
+const gameState = {
+  scene: 'menu', // menu, walking, encounter, outcome, camp, night, dawn, ending
+  day: 0,
+  timeOfDay: 'dawn', // dawn, noon, dusk, night
+  scrollX: 0,
+  walkSpeed: 1.5,
+  walking: false,
+
+  // Resources
+  food: SUPPLIES_CONFIG.initialLoadout.food,
+  water: SUPPLIES_CONFIG.initialLoadout.water,
+  medicine: SUPPLIES_CONFIG.initialLoadout.medicine,
+  backpackCapacity: SUPPLIES_CONFIG.backpackCapacity,
+  stamina: 100,
+
+  // Companions
+  companions: [], // array of companion objects
+  maxCompanions: 4,
+
+  // Encounters
+  encountersDone: 0,
+  encountersPerDay: 0,
+  encounterTimer: 0,
+  nextEncounterDistance: 0,
+  currentEncounter: null,
+  usedEncounterIds: new Set(),
+
+  // Journey stats
+  totalHelped: 0,
+  totalKindChoices: 0,
+  totalColdChoices: 0,
+  distanceWalked: 0,
+  choiceLog: [], // { day, title, choiceText }
+
+  // Mood: -1 (cold) to 1 (kind)
+  moodShift: 0,
+
+  // Character position
+  charX: 0,
+  charBaseY: 0,
+
+  // Walking distance for current day
+  dayDistance: 0,
+  dayDistanceTarget: 0,
+
+  // Search opportunity
+  searchAvailable: false,
+
+  // Companion who left
+  companionLeft: null
+};
+
+// ============================================================
+// GAME LOGIC
+// ============================================================
+
+function startGame() {
+  gameState.scene = 'dawn';
+  gameState.day = 0;
+  gameState.food = SUPPLIES_CONFIG.initialLoadout.food;
+  gameState.water = SUPPLIES_CONFIG.initialLoadout.water;
+  gameState.medicine = SUPPLIES_CONFIG.initialLoadout.medicine;
+  gameState.stamina = 100;
+  gameState.companions = [];
+  gameState.encountersDone = 0;
+  gameState.usedEncounterIds = new Set();
+  gameState.totalHelped = 0;
+  gameState.totalKindChoices = 0;
+  gameState.totalColdChoices = 0;
+  gameState.distanceWalked = 0;
+  gameState.choiceLog = [];
+  gameState.moodShift = 0;
+  gameState.scrollX = 0;
+  gameState.companionLeft = null;
+
+  hideAllPanels();
+  document.getElementById('main-menu').style.display = 'none';
+  document.getElementById('hud').style.display = 'block';
+
+  startNewDay();
+}
+
+function startNewDay() {
+  gameState.day++;
+  if (gameState.day > 7) {
+    showEnding();
+    return;
+  }
+
+  gameState.timeOfDay = 'dawn';
+  gameState.encountersDone = 0;
+  gameState.encountersPerDay = 3 + Math.floor(Math.random() * 2); // 3-4
+  gameState.dayDistance = 0;
+  gameState.dayDistanceTarget = 800 + Math.random() * 400;
+  gameState.nextEncounterDistance = gameState.dayDistanceTarget / (gameState.encountersPerDay + 1);
+  gameState.encounterTimer = gameState.nextEncounterDistance;
+  gameState.walking = false;
+  gameState.searchAvailable = false;
+
+  // Consume daily resources
+  if (gameState.day > 1) {
+    consumeDailyResources();
+  }
+
+  // Set up particles for weather
+  const landscape = LANDSCAPES[gameState.day - 1];
+  particles.setWeather(landscape.weather);
+
+  // Show dawn narration
+  showDawn();
+}
+
+function consumeDailyResources() {
+  let foodNeeded = SUPPLIES_CONFIG.dailyCostBase.food;
+  let waterNeeded = SUPPLIES_CONFIG.dailyCostBase.water;
+  let medNeeded = 0;
+
+  gameState.companions.forEach(c => {
+    const data = COMPANIONS_DATA.find(cd => cd.id === c.id);
+    if (data) {
+      foodNeeded += data.dailyCost.food || 0;
+      waterNeeded += data.dailyCost.water || 0;
+      medNeeded += data.dailyCost.medicine || 0;
+    }
+  });
+
+  gameState.food = Math.max(0, gameState.food - foodNeeded);
+  gameState.water = Math.max(0, gameState.water - waterNeeded);
+  gameState.medicine = Math.max(0, gameState.medicine - medNeeded);
+
+  // Stamina recovery from camping
+  gameState.stamina = Math.min(100, gameState.stamina + 40);
+
+  // Check if companions leave due to lack of food
+  if (gameState.food <= 0 && gameState.companions.length > 0) {
+    // Chance of losing a companion
+    if (Math.random() < 0.4) {
+      const hasGrandma = gameState.companions.find(c => c.id === 'grandma_sun');
+      if (!hasGrandma) {
+        const leaveIdx = Math.floor(Math.random() * gameState.companions.length);
+        const leaving = gameState.companions.splice(leaveIdx, 1)[0];
+        const data = COMPANIONS_DATA.find(cd => cd.id === leaving.id);
+        gameState.companionLeft = data;
+      }
+    }
+  }
+
+  // Mood affects stamina
+  if (gameState.moodShift < -0.3) {
+    gameState.stamina = Math.max(10, gameState.stamina - 10);
+  }
+}
+
+function showDawn() {
+  gameState.scene = 'dawn';
+  const panel = document.getElementById('dawn-panel');
+  const textEl = document.getElementById('dawn-text');
+
+  let text = LORE.day_dawn[gameState.day - 1];
+
+  // Show companion left info
+  if (gameState.companionLeft) {
+    text = gameState.companionLeft.leave_dialogue + '\n\n' + text;
+    gameState.companionLeft = null;
+  }
+
+  textEl.innerHTML = '';
+  textEl.style.animation = 'none';
+  void textEl.offsetHeight;
+  textEl.style.animation = 'fadeIn 2s ease forwards';
+  textEl.textContent = text;
+
+  const btn = document.getElementById('dawn-continue');
+  btn.style.animation = 'none';
+  void btn.offsetHeight;
+  btn.style.animation = 'fadeIn 1s ease 1.5s forwards';
+  btn.style.opacity = '0';
+
+  panel.style.display = 'flex';
+  updateHUD();
+}
+
+function startWalking() {
+  gameState.scene = 'walking';
+  gameState.walking = true;
+  gameState.charX = W * 0.3;
+  gameState.charBaseY = H * 0.62;
+  hideAllPanels();
+  updateHUD();
+}
+
+function updateWalking(dt) {
+  if (gameState.scene !== 'walking' || !gameState.walking) return;
+
+  // Speed based on stamina
+  let speed = gameState.walkSpeed;
+  if (gameState.stamina < 30) speed *= 0.5;
+  else if (gameState.stamina < 50) speed *= 0.75;
+
+  gameState.scrollX += speed * dt * 60;
+  gameState.dayDistance += speed * dt * 60;
+  gameState.distanceWalked += speed * dt * 2; // rough km calculation
+
+  // Stamina drain
+  gameState.stamina = Math.max(0, gameState.stamina - 0.01 * dt * 60);
+
+  // Time of day progression
+  const progress = gameState.dayDistance / gameState.dayDistanceTarget;
+  if (progress < 0.15) gameState.timeOfDay = 'dawn';
+  else if (progress < 0.6) gameState.timeOfDay = 'noon';
+  else if (progress < 0.85) gameState.timeOfDay = 'dusk';
+  else gameState.timeOfDay = 'dusk';
+
+  // Search opportunity (random)
+  if (!gameState.searchAvailable && Math.random() < 0.001 * dt * 60) {
+    gameState.searchAvailable = true;
+    showSearchPrompt();
+  }
+
+  // Encounter trigger
+  if (gameState.encountersDone < gameState.encountersPerDay) {
+    gameState.encounterTimer -= speed * dt * 60;
+    if (gameState.encounterTimer <= 0) {
+      triggerEncounter();
+    }
+  } else if (gameState.dayDistance >= gameState.dayDistanceTarget) {
+    // Day complete, go to camp
+    gameState.walking = false;
+    showCamp();
+  }
+
+  updateHUD();
+}
+
+function triggerEncounter() {
+  gameState.walking = false;
+
+  // Find valid encounters for current day
+  const validEncounters = ENCOUNTERS.filter(e => {
+    if (gameState.usedEncounterIds.has(e.id)) return false;
+    if (gameState.day < e.dayRange[0] || gameState.day > e.dayRange[1]) return false;
+    // Don't show companion encounters if already have that companion
+    const hasCompOption = e.options.some(o => o.gain && o.gain.companion);
+    if (hasCompOption && gameState.companions.length >= gameState.maxCompanions) {
+      // Still show but companion won't join
+    }
+    return true;
+  });
+
+  if (validEncounters.length === 0) {
+    // No valid encounters, continue walking
+    gameState.encountersDone++;
+    gameState.encounterTimer = gameState.nextEncounterDistance;
+    gameState.walking = true;
+    return;
+  }
+
+  const encounter = validEncounters[Math.floor(Math.random() * validEncounters.length)];
+  gameState.currentEncounter = encounter;
+  gameState.usedEncounterIds.add(encounter.id);
+  showEncounter(encounter);
+}
+
+function showEncounter(encounter) {
+  gameState.scene = 'encounter';
+  const panel = document.getElementById('encounter-panel');
+  document.getElementById('encounter-title').textContent = encounter.title;
+  document.getElementById('encounter-desc').textContent = encounter.desc;
+
+  const optionsDiv = document.getElementById('encounter-options');
+  optionsDiv.innerHTML = '';
+
+  encounter.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+
+    let costText = [];
+    if (opt.cost.food) costText.push(`食物 -${opt.cost.food}`);
+    if (opt.cost.water) costText.push(`水 -${opt.cost.water}`);
+    if (opt.cost.medicine) costText.push(`药品 -${opt.cost.medicine}`);
+    if (opt.cost.stamina) costText.push(`体力 -${opt.cost.stamina}`);
+
+    btn.innerHTML = opt.text + (costText.length ? `<div class="option-cost">${costText.join(' · ')}</div>` : '');
+
+    // Check if player can afford
+    let canAfford = true;
+    if (opt.cost.food && gameState.food < opt.cost.food) canAfford = false;
+    if (opt.cost.water && gameState.water < opt.cost.water) canAfford = false;
+    if (opt.cost.medicine && gameState.medicine < opt.cost.medicine) canAfford = false;
+    if (opt.cost.stamina && gameState.stamina < opt.cost.stamina) canAfford = false;
+
+    if (!canAfford) {
+      btn.style.opacity = '0.4';
+      btn.style.cursor = 'default';
+      btn.innerHTML += '<div class="option-cost" style="color:#c62828">补给不足</div>';
+    } else {
+      btn.onclick = () => makeChoice(i);
+    }
+
+    optionsDiv.appendChild(btn);
+  });
+
+  panel.style.display = 'flex';
+}
+
+function makeChoice(optionIdx) {
+  const encounter = gameState.currentEncounter;
+  const option = encounter.options[optionIdx];
+
+  // Apply costs
+  const actualCost = option.costActual || option.cost;
+  if (actualCost.food) gameState.food = Math.max(0, gameState.food - actualCost.food);
+  if (actualCost.water) gameState.water = Math.max(0, gameState.water - actualCost.water);
+  if (actualCost.medicine) gameState.medicine = Math.max(0, gameState.medicine - actualCost.medicine);
+  if (actualCost.stamina) gameState.stamina = Math.max(0, gameState.stamina - actualCost.stamina);
+
+  // Apply gains
+  if (option.gain) {
+    if (option.gain.food) gameState.food = Math.min(gameState.backpackCapacity, gameState.food + option.gain.food);
+    if (option.gain.water) gameState.water = Math.min(gameState.backpackCapacity, gameState.water + option.gain.water);
+    if (option.gain.medicine) gameState.medicine = Math.min(gameState.backpackCapacity, gameState.medicine + option.gain.medicine);
+    if (option.gain.stamina) gameState.stamina = Math.min(100, gameState.stamina + option.gain.stamina);
+    if (option.gain.backpack) gameState.backpackCapacity += option.gain.backpack;
+
+    // Add companion
+    if (option.gain.companion && gameState.companions.length < gameState.maxCompanions) {
+      const compId = option.gain.companion;
+      if (!gameState.companions.find(c => c.id === compId)) {
+        gameState.companions.push({ id: compId, trust: 20 });
+      }
+    }
+  }
+
+  // Apply trust changes
+  if (option.trustAll) {
+    gameState.companions.forEach(c => {
+      c.trust = Math.min(100, Math.max(0, c.trust + option.trustAll));
+    });
+  }
+
+  // Track stats
+  if (option.trustAll > 0) {
+    gameState.totalKindChoices++;
+    gameState.moodShift = Math.min(1, gameState.moodShift + 0.1);
+    if (Object.keys(actualCost).length > 0) gameState.totalHelped++;
+  } else if (option.trustAll < 0) {
+    gameState.totalColdChoices++;
+    gameState.moodShift = Math.max(-1, gameState.moodShift - 0.1);
+  }
+
+  // Log choice
+  gameState.choiceLog.push({
+    day: gameState.day,
+    title: encounter.title,
+    choiceText: option.text,
+    kind: (option.trustAll || 0) > 0
+  });
+
+  // Show outcome
+  showOutcome(option);
+}
+
+function showOutcome(option) {
+  gameState.scene = 'outcome';
+  document.getElementById('encounter-panel').style.display = 'none';
+
+  const panel = document.getElementById('outcome-panel');
+  document.getElementById('outcome-text').textContent = option.outcome;
+
+  let changes = [];
+  const cost = option.costActual || option.cost;
+  if (cost.food) changes.push(`食物 -${cost.food}`);
+  if (cost.water) changes.push(`水 -${cost.water}`);
+  if (cost.medicine) changes.push(`药品 -${cost.medicine}`);
+  if (cost.stamina) changes.push(`体力 -${cost.stamina}`);
+  if (option.gain) {
+    if (option.gain.food) changes.push(`食物 +${option.gain.food}`);
+    if (option.gain.water) changes.push(`水 +${option.gain.water}`);
+    if (option.gain.medicine) changes.push(`药品 +${option.gain.medicine}`);
+    if (option.gain.stamina) changes.push(`体力 +${option.gain.stamina}`);
+    if (option.gain.companion) {
+      const comp = COMPANIONS_DATA.find(c => c.id === option.gain.companion);
+      if (comp && gameState.companions.find(c => c.id === option.gain.companion)) {
+        changes.push(`${comp.name}加入了队伍`);
+      }
+    }
+  }
+  document.getElementById('outcome-changes').textContent = changes.join(' · ');
+
+  panel.style.display = 'flex';
+  updateHUD();
+}
+
+function continueAfterOutcome() {
+  document.getElementById('outcome-panel').style.display = 'none';
+  gameState.encountersDone++;
+  gameState.encounterTimer = gameState.nextEncounterDistance;
+
+  // Check if day should end
+  if (gameState.encountersDone >= gameState.encountersPerDay) {
+    showCamp();
+  } else {
+    gameState.scene = 'walking';
+    gameState.walking = true;
+  }
+}
+
+function showSearchPrompt() {
+  gameState.walking = false;
+  document.getElementById('search-prompt').style.display = 'block';
+}
+
+function doSearch() {
+  gameState.searchAvailable = false;
+
+  // Search results
+  const hasVeteran = gameState.companions.find(c => c.id === 'old_chen');
+  const hasFarmer = gameState.companions.find(c => c.id === 'farmer_wang');
+  let findChance = 0.5;
+  if (hasVeteran) findChance = 0.8;
+  if (hasFarmer) findChance = 0.7;
+
+  let msg;
+  if (Math.random() < findChance) {
+    const items = ['food', 'water', 'medicine'];
+    const found = items[Math.floor(Math.random() * (Math.random() < 0.8 ? 2 : 3))];
+    const amount = found === 'medicine' ? 1 : 1 + Math.floor(Math.random() * 2);
+
+    if (found === 'food') gameState.food = Math.min(gameState.backpackCapacity, gameState.food + amount);
+    if (found === 'water') gameState.water = Math.min(gameState.backpackCapacity, gameState.water + amount);
+    if (found === 'medicine') gameState.medicine = Math.min(gameState.backpackCapacity, gameState.medicine + amount);
+
+    const names = { food: '食物', water: '水', medicine: '药品' };
+    msg = `你在废墟中找到了 ${amount} 份${names[found]}。`;
+  } else {
+    msg = '你搜索了一会儿，但什么都没找到。';
+  }
+
+  gameState.stamina = Math.max(0, gameState.stamina - 5);
+
+  // Show result in search prompt, then auto-dismiss
+  const sp = document.getElementById('search-prompt');
+  sp.innerHTML = `<div>${msg}</div>`;
+  setTimeout(() => {
+    sp.style.display = 'none';
+    gameState.walking = true;
+    updateHUD();
+  }, 1500);
+}
+
+function skipSearch() {
+  document.getElementById('search-prompt').style.display = 'none';
+  gameState.searchAvailable = false;
+  gameState.walking = true;
+}
+
+function showCamp() {
+  gameState.scene = 'camp';
+  gameState.timeOfDay = 'night';
+  particles.setWeather('');
+  particles.addEmbers();
+
+  const panel = document.getElementById('camp-panel');
+  document.getElementById('camp-title').textContent = '营火 · ' + DAY_NAMES[gameState.day - 1];
+
+  // Summary
+  let summary = LORE.day_dusk[gameState.day - 1];
+  document.getElementById('camp-summary').textContent = summary;
+
+  // Companion cards
+  const compDiv = document.getElementById('camp-companions');
+  compDiv.innerHTML = '';
+  document.getElementById('camp-dialogue').style.display = 'none';
+
+  if (gameState.companions.length === 0) {
+    compDiv.innerHTML = '<div style="color:#8D6E63;font-size:14px;text-align:center;width:100%">今晚只有你自己。火光在脸上跳动。</div>';
+  } else {
+    gameState.companions.forEach(comp => {
+      const data = COMPANIONS_DATA.find(cd => cd.id === comp.id);
+      if (!data) return;
+
+      const card = document.createElement('div');
+      card.className = 'camp-companion-card';
+
+      const trustLevel = comp.trust < 30 ? '低' : comp.trust < 60 ? '中' : comp.trust < 85 ? '高' : '满';
+      card.innerHTML = `
+        <div style="font-size:24px">${data.icon}</div>
+        <div class="camp-companion-name">${data.name}</div>
+        <div class="camp-companion-role">${data.role}</div>
+        <div class="camp-companion-trust">信任: ${trustLevel}</div>
+      `;
+      card.onclick = () => showCampDialogue(comp, data);
+      compDiv.appendChild(card);
+    });
+  }
+
+  panel.style.display = 'flex';
+}
+
+function showCampDialogue(comp, data) {
+  const dlg = document.getElementById('camp-dialogue');
+  let text;
+  if (comp.trust >= 85) text = data.trust_dialogues.max;
+  else if (comp.trust >= 60) text = data.trust_dialogues.high;
+  else if (comp.trust >= 30) text = data.trust_dialogues.mid;
+  else text = data.trust_dialogues.low;
+
+  dlg.textContent = text;
+  dlg.style.display = 'block';
+
+  // Increase trust slightly from talking
+  comp.trust = Math.min(100, comp.trust + 3);
+}
+
+function restAtCamp() {
+  gameState.stamina = Math.min(100, gameState.stamina + 50);
+  document.getElementById('camp-panel').style.display = 'none';
+
+  // Anna's singing bonus
+  const hasAnna = gameState.companions.find(c => c.id === 'anna');
+  if (hasAnna) gameState.stamina = Math.min(100, gameState.stamina + 15);
+
+  // Priest's prayer bonus
+  const hasPriest = gameState.companions.find(c => c.id === 'priest_peter');
+  if (hasPriest) gameState.stamina = Math.min(100, gameState.stamina + 10);
+
+  showNight();
+}
+
+function showNight() {
+  gameState.scene = 'night';
+  const panel = document.getElementById('night-panel');
+  const textEl = document.getElementById('night-text');
+
+  textEl.innerHTML = '';
+  textEl.style.animation = 'none';
+  void textEl.offsetHeight;
+  textEl.style.animation = 'fadeIn 2s ease forwards';
+  textEl.textContent = LORE.day_night[gameState.day - 1];
+
+  const btn = document.getElementById('night-continue');
+  btn.style.animation = 'none';
+  void btn.offsetHeight;
+  btn.style.animation = 'fadeIn 1s ease 2s forwards';
+  btn.style.opacity = '0';
+
+  panel.style.display = 'flex';
+}
+
+function endNight() {
+  document.getElementById('night-panel').style.display = 'none';
+
+  // Transition effect
+  const trans = document.getElementById('transition');
+  trans.classList.add('active');
+  setTimeout(() => {
+    startNewDay();
+    setTimeout(() => trans.classList.remove('active'), 100);
+  }, 1000);
+}
+
+function showEnding() {
+  gameState.scene = 'ending';
+  hideAllPanels();
+  document.getElementById('hud').style.display = 'none';
+
+  const panel = document.getElementById('ending-panel');
+
+  // Determine ending type
+  let endingType = 'mixed';
+  if (gameState.totalKindChoices > gameState.totalColdChoices * 2) endingType = 'kind';
+  else if (gameState.totalColdChoices > gameState.totalKindChoices) endingType = 'cold';
+
+  document.getElementById('ending-subtitle').textContent = '你到了。';
+  document.getElementById('ending-narration').textContent = LORE.endings[endingType];
+
+  // Stats
+  const statsDiv = document.getElementById('ending-stats');
+  statsDiv.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-number">${Math.round(gameState.distanceWalked)}</div>
+      <div class="stat-label">公里</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">${gameState.totalHelped}</div>
+      <div class="stat-label">帮助过的人</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">${gameState.companions.length}</div>
+      <div class="stat-label">同行者</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">${Math.round(gameState.food + gameState.water + gameState.medicine)}</div>
+      <div class="stat-label">剩余补给</div>
+    </div>
+  `;
+
+  // Timeline
+  const timelineDiv = document.getElementById('ending-timeline');
+  timelineDiv.innerHTML = '<div style="font-size:14px;color:#8D6E63;margin-bottom:12px">旅程回顾</div>';
+  gameState.choiceLog.forEach(log => {
+    timelineDiv.innerHTML += `
+      <div class="timeline-day">
+        <div class="timeline-dot ${log.kind ? 'kind' : ''}"></div>
+        <div class="timeline-text">
+          <strong>${DAY_NAMES[log.day - 1]}</strong> · ${log.title}<br>
+          <span style="color:#8D6E63">${log.choiceText}</span>
+        </div>
+      </div>
+    `;
+  });
+
+  panel.style.display = 'block';
+}
+
+function hideAllPanels() {
+  ['encounter-panel', 'outcome-panel', 'camp-panel', 'night-panel', 'dawn-panel', 'ending-panel', 'search-prompt', 'companion-info'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+}
+
+function updateHUD() {
+  document.getElementById('hud-day').textContent =
+    DAY_NAMES[Math.min(gameState.day - 1, 6)] + ' · ' + LANDSCAPES[Math.min(gameState.day - 1, 6)].name;
+
+  const weatherIcons = { clear: '☀️', overcast: '☁️', rain: '🌧️', snow: '❄️' };
+  const landscape = LANDSCAPES[Math.min(gameState.day - 1, 6)];
+  document.getElementById('hud-weather').textContent = weatherIcons[landscape.weather] || '';
+
+  // Supplies
+  document.getElementById('hud-supplies').innerHTML = `
+    <div class="supply-item"><span class="supply-icon">🍞</span> ${Math.round(gameState.food * 10) / 10}</div>
+    <div class="supply-item"><span class="supply-icon">💧</span> ${Math.round(gameState.water * 10) / 10}</div>
+    <div class="supply-item"><span class="supply-icon">💊</span> ${Math.round(gameState.medicine * 10) / 10}</div>
+  `;
+
+  // Stamina
+  document.getElementById('stamina-fill').style.width = gameState.stamina + '%';
+  const staminaColor = gameState.stamina > 50 ? '#7CB342' : gameState.stamina > 30 ? '#FFB300' : '#E65100';
+  document.getElementById('stamina-fill').style.background = staminaColor;
+
+  // Companions
+  const compDiv = document.getElementById('hud-companions');
+  compDiv.innerHTML = '';
+  gameState.companions.forEach(comp => {
+    const data = COMPANIONS_DATA.find(cd => cd.id === comp.id);
+    if (!data) return;
+    const avatar = document.createElement('div');
+    avatar.className = 'companion-avatar';
+    avatar.textContent = data.icon;
+    avatar.onclick = (e) => {
+      e.stopPropagation();
+      toggleCompanionInfo(comp, data);
+    };
+    compDiv.appendChild(avatar);
+  });
+}
+
+function toggleCompanionInfo(comp, data) {
+  const info = document.getElementById('companion-info');
+  if (info.style.display === 'block' && info.dataset.id === comp.id) {
+    info.style.display = 'none';
+    return;
+  }
+  info.dataset.id = comp.id;
+  const trustPct = comp.trust;
+  info.innerHTML = `
+    <div style="font-size:16px;margin-bottom:4px">${data.icon} ${data.name}</div>
+    <div style="font-size:12px;color:#BCAAA4">${data.role}</div>
+    <div style="font-size:11px;color:#FFB300;margin-top:4px">${data.skill}</div>
+    <div style="font-size:11px;margin-top:6px">信任度</div>
+    <div class="trust-bar"><div class="trust-fill" style="width:${trustPct}%"></div></div>
+  `;
+  info.style.display = 'block';
+}
+
+// Close companion info on click elsewhere
+document.addEventListener('click', () => {
+  document.getElementById('companion-info').style.display = 'none';
+});
+
+// ============================================================
+// MAIN GAME LOOP
+// ============================================================
+
+const particles = new ParticleSystem();
+let lastTime = 0;
+
+function gameLoop(timestamp) {
+  const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
+  lastTime = timestamp;
+
+  // Clear
+  ctx.clearRect(0, 0, W, H);
+
+  if (gameState.scene === 'menu') {
+    // Draw menu background on canvas
+    drawMenuBackground();
+  } else if (gameState.scene !== 'ending') {
+    // Draw game world
+    const landscape = LANDSCAPES[Math.min(gameState.day - 1, 6)];
+    drawLandscape(landscape, gameState.timeOfDay, gameState.scrollX);
+
+    // Mood color overlay
+    if (gameState.moodShift > 0.2) {
+      ctx.fillStyle = `rgba(255,243,224,${gameState.moodShift * 0.08})`;
+      ctx.fillRect(0, 0, W, H);
+    } else if (gameState.moodShift < -0.2) {
+      ctx.fillStyle = `rgba(207,216,220,${Math.abs(gameState.moodShift) * 0.1})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // Update walking
+    updateWalking(dt);
+
+    // Particles
+    particles.update(dt);
+    particles.draw(ctx);
+
+    // Draw companions (behind character)
+    let companionX = gameState.charX || W * 0.3;
+    gameState.companions.forEach((comp, i) => {
+      const data = COMPANIONS_DATA.find(cd => cd.id === comp.id);
+      if (data) {
+        const cx = companionX - 40 - i * 35;
+        const cy = (gameState.charBaseY || H * 0.62) + 5;
+        drawCharacter(cx, cy, gameState.walking, data.icon, 0.8);
+      }
+    });
+
+    // Draw main character
+    drawCharacter(
+      gameState.charX || W * 0.3,
+      gameState.charBaseY || H * 0.62,
+      gameState.walking,
+      null, 1
+    );
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+function drawMenuBackground() {
+  // Gentle animated background
+  const time = Date.now() * 0.0005;
+
+  // Sky
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+  skyGrad.addColorStop(0, '#EFEBE9');
+  skyGrad.addColorStop(0.4, '#BCAAA4');
+  skyGrad.addColorStop(1, '#8D8D8D');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Road
+  ctx.strokeStyle = '#A0522D40';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(W * 0.5, H * 0.75);
+  ctx.quadraticCurveTo(W * 0.6, H * 0.5, W * 0.8, H * 0.35);
+  ctx.stroke();
+
+  // Small figure walking on the road
+  const figX = W * 0.55 + Math.sin(time) * 10;
+  const figY = H * 0.65 + Math.cos(time) * 3;
+  ctx.fillStyle = '#5D4037';
+  ctx.fillRect(figX - 2, figY - 8, 4, 8);
+  ctx.beginPath();
+  ctx.arc(figX, figY - 10, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Subtle particles
+  ctx.fillStyle = '#9E9E9E30';
+  for (let i = 0; i < 10; i++) {
+    const px = (i * 173 + Date.now() * 0.01) % W;
+    const py = (i * 97 + Date.now() * 0.005) % H;
+    ctx.fillRect(px, py, 2, 2);
+  }
+}
+
+// ============================================================
+// EVENT LISTENERS
+// ============================================================
+
+document.getElementById('btn-start').onclick = startGame;
+document.getElementById('replay-btn').onclick = () => {
+  document.getElementById('ending-panel').style.display = 'none';
+  document.getElementById('main-menu').style.display = 'flex';
+  gameState.scene = 'menu';
+};
+
+document.getElementById('dawn-continue').onclick = startWalking;
+document.getElementById('outcome-continue').onclick = continueAfterOutcome;
+document.getElementById('camp-rest-btn').onclick = restAtCamp;
+document.getElementById('night-continue').onclick = endNight;
+document.getElementById('search-yes').onclick = doSearch;
+document.getElementById('search-no').onclick = skipSearch;
+
+// ============================================================
+// START
+// ============================================================
+
+requestAnimationFrame(gameLoop);
+
+</script>
+</body>
+</html>

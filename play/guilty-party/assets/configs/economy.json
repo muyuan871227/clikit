@@ -1,0 +1,23 @@
+{
+  "currency": {
+    "primary": "reputation",
+    "_comment": "Single reputation currency; used to unlock cases"
+  },
+  "income_sources": [
+    {"source": "win_as_detective", "amount": 100, "expected_frequency_per_session": 0.65},
+    {"source": "win_as_killer", "amount": 120, "expected_frequency_per_session": 0.45},
+    {"source": "correct_lens_verify", "amount": 30, "expected_per_session": 1.5},
+    {"source": "correct_final_vote", "amount": 40, "expected_per_session": 0.8},
+    {"source": "session_participation", "amount": 20, "expected_per_session": 1.0}
+  ],
+  "spend_sinks": [
+    {"item": "unlock_case_2", "cost": 200, "kind": "case_unlock"},
+    {"item": "unlock_case_3", "cost": 500, "kind": "case_unlock"},
+    {"item": "unlock_master", "cost": 1000, "kind": "stage_unlock"}
+  ],
+  "balance_targets": {
+    "avg_session_net_rep": 80,
+    "inflation_control": "cases_are_finite_unlocks",
+    "notes": "No consumables; cases unlock once. Rep accumulates as progression visibility."
+  }
+}

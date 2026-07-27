@@ -1,0 +1,162 @@
+{
+  "_comment": "TABS Lite · 20关主线 · 8张地图 · 每张地图含真实地形障碍",
+  "maps": {
+    "plains": {
+      "name": "翠绿平原",
+      "ground": "#6c8c4a", "ground_top": "#7a9858",
+      "sky_top": "#b8d8e8", "sky_bot": "#d8e8d8", "fog": "#a8c8de",
+      "decor": ["trees_sparse", "flowers"],
+      "obstacles": [],
+      "comment": "开阔战场, 无障碍, 远程兵种发挥"
+    },
+    "forest": {
+      "name": "古老森林",
+      "ground": "#3a5a32", "ground_top": "#4a6a3a",
+      "sky_top": "#7898a8", "sky_bot": "#aab8a0", "fog": "#789888",
+      "decor": ["trees_dense", "logs", "mushrooms"],
+      "obstacles": [
+        {"kind": "tree", "shape": "circle", "x": 250, "y": 150, "r": 22},
+        {"kind": "tree", "shape": "circle", "x": 320, "y": 280, "r": 22},
+        {"kind": "tree", "shape": "circle", "x": 380, "y": 90,  "r": 22},
+        {"kind": "tree", "shape": "circle", "x": 460, "y": 370, "r": 22},
+        {"kind": "tree", "shape": "circle", "x": 480, "y": 200, "r": 22},
+        {"kind": "tree", "shape": "circle", "x": 540, "y": 100, "r": 22},
+        {"kind": "tree", "shape": "circle", "x": 580, "y": 320, "r": 22},
+        {"kind": "tree", "shape": "circle", "x": 620, "y": 250, "r": 22},
+        {"kind": "tree", "shape": "circle", "x": 680, "y": 380, "r": 22},
+        {"kind": "tree", "shape": "circle", "x": 720, "y": 130, "r": 22},
+        {"kind": "log",  "shape": "rect",   "x": 200, "y": 400, "w": 80, "h": 14},
+        {"kind": "log",  "shape": "rect",   "x": 700, "y": 50,  "w": 80, "h": 14}
+      ],
+      "comment": "茂密树林, 单位需绕树而行, 近战兵种受益"
+    },
+    "desert": {
+      "name": "黄沙荒漠",
+      "ground": "#e8c878", "ground_top": "#d8b868",
+      "sky_top": "#f4d4a0", "sky_bot": "#f8e4b8", "fog": "#e8c898",
+      "decor": ["dunes", "cactus", "skull"],
+      "obstacles": [
+        {"kind": "dune", "shape": "circle", "x": 350, "y": 240, "r": 38},
+        {"kind": "dune", "shape": "circle", "x": 610, "y": 170, "r": 42},
+        {"kind": "dune", "shape": "circle", "x": 480, "y": 350, "r": 36},
+        {"kind": "rock", "shape": "circle", "x": 270, "y": 80,  "r": 18},
+        {"kind": "rock", "shape": "circle", "x": 700, "y": 380, "r": 18}
+      ],
+      "comment": "大型沙丘形成3-4路线, 需要选择推进方向"
+    },
+    "snow": {
+      "name": "永冻雪原",
+      "ground": "#dde8ee", "ground_top": "#e8eef2",
+      "sky_top": "#a8b8c8", "sky_bot": "#cad8de", "fog": "#b8c8d0",
+      "decor": ["snow_pines", "ice_rocks"],
+      "obstacles": [
+        {"kind": "ice", "shape": "circle", "x": 320, "y": 200, "r": 26},
+        {"kind": "ice", "shape": "circle", "x": 480, "y": 100, "r": 28},
+        {"kind": "ice", "shape": "circle", "x": 480, "y": 380, "r": 28},
+        {"kind": "ice", "shape": "circle", "x": 640, "y": 280, "r": 26},
+        {"kind": "snowdrift", "shape": "rect", "x": 480, "y": 240, "w": 90, "h": 60, "type": "slow", "speed_mul": 0.5}
+      ],
+      "comment": "中央雪堆减速50%, 冰石作掩体, 远程优势减弱"
+    },
+    "bridge": {
+      "name": "断桥要塞",
+      "ground": "#7a8a5a", "ground_top": "#8a9a6a",
+      "sky_top": "#a8b0c0", "sky_bot": "#c0c0d0", "fog": "#a0a8b8",
+      "decor": ["river", "bridge", "stones"],
+      "obstacles": [
+        {"kind": "river", "shape": "rect", "x": 480, "y": 0,   "w": 30, "h": 180, "type": "block"},
+        {"kind": "river", "shape": "rect", "x": 480, "y": 300, "w": 30, "h": 240, "type": "block"},
+        {"kind": "stone", "shape": "circle", "x": 200, "y": 200, "r": 16},
+        {"kind": "stone", "shape": "circle", "x": 760, "y": 320, "r": 16}
+      ],
+      "waypoints": [{"x": 480, "y": 135}],
+      "comment": "中央河流分割, 仅 y=90-180 是桥梁可通行"
+    },
+    "volcano": {
+      "name": "熔岩深谷",
+      "ground": "#3a2a2a", "ground_top": "#4a3030",
+      "sky_top": "#3a2030", "sky_bot": "#5a2010", "fog": "#5a2818",
+      "decor": ["lava_cracks", "obsidian", "smoke"],
+      "obstacles": [
+        {"kind": "lava", "shape": "rect", "x": 380, "y": 100, "w": 60, "h": 70, "type": "damage", "dps": 15},
+        {"kind": "lava", "shape": "rect", "x": 520, "y": 350, "w": 70, "h": 60, "type": "damage", "dps": 15},
+        {"kind": "lava", "shape": "rect", "x": 230, "y": 400, "w": 50, "h": 50, "type": "damage", "dps": 15},
+        {"kind": "obsidian", "shape": "circle", "x": 350, "y": 280, "r": 20},
+        {"kind": "obsidian", "shape": "circle", "x": 600, "y": 200, "r": 20},
+        {"kind": "obsidian", "shape": "circle", "x": 700, "y": 400, "r": 18}
+      ],
+      "comment": "熔岩池每秒15伤害, 黑曜石作掩体, AI 会避开熔岩"
+    },
+    "ruins": {
+      "name": "失落遗迹",
+      "ground": "#7a7060", "ground_top": "#8a7e6c",
+      "sky_top": "#a0a0b0", "sky_bot": "#c8c4b8", "fog": "#a8a4a0",
+      "decor": ["pillars", "broken_walls", "vines"],
+      "obstacles": [
+        {"kind": "pillar", "shape": "circle", "x": 250, "y": 130, "r": 22},
+        {"kind": "pillar", "shape": "circle", "x": 250, "y": 380, "r": 22},
+        {"kind": "pillar", "shape": "circle", "x": 480, "y": 130, "r": 22},
+        {"kind": "pillar", "shape": "circle", "x": 480, "y": 380, "r": 22},
+        {"kind": "pillar", "shape": "circle", "x": 720, "y": 130, "r": 22},
+        {"kind": "pillar", "shape": "circle", "x": 720, "y": 380, "r": 22},
+        {"kind": "wall", "shape": "rect", "x": 380, "y": 240, "w": 14, "h": 80},
+        {"kind": "wall", "shape": "rect", "x": 600, "y": 240, "w": 14, "h": 80}
+      ],
+      "comment": "对称柱阵+短墙, 形成3条主路+对称掩体"
+    },
+    "castle": {
+      "name": "王城决战",
+      "ground": "#888070", "ground_top": "#988e7a",
+      "sky_top": "#5a4060", "sky_bot": "#a0606a", "fog": "#806878",
+      "decor": ["castle_wall", "torches", "banners"],
+      "obstacles": [
+        {"kind": "wall", "shape": "rect", "x": 480, "y": 0,   "w": 26, "h": 140},
+        {"kind": "wall", "shape": "rect", "x": 480, "y": 240, "w": 26, "h": 100},
+        {"kind": "wall", "shape": "rect", "x": 480, "y": 420, "w": 26, "h": 120},
+        {"kind": "tower", "shape": "circle", "x": 480, "y": 70,  "r": 24},
+        {"kind": "tower", "shape": "circle", "x": 480, "y": 470, "r": 24}
+      ],
+      "waypoints": [{"x": 480, "y": 130}, {"x": 480, "y": 325}],
+      "comment": "城墙将战场分两半, 两个城门 (y=70-190, y=290-360)"
+    },
+    "skybridge": {
+      "name": "悬崖天桥",
+      "ground": "#5a6a78", "ground_top": "#6a7888",
+      "sky_top": "#6a98c8", "sky_bot": "#b8d4e8", "fog": "#a8c8de",
+      "decor": ["floating_islands", "clouds", "stone_bridge"],
+      "obstacles": [
+        {"kind": "abyss", "shape": "rect", "x": 480, "y": 110, "w": 380, "h": 220},
+        {"kind": "abyss", "shape": "rect", "x": 480, "y": 430, "w": 380, "h": 220}
+      ],
+      "waypoints": [
+        {"x": 290, "y": 270},
+        {"x": 480, "y": 270},
+        {"x": 670, "y": 270}
+      ],
+      "comment": "高台+窄廊桥: 走廊 y:220-320 (100px 宽, 容纳 3-4 单位), 桥两侧无护栏直坠 6 单位深悬崖"
+    }
+  },
+  "locations": [
+    {"id": "level_01", "name": "训练场",     "map": "plains",  "difficulty": 1.0, "new_element": "basic_placement", "color_temp": "warm",    "music": "bgm_plan",   "player_budget": 250, "enemy_comp": [["pikeman", 3]]},
+    {"id": "level_02", "name": "村庄入侵",   "map": "plains",  "difficulty": 1.2, "new_element": "archer_intro",    "color_temp": "warm",    "music": "bgm_plan",   "player_budget": 280, "enemy_comp": [["pikeman", 4], ["archer", 2]]},
+    {"id": "level_03", "name": "森林遭遇",   "map": "forest",  "difficulty": 1.4, "new_element": "shield_intro",    "color_temp": "warm",    "music": "bgm_plan",   "player_budget": 310, "enemy_comp": [["archer", 5], ["pikeman", 3]]},
+    {"id": "level_04", "name": "山谷阻击",   "map": "bridge",  "difficulty": 1.2, "new_element": null,              "color_temp": "neutral", "music": "bgm_plan",   "player_budget": 340, "enemy_comp": [["shield", 3], ["archer", 3]]},
+    {"id": "level_05", "name": "首次骑兵",   "map": "plains",  "difficulty": 1.5, "new_element": "cavalry_intro",   "color_temp": "neutral", "music": "bgm_plan",   "player_budget": 370, "enemy_comp": [["cavalry", 2], ["pikeman", 4]]},
+    {"id": "level_06", "name": "城墙前",     "map": "castle",  "difficulty": 1.3, "new_element": null,              "color_temp": "neutral", "music": "bgm_plan",   "player_budget": 400, "enemy_comp": [["shield", 5], ["pikeman", 4]]},
+    {"id": "level_07", "name": "双线作战",   "map": "plains",  "difficulty": 1.7, "new_element": null,              "color_temp": "neutral", "music": "bgm_plan",   "player_budget": 430, "enemy_comp": [["cavalry", 3], ["archer", 5], ["pikeman", 3]]},
+    {"id": "level_08", "name": "黄沙之战",   "map": "desert",  "difficulty": 1.5, "new_element": null,              "color_temp": "warm",    "music": "bgm_plan",   "player_budget": 460, "enemy_comp": [["cavalry", 4], ["shield", 4], ["archer", 3]]},
+    {"id": "level_09", "name": "法师初现",   "map": "ruins",   "difficulty": 1.9, "new_element": "mage_intro",      "color_temp": "cool",    "music": "bgm_plan",   "player_budget": 490, "enemy_comp": [["mage", 2], ["pikeman", 6], ["archer", 3]]},
+    {"id": "level_10", "name": "雪原休整",   "map": "snow",    "difficulty": 1.7, "new_element": null,              "color_temp": "cool",    "music": "bgm_plan",   "player_budget": 520, "enemy_comp": [["pikeman", 8], ["archer", 4]]},
+    {"id": "level_11", "name": "巨人登场",   "map": "forest",  "difficulty": 2.0, "new_element": "giant_intro",     "color_temp": "cool",    "music": "bgm_battle", "player_budget": 550, "enemy_comp": [["giant", 1], ["pikeman", 5], ["shield", 3]]},
+    {"id": "level_12", "name": "法师军团",   "map": "ruins",   "difficulty": 1.8, "new_element": null,              "color_temp": "cool",    "music": "bgm_battle", "player_budget": 580, "enemy_comp": [["mage", 3], ["shield", 5], ["pikeman", 4]]},
+    {"id": "level_13", "name": "断桥决战",   "map": "bridge",  "difficulty": 2.2, "new_element": null,              "color_temp": "cool",    "music": "bgm_battle", "player_budget": 610, "enemy_comp": [["giant", 1], ["cavalry", 4], ["archer", 5]]},
+    {"id": "level_14", "name": "协同挑战",   "map": "plains",  "difficulty": 2.0, "new_element": null,              "color_temp": "cool",    "music": "bgm_battle", "player_budget": 640, "enemy_comp": [["shield", 6], ["archer", 6], ["pikeman", 6]]},
+    {"id": "level_15", "name": "雪山决战",   "map": "snow",    "difficulty": 2.4, "new_element": null,              "color_temp": "cool",    "music": "bgm_battle", "player_budget": 670, "enemy_comp": [["cavalry", 5], ["mage", 2], ["shield", 4], ["pikeman", 5]]},
+    {"id": "level_16", "name": "双巨人",     "map": "volcano", "difficulty": 2.2, "new_element": null,              "color_temp": "dark",    "music": "bgm_battle", "player_budget": 700, "enemy_comp": [["giant", 2], ["shield", 4], ["archer", 4]]},
+    {"id": "level_17", "name": "死亡浪潮",   "map": "desert",  "difficulty": 2.5, "new_element": null,              "color_temp": "warm",    "music": "bgm_battle", "player_budget": 730, "enemy_comp": [["pikeman", 15], ["archer", 8]]},
+    {"id": "level_18", "name": "遗迹守卫",   "map": "ruins",   "difficulty": 2.3, "new_element": null,              "color_temp": "dark",    "music": "bgm_battle", "player_budget": 760, "enemy_comp": [["giant", 1], ["mage", 2], ["cavalry", 3], ["shield", 4], ["archer", 4], ["pikeman", 4]]},
+    {"id": "level_19", "name": "熔岩前夕",   "map": "volcano", "difficulty": 2.7, "new_element": null,              "color_temp": "dark",    "music": "bgm_boss",   "player_budget": 790, "enemy_comp": [["giant", 2], ["mage", 3], ["cavalry", 4], ["shield", 5]]},
+    {"id": "level_20", "name": "王城决战",   "map": "castle",  "difficulty": 2.5, "new_element": null,              "color_temp": "dark",    "music": "bgm_boss",   "player_budget": 850, "enemy_comp": [["giant", 3], ["mage", 4], ["cavalry", 6], ["shield", 6], ["archer", 6], ["pikeman", 6]]},
+    {"id": "sandbox", "name": "沙盒模式",     "map": "plains",  "difficulty": 0,   "new_element": null,              "color_temp": "warm",    "music": "bgm_plan",   "player_budget": 9999, "enemy_comp": []}
+  ]
+}

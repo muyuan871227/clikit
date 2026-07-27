@@ -1,0 +1,50 @@
+{
+  "zh": {
+    "title": "等你回家",
+    "start": "（轻触这扇门）",
+    "day": "第{n}天",
+    "spring": "春",
+    "summer": "夏",
+    "autumn": "秋",
+    "winter": "冬",
+    "spring2": "春",
+    "ending_stat_days": "等了 {n} 天",
+    "ending_stat_door": "去门口 {n} 次",
+    "ending_stat_sniff": "闻了 {n} 次门缝",
+    "ending_global": "现在，还有 {n} 只团团在等",
+    "share": "分享",
+    "again": "再等一次"
+  },
+  "en": {
+    "title": "Waiting for You",
+    "start": "(tap the door)",
+    "day": "Day {n}",
+    "spring": "Spring",
+    "summer": "Summer",
+    "autumn": "Autumn",
+    "winter": "Winter",
+    "spring2": "Spring",
+    "ending_stat_days": "Waited {n} days",
+    "ending_stat_door": "Went to the door {n} times",
+    "ending_stat_sniff": "Sniffed through the crack {n} times",
+    "ending_global": "Right now, {n} TuanTuans are still waiting",
+    "share": "Share",
+    "again": "Wait again"
+  },
+  "ja": {
+    "title": "あなたの帰りを待つ",
+    "start": "（ドアをタップ）",
+    "day": "{n}日目",
+    "spring": "春",
+    "summer": "夏",
+    "autumn": "秋",
+    "winter": "冬",
+    "spring2": "春",
+    "ending_stat_days": "{n}日間待った",
+    "ending_stat_door": "ドアの前に{n}回行った",
+    "ending_stat_sniff": "ドアの隙間を{n}回嗅いだ",
+    "ending_global": "今、{n}匹の団団がまだ待っている",
+    "share": "シェア",
+    "again": "もう一度待つ"
+  }
+}

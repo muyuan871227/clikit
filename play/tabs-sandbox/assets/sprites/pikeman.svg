@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 40" width="32" height="40">
+  <!-- 矛兵 (polished) -->
+  <!-- 阴影落在sprite下方 (由代码画) -->
+  <!-- 腿 -->
+  <rect x="12" y="28" width="3" height="8" rx="1" fill="#5A3A22" stroke="#2A1810" stroke-width="0.8"/>
+  <rect x="17" y="28" width="3" height="8" rx="1" fill="#5A3A22" stroke="#2A1810" stroke-width="0.8"/>
+  <!-- 靴子 -->
+  <rect x="11" y="35" width="5" height="3" rx="1" fill="#3A2018" stroke="#1A0808" stroke-width="0.8"/>
+  <rect x="16" y="35" width="5" height="3" rx="1" fill="#3A2018" stroke="#1A0808" stroke-width="0.8"/>
+  <!-- 身体甲胄 -->
+  <path d="M11 14 L21 14 L22 27 L10 27 Z" fill="#777" stroke="#2A2A2A" stroke-width="1"/>
+  <!-- 甲胄高光 -->
+  <path d="M11 14 L21 14 L20 16 L12 16 Z" fill="#A8A8A8"/>
+  <!-- 腰带 -->
+  <rect x="10" y="24" width="12" height="2" fill="#3A2A1A" stroke="#1A0808" stroke-width="0.5"/>
+  <!-- 头盔 -->
+  <path d="M10 8 L22 8 L22 14 L10 14 Z" fill="#888" stroke="#2A2A2A" stroke-width="1"/>
+  <path d="M10 8 L22 8 L22 10 L10 10 Z" fill="#B8B8B8"/>
+  <!-- 脸 -->
+  <rect x="13" y="10" width="6" height="4" fill="#F5D6A8"/>
+  <!-- 眼 -->
+  <circle cx="14.5" cy="11.5" r="0.6" fill="#1A1A1A"/>
+  <circle cx="17.5" cy="11.5" r="0.6" fill="#1A1A1A"/>
+  <!-- 矛 -->
+  <line x1="22" y1="8" x2="31" y2="0" stroke="#6A4A2A" stroke-width="1.5" stroke-linecap="round"/>
+  <polygon points="29,-1 32,0 30,3" fill="#D8D8D8" stroke="#2A2A2A" stroke-width="0.6"/>
+  <!-- 盾 (小圆盾) -->
+  <circle cx="8" cy="19" r="4" fill="#7A2A2A" stroke="#1A0808" stroke-width="0.8"/>
+  <circle cx="8" cy="19" r="1.2" fill="#FFD700"/>
+</svg>

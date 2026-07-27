@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>TABS Lite · Absurd Battle Simulator</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0d0f1a;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+  #stage {
+    position: fixed; inset: 0;
+    width: 100vw; height: 100vh;
+  }
+  #threecanvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+  }
+  #ui {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    aspect-ratio: 16 / 9;
+    width: min(100vw, calc(100vh * 16 / 9));
+    height: min(100vh, calc(100vw * 9 / 16));
+    pointer-events: auto;
+    touch-action: none;
+  }
+  /* 相机调试面板 */
+  #camPanel {
+    position: fixed;
+    top: 12px; right: 12px;
+    background: rgba(15,18,30,0.92);
+    color: #fff; padding: 10px 14px;
+    border: 1px solid #FFD700; border-radius: 8px;
+    font: 12px/1.4 -apple-system, sans-serif;
+    z-index: 50; width: 240px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    pointer-events: auto;
+  }
+  #camPanel h3 {
+    margin: 0 0 8px; font-size: 13px; color: #FFD700;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  #camPanel .row { display: flex; align-items: center; margin: 6px 0; gap: 6px; }
+  #camPanel label { width: 56px; color: #aaa; font-size: 11px; }
+  #camPanel input[type=range] { flex: 1; margin: 0; }
+  #camPanel .val {
+    width: 42px; text-align: right; color: #FFD700;
+    font-family: monospace; font-size: 11px;
+  }
+  #camPanel button {
+    background: #3a5aB8; color: #fff; border: none;
+    padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;
+  }
+  #camPanel button:hover { background: #4a6aC8; }
+  #camPanel.hidden { display: none; }
+  #camToggle {
+    position: fixed; top: 12px; right: 12px;
+    background: rgba(15,18,30,0.85); color: #FFD700;
+    padding: 6px 10px; border: 1px solid #FFD700; border-radius: 6px;
+    cursor: pointer; z-index: 51; font: 12px sans-serif; user-select: none;
+    pointer-events: auto;
+  }
+  #camToggle.hidden { display: none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="threecanvas"></canvas>
+  <canvas id="ui" width="1280" height="720"></canvas>
+</div>
+<!-- 相机调试面板 -->
+<div id="camToggle" class="hidden" onclick="document.getElementById('camPanel').classList.remove('hidden');this.classList.add('hidden')">📷 Camera</div>
+<div id="camPanel">
+  <h3>
+    📷 Camera
+    <button onclick="document.getElementById('camPanel').classList.add('hidden');document.getElementById('camToggle').classList.remove('hidden')">×</button>
+  </h3>
+  <div class="row">
+    <label>Tilt</label>
+    <input type="range" min="0" max="1" step="0.02" value="0.68" id="camTilt">
+    <span class="val" id="camTiltVal">0.68</span>
+  </div>
+  <div class="row">
+    <label>Zoom</label>
+    <input type="range" min="15" max="60" step="1" value="32" id="camDist">
+    <span class="val" id="camDistVal">32</span>
+  </div>
+  <div class="row">
+    <label>Rotate</label>
+    <input type="range" min="0" max="360" step="1" value="0" id="camRot">
+    <span class="val" id="camRotVal">0°</span>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button onclick="cameraAPI.reset();syncCamUI()">Reset</button>
+    <button onclick="copyCamConfig()" style="background:#7a5a3a">Copy</button>
+  </div>
+  <div class="row" style="font-size:10px;color:#888;margin:4px 0 0">
+    Console: cameraAPI.help()
+  </div>
+</div>
+<script>
+  // 相机面板交互
+  function bindCam(id, fn, valId) {
+    const el = document.getElementById(id);
+    const v = document.getElementById(valId);
+    el.addEventListener('input', () => { v.textContent = el.value; fn(parseFloat(el.value)); });
+  }
+  function syncCamUI() {
+    if (!window.cameraAPI) return;
+    const c = cameraAPI.get();
+    const tilt = c.overrideTilt ?? 0.68;
+    const dist = c.overrideDist ?? 32;
+    const rot  = c.overrideRot  ?? 0;
+    document.getElementById('camTilt').value = tilt;
+    document.getElementById('camTiltVal').textContent = (+tilt).toFixed(2);
+    document.getElementById('camDist').value = dist;
+    document.getElementById('camDistVal').textContent = Math.round(dist);
+    document.getElementById('camRot').value = rot;
+    document.getElementById('camRotVal').textContent = Math.round(rot) + '°';
+  }
+  function copyCamConfig() {
+    if (!window.cameraAPI) return;
+    const c = cameraAPI.get();
+    const txt = JSON.stringify({
+      tilt: c.overrideTilt, dist: c.overrideDist, rot: c.overrideRot
+    }, null, 2);
+    navigator.clipboard?.writeText(txt);
+    alert('Camera config copied:\n' + txt);
+  }
+  function bindCamRot() {
+    const el = document.getElementById('camRot');
+    const v = document.getElementById('camRotVal');
+    el.addEventListener('input', () => { v.textContent = Math.round(el.value) + '°'; cameraAPI.setRot(parseFloat(el.value)); });
+  }
+  setTimeout(() => {
+    if (!window.cameraAPI) return;
+    bindCam('camTilt', cameraAPI.setTilt, 'camTiltVal');
+    bindCam('camDist', cameraAPI.setDist, 'camDistVal');
+    bindCamRot();
+    syncCamUI();
+  }, 1500);
+</script>
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script src="src/engine.js"></script>
+<script src="src/game_data.js"></script>
+<script src="src/systems/gamestate.js"></script>
+<script src="src/systems/input.js"></script>
+<script src="src/systems/entity.js"></script>
+<script src="src/systems/physics.js"></script>
+<script src="src/systems/combat.js"></script>
+<script src="src/systems/render3d.js"></script>
+<script src="src/systems/zone.js"></script>
+<script src="src/systems/ai.js"></script>
+<script src="src/systems/economy.js"></script>
+<script src="src/systems/ui.js"></script>
+<script src="src/systems/audio.js"></script>
+<script src="src/systems/tutorial.js"></script>
+<script src="src/systems/replay.js"></script>
+<script src="src/main.js"></script>
+<script>
+  (async () => {
+    try { const r = await fetch('assets/configs/vfx.json'); DATA.vfx = await r.json(); } catch (e) { DATA.vfx = {}; }
+  })();
+</script>
+</body>
+</html>

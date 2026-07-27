@@ -1,0 +1,146 @@
+[
+  {
+    "template_name": "Victory Card",
+    "description": "Card displaying the player's rank and score in a battle.",
+    "elements": [
+      {
+        "type": "image",
+        "id": "background_image",
+        "default": "url_to_default_victory_background",
+        "description": "Background image for the card."
+      },
+      {
+        "type": "text",
+        "id": "rank_text",
+        "default": "Rank: {rank}",
+        "description": "Text displaying the player's rank. {rank} will be replaced with the actual rank.",
+        "font": "Arial",
+        "font_size": 36,
+        "color": "#FFFFFF",
+        "position": "top-left"
+      },
+      {
+        "type": "text",
+        "id": "score_text",
+        "default": "Score: {score}",
+        "description": "Text displaying the player's score. {score} will be replaced with the actual score.",
+        "font": "Arial",
+        "font_size": 36,
+        "color": "#FFFFFF",
+        "position": "bottom-right"
+      },
+      {
+        "type": "image",
+        "id": "game_logo",
+        "default": "url_to_game_logo",
+        "description": "Game logo image",
+        "position": "top-right"
+      }
+    ]
+  },
+  {
+    "template_name": "Invitation Card",
+    "description": "Card for inviting friends to a multiplayer game using a room code.",
+    "elements": [
+      {
+        "type": "image",
+        "id": "background_image",
+        "default": "url_to_default_invitation_background",
+        "description": "Background image for the card."
+      },
+      {
+        "type": "text",
+        "id": "invitation_text",
+        "default": "Join my TABS Lite game!",
+        "description": "Introductory text for the invitation.",
+        "font": "Arial",
+        "font_size": 48,
+        "color": "#FFFFFF",
+        "position": "top-center"
+      },
+      {
+        "type": "text",
+        "id": "room_code_text",
+        "default": "Room Code: {room_code}",
+        "description": "Text displaying the room code. {room_code} will be replaced with the actual code.",
+        "font": "Courier New",
+        "font_size": 60,
+        "color": "#FFFF00",
+        "position": "center"
+      },
+      {
+        "type": "text",
+        "id": "platform_text",
+        "default": "Available on [Platform]",
+        "description": "Text indicating the platform the game is on.",
+        "font": "Arial",
+        "font_size": 24,
+        "color": "#FFFFFF",
+        "position": "bottom-center"
+      },
+      {
+        "type": "image",
+        "id": "game_logo",
+        "default": "url_to_game_logo",
+        "description": "Game logo image",
+        "position": "top-right"
+      }
+    ]
+  },
+  {
+    "template_name": "Achievement Card",
+    "description": "Card displaying an achievement earned by the player.",
+    "elements": [
+      {
+        "type": "image",
+        "id": "background_image",
+        "default": "url_to_default_achievement_background",
+        "description": "Background image for the card."
+      },
+      {
+        "type": "text",
+        "id": "achievement_title",
+        "default": "Achievement Unlocked!",
+        "description": "Title of the achievement card.",
+        "font": "Arial",
+        "font_size": 48,
+        "color": "#FFFFFF",
+        "position": "top-center"
+      },
+      {
+        "type": "text",
+        "id": "achievement_name",
+        "default": "{achievement_name}",
+        "description": "Name of the achievement earned. {achievement_name} will be replaced with the actual name.",
+        "font": "Arial",
+        "font_size": 36,
+        "color": "#FFFF00",
+        "position": "center"
+      },
+      {
+        "type": "text",
+        "id": "achievement_description",
+        "default": "{achievement_description}",
+        "description": "Description of the achievement. {achievement_description} will be replaced with the actual description.",
+        "font": "Arial",
+        "font_size": 24,
+        "color": "#FFFFFF",
+        "position": "bottom-center"
+      },
+      {
+        "type": "image",
+        "id": "achievement_icon",
+        "default": "url_to_default_achievement_icon",
+        "description": "Icon representing the achievement.",
+        "position": "left-center"
+      },
+      {
+        "type": "image",
+        "id": "game_logo",
+        "default": "url_to_game_logo",
+        "description": "Game logo image",
+        "position": "top-right"
+      }
+    ]
+  }
+]

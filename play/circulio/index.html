@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>画个圈 Circulio</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
+
+#gameCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+/* Prompt text */
+#drawPrompt { position: absolute; bottom: 60px; left: 0; right: 0; text-align: center; font-size: 16px; color: #999; transition: opacity 0.3s; pointer-events: none; }
+
+/* Score display */
+#scoreDisplay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: 200; color: #333; opacity: 0; pointer-events: none; transition: none; white-space: nowrap; text-align: center; }
+#scoreValue { font-size: 80px; }
+#scoreLabel { font-size: 14px; color: #999; display: block; text-align: center; margin-top: -5px; }
+#scoreTierLabel { font-size: 18px; display: block; text-align: center; margin-top: 5px; font-weight: 400; }
+
+/* Top bar icons */
+.top-btn { position: absolute; top: env(safe-area-inset-top, 12px); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 100; opacity: 0.5; transition: opacity 0.3s; padding-top: 12px; }
+.top-btn:hover { opacity: 1; }
+#btnDaily { left: 12px; }
+#btnSettings { right: 12px; }
+.top-btn svg { width: 24px; height: 24px; stroke: #333; fill: none; stroke-width: 1.5; }
+
+/* Bottom action buttons */
+#actionBar { position: absolute; bottom: 20px; left: 0; right: 0; display: flex; justify-content: center; gap: 16px; opacity: 0; transition: opacity 0.5s; pointer-events: none; padding: 0 20px; }
+#actionBar.visible { opacity: 1; pointer-events: auto; }
+.action-btn { height: 44px; padding: 0 24px; border-radius: 22px; border: 1.5px solid #E5E5E5; background: #FFF; color: #333; font-size: 14px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+.action-btn:active { transform: scale(0.95); background: #F5F5F5; }
+.action-btn.primary { background: #333; color: #FFF; border-color: #333; }
+
+/* Stats bar */
+#statsBar { position: absolute; top: env(safe-area-inset-top, 12px); left: 50%; transform: translateX(-50%); text-align: center; font-size: 12px; color: #CCC; pointer-events: none; opacity: 0; transition: opacity 0.3s; padding-top: 16px; }
+
+/* New record badge */
+#newRecord { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) translateY(-80px); font-size: 14px; color: #FFD700; font-weight: 600; opacity: 0; pointer-events: none; letter-spacing: 2px; }
+
+/* Overlay panels */
+.overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.97); z-index: 200; display: none; flex-direction: column; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.overlay.active { display: flex; }
+.overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 20px; padding-top: calc(env(safe-area-inset-top, 12px) + 20px); }
+.overlay-title { font-size: 20px; font-weight: 600; color: #333; }
+.overlay-close { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 50%; background: #F5F5F5; }
+.overlay-body { padding: 0 20px 40px; flex: 1; }
+
+/* Achievement items */
+.achievement-item { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid #F0F0F0; }
+.achievement-icon { width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: #F5F5F5; }
+.achievement-icon.unlocked { background: #FFF8E1; }
+.achievement-info { flex: 1; }
+.achievement-name { font-size: 15px; color: #333; }
+.achievement-desc { font-size: 12px; color: #999; margin-top: 2px; }
+.achievement-status { font-size: 12px; color: #22C55E; font-weight: 500; }
+.achievement-locked { color: #CCC; }
+
+/* Daily challenge panel */
+.daily-info { text-align: center; padding: 30px 0; }
+.daily-mode-name { font-size: 28px; font-weight: 300; color: #333; }
+.daily-mode-desc { font-size: 14px; color: #999; margin-top: 8px; }
+.daily-multiplier { font-size: 13px; color: #F59E0B; margin-top: 4px; font-weight: 500; }
+.daily-start-btn { margin-top: 24px; height: 50px; padding: 0 40px; border-radius: 25px; background: #333; color: #FFF; border: none; font-size: 16px; cursor: pointer; }
+.daily-start-btn:active { transform: scale(0.97); }
+.daily-start-btn:disabled { background: #CCC; }
+.daily-result { margin-top: 20px; font-size: 14px; color: #666; }
+
+/* Unlock toast */
+#unlockToast { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: #FFF; padding: 16px 28px; border-radius: 12px; font-size: 15px; z-index: 300; display: none; text-align: center; }
+#unlockToast .toast-icon { font-size: 32px; display: block; margin-bottom: 8px; }
+#unlockToast .toast-text { font-weight: 500; }
+#unlockToast .toast-sub { font-size: 12px; color: #AAA; margin-top: 4px; }
+
+/* Particle canvas */
+#particleCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
+
+/* Blind mode overlay */
+#blindOverlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #000; z-index: 150; display: none; }
+#blindOverlay .blind-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: #333; font-size: 14px; }
+
+/* Timer bar for timed mode */
+#timerBar { position: absolute; top: 0; left: 0; height: 3px; background: #EF4444; z-index: 100; width: 0; transition: none; display: none; }
+
+/* Share canvas (hidden) */
+#shareCanvas { display: none; }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+<canvas id="particleCanvas"></canvas>
+
+<div id="drawPrompt">画一个圆</div>
+
+<div id="scoreDisplay">
+  <span id="scoreValue">0%</span>
+  <span id="scoreLabel"></span>
+  <span id="scoreTierLabel"></span>
+</div>
+<div id="newRecord">NEW RECORD !</div>
+
+<div id="statsBar"></div>
+
+<div id="timerBar"></div>
+<div id="blindOverlay"><div class="blind-text">闭眼画吧...</div></div>
+
+<!-- Top buttons -->
+<div class="top-btn" id="btnDaily">
+  <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><text x="12" y="19" text-anchor="middle" font-size="8" fill="#333" stroke="none" font-weight="600" id="dailyDateText"></text></svg>
+</div>
+<div class="top-btn" id="btnSettings">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+</div>
+
+<!-- Action bar -->
+<div id="actionBar">
+  <button class="action-btn primary" id="btnRetry">再来</button>
+  <button class="action-btn" id="btnShare">分享</button>
+</div>
+
+<!-- Settings overlay -->
+<div class="overlay" id="settingsOverlay">
+  <div class="overlay-header">
+    <span class="overlay-title">设置</span>
+    <div class="overlay-close" onclick="closeOverlay('settingsOverlay')">✕</div>
+  </div>
+  <div class="overlay-body">
+    <div style="padding: 20px 0; border-bottom: 1px solid #F0F0F0;">
+      <div style="font-size: 15px; color: #333;">语言 / Language</div>
+      <div style="margin-top: 8px; display: flex; gap: 8px;">
+        <button class="action-btn lang-btn" data-lang="zh">中文</button>
+        <button class="action-btn lang-btn" data-lang="en">English</button>
+      </div>
+    </div>
+    <div style="padding: 20px 0; border-bottom: 1px solid #F0F0F0;">
+      <div style="font-size: 15px; color: #333;" id="statsTitle">统计</div>
+      <div style="margin-top: 10px; color: #666; font-size: 14px;">
+        <div>总圈数: <span id="statTotalCircles">0</span></div>
+        <div style="margin-top:4px;">最高分: <span id="statBestScore">0</span>%</div>
+      </div>
+    </div>
+    <div style="padding: 20px 0;">
+      <div style="font-size: 15px; color: #333; margin-bottom: 12px;">成就</div>
+      <div id="achievementList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Daily challenge overlay -->
+<div class="overlay" id="dailyOverlay">
+  <div class="overlay-header">
+    <span class="overlay-title" id="dailyTitle">每日挑战</span>
+    <div class="overlay-close" onclick="closeOverlay('dailyOverlay')">✕</div>
+  </div>
+  <div class="overlay-body">
+    <div class="daily-info">
+      <div class="daily-mode-name" id="dailyModeName"></div>
+      <div class="daily-mode-desc" id="dailyModeDesc"></div>
+      <div class="daily-multiplier" id="dailyMultiplier"></div>
+      <button class="daily-start-btn" id="btnDailyStart">开始</button>
+      <div class="daily-result" id="dailyResult"></div>
+    </div>
+  </div>
+</div>
+
+<div id="unlockToast">
+  <span class="toast-icon"></span>
+  <span class="toast-text"></span>
+  <span class="toast-sub"></span>
+</div>
+
+<canvas id="shareCanvas" width="1080" height="1080"></canvas>
+
+<script>
+// ============================================================
+// 画个圈 (Circulio) — Complete Game
+// ============================================================
+
+// --- Configuration ---
+const SCORE_TIERS = [
+  { id: 'beginner', min: 0, max: 60, color: '#EF4444', label_zh: '初学者', label_en: 'Beginner' },
+  { id: 'decent', min: 60, max: 80, color: '#F59E0B', label_zh: '不错了', label_en: 'Decent' },
+  { id: 'good', min: 80, max: 90, color: '#22C55E', label_zh: '厉害', label_en: 'Great' },
+  { id: 'master', min: 90, max: 95, color: '#3B82F6', label_zh: '大师', label_en: 'Master' },
+  { id: 'genius', min: 95, max: 98, color: '#A855F7', label_zh: '天才', label_en: 'Genius' },
+  { id: 'legend', min: 98, max: 101, color: '#FFD700', label_zh: '传说', label_en: 'Legend' }
+];
+
+const DAILY_MODES = [
+  { id: 'normal', weekday: 1, name_zh: '普通', name_en: 'Normal', desc_zh: '正常画圆', desc_en: 'Draw normally', screen_black: false, time_limit: 0, vibrate: false, multiplier: 1.0 },
+  { id: 'blind', weekday: 2, name_zh: '闭眼模式', name_en: 'Blind Mode', desc_zh: '触屏后屏幕变黑', desc_en: 'Screen goes black', screen_black: true, time_limit: 0, vibrate: false, multiplier: 1.5 },
+  { id: 'offhand', weekday: 3, name_zh: '反手模式', name_en: 'Off-hand', desc_zh: '用非惯用手画', desc_en: 'Use your other hand', screen_black: false, time_limit: 0, vibrate: false, multiplier: 1.3 },
+  { id: 'timed', weekday: 4, name_zh: '3秒限时', name_en: '3s Timed', desc_zh: '只有3秒！', desc_en: 'Only 3 seconds!', screen_black: false, time_limit: 3000, vibrate: false, multiplier: 1.2 },
+  { id: 'small', weekday: 5, name_zh: '小圆', name_en: 'Small Circle', desc_zh: '画一个小圆', desc_en: 'Draw a tiny circle', screen_black: false, time_limit: 0, vibrate: false, multiplier: 1.1 },
+  { id: 'big', weekday: 6, name_zh: '大圆', name_en: 'Big Circle', desc_zh: '画一个大圆', desc_en: 'Draw a big circle', screen_black: false, time_limit: 0, vibrate: false, multiplier: 1.1 },
+  { id: 'shake', weekday: 0, name_zh: '颤抖模式', name_en: 'Shake Mode', desc_zh: '手机在震动！', desc_en: 'Phone is vibrating!', screen_black: false, time_limit: 0, vibrate: true, multiplier: 1.4 }
+];
+
+const ACHIEVEMENTS = [
+  { id: 'first_circle', type: 'total_circles', threshold: 1, name_zh: '第一个圆', name_en: 'First Circle', icon: '⭕' },
+  { id: 'heatmap_unlock', type: 'total_circles', threshold: 10, reward: 'feature_heatmap', name_zh: '偏差热力图', name_en: 'Heatmap', icon: '🔥' },
+  { id: 'precision_unlock', type: 'total_circles', threshold: 50, reward: 'feature_precision', name_zh: '精密模式', name_en: 'Precision', icon: '🔍' },
+  { id: 'daily_unlock', type: 'best_score', threshold: 85, reward: 'feature_daily', name_zh: '每日挑战', name_en: 'Daily', icon: '📅' },
+  { id: 'versus_unlock', type: 'best_score', threshold: 90, reward: 'feature_versus', name_zh: '对战模式', name_en: 'VS Mode', icon: '⚔️' },
+  { id: 'gold_pen', type: 'total_circles', threshold: 100, reward: 'pen_gold', name_zh: '金色画笔', name_en: 'Gold Pen', icon: '✨' },
+  { id: 'rainbow_pen', type: 'total_circles', threshold: 500, reward: 'pen_rainbow', name_zh: '虹彩画笔', name_en: 'Rainbow', icon: '🌈' },
+  { id: 'master_stamp', type: 'daily_streak', threshold: 7, reward: 'badge_master', name_zh: '大师印章', name_en: 'Master', icon: '⭐' }
+];
+
+// --- State ---
+let lang = 'zh';
+let state = {
+  totalCircles: 0,
+  bestScore: 0,
+  unlockedAchievements: [],
+  dailyStreak: 0,
+  lastDailyDate: null,
+  lastDailyScore: null,
+  penStyle: 'default'
+};
+
+// Game state
+let isDrawing = false;
+let points = [];          // {x, y, t} array
+let lastScore = null;
+let lastFittedCircle = null;
+let lastPoints = null;
+let showingResult = false;
+let isDailyMode = false;
+let currentDailyMode = null;
+let timerInterval = null;
+let timerStart = 0;
+
+// Canvas
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const pCanvas = document.getElementById('particleCanvas');
+const pCtx = pCanvas.getContext('2d');
+
+// Particles
+let particles = [];
+
+// Audio context
+let audioCtx = null;
+
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+// --- Local Storage ---
+function loadState() {
+  try {
+    const s = localStorage.getItem('circulio_state');
+    if (s) {
+      const parsed = JSON.parse(s);
+      state = { ...state, ...parsed };
+    }
+  } catch(e) {}
+}
+
+function saveState() {
+  try {
+    localStorage.setItem('circulio_state', JSON.stringify(state));
+  } catch(e) {}
+}
+
+// --- Canvas Setup ---
+function resizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = window.innerWidth * dpr;
+  canvas.height = window.innerHeight * dpr;
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  pCanvas.width = window.innerWidth * dpr;
+  pCanvas.height = window.innerHeight * dpr;
+  pCanvas.style.width = window.innerWidth + 'px';
+  pCanvas.style.height = window.innerHeight + 'px';
+  pCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  if (!isDrawing && !showingResult) {
+    drawIdleState();
+  }
+}
+
+// --- Circle Fitting (Least Squares) ---
+function fitCircle(pts) {
+  const n = pts.length;
+  if (n < 3) return null;
+
+  let sx = 0, sy = 0;
+  for (const p of pts) { sx += p.x; sy += p.y; }
+  const mx = sx / n, my = sy / n;
+
+  let suu = 0, suv = 0, svv = 0, suuu = 0, svvv = 0, suvv = 0, svuu = 0;
+  for (const p of pts) {
+    const u = p.x - mx, v = p.y - my;
+    suu += u * u; suv += u * v; svv += v * v;
+    suuu += u * u * u; svvv += v * v * v;
+    suvv += u * v * v; svuu += v * u * u;
+  }
+
+  const det = suu * svv - suv * suv;
+  if (Math.abs(det) < 1e-10) {
+    // Fallback: use bounding box center
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const p of pts) {
+      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+    }
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    let rSum = 0;
+    for (const p of pts) rSum += Math.hypot(p.x - cx, p.y - cy);
+    return { cx, cy, r: rSum / n };
+  }
+
+  const uc = ((suuu + suvv) * svv - (svvv + svuu) * suv) / (2 * det);
+  const vc = ((svvv + svuu) * suu - (suuu + suvv) * suv) / (2 * det);
+  const cx = uc + mx;
+  const cy = vc + my;
+  const r = Math.sqrt(uc * uc + vc * vc + (suu + svv) / n);
+
+  return { cx, cy, r };
+}
+
+// --- Scoring ---
+function scoreCircle(pts, circle) {
+  if (!circle || pts.length < 10) return 0;
+
+  const { cx, cy, r } = circle;
+  if (r < 5) return 0;
+
+  // 1. Radial deviation (60% weight)
+  let totalDev = 0;
+  const deviations = [];
+  for (const p of pts) {
+    const dist = Math.hypot(p.x - cx, p.y - cy);
+    const dev = Math.abs(dist - r);
+    totalDev += dev;
+    deviations.push(dev);
+  }
+  const meanDev = totalDev / pts.length;
+  const radialPenalty = (meanDev / r) * 60;
+
+  // 2. Closure gap (20% weight)
+  const first = pts[0], last = pts[pts.length - 1];
+  const gap = Math.hypot(first.x - last.x, first.y - last.y);
+  const gapRatio = gap / r;
+  let gapPenalty = 0;
+  if (gapRatio > 0.05) {
+    gapPenalty = Math.min(20, (gapRatio - 0.05) * 100);
+  }
+
+  // 3. Angular speed variance (20% weight)
+  let angles = [];
+  for (const p of pts) {
+    angles.push(Math.atan2(p.y - cy, p.x - cx));
+  }
+  let angularSpeeds = [];
+  for (let i = 1; i < angles.length; i++) {
+    let da = angles[i] - angles[i - 1];
+    if (da > Math.PI) da -= 2 * Math.PI;
+    if (da < -Math.PI) da += 2 * Math.PI;
+    const dt = (pts[i].t - pts[i - 1].t) || 1;
+    angularSpeeds.push(Math.abs(da) / dt);
+  }
+  let speedPenalty = 0;
+  if (angularSpeeds.length > 2) {
+    const meanSpeed = angularSpeeds.reduce((a, b) => a + b, 0) / angularSpeeds.length;
+    if (meanSpeed > 0) {
+      const variance = angularSpeeds.reduce((a, b) => a + (b - meanSpeed) ** 2, 0) / angularSpeeds.length;
+      const stdDev = Math.sqrt(variance);
+      speedPenalty = Math.min(20, (stdDev / meanSpeed) * 20);
+    }
+  }
+
+  const score = Math.max(0, Math.min(100, 100 - radialPenalty - gapPenalty - speedPenalty));
+  return Math.round(score * 10) / 10;
+}
+
+function getScoreTier(score) {
+  for (let i = SCORE_TIERS.length - 1; i >= 0; i--) {
+    if (score >= SCORE_TIERS[i].min) return SCORE_TIERS[i];
+  }
+  return SCORE_TIERS[0];
+}
+
+// Find max deviation points for heatmap
+function getHotspots(pts, circle, count = 3) {
+  if (!circle) return [];
+  const { cx, cy, r } = circle;
+  const devs = pts.map((p, i) => ({
+    index: i, x: p.x, y: p.y,
+    dev: Math.abs(Math.hypot(p.x - cx, p.y - cy) - r)
+  }));
+  devs.sort((a, b) => b.dev - a.dev);
+  return devs.slice(0, count);
+}
+
+// --- Drawing ---
+function getStrokeColor(pts, circle) {
+  if (!circle || pts.length < 5) return '#22C55E';
+  const last = pts[pts.length - 1];
+  const dist = Math.hypot(last.x - circle.cx, last.y - circle.cy);
+  const dev = Math.abs(dist - circle.r) / circle.r;
+  if (dev < 0.03) return '#22C55E';
+  if (dev < 0.08) return '#F59E0B';
+  return '#EF4444';
+}
+
+function getPenGradient(ctx, pts) {
+  if (state.penStyle === 'gold') {
+    const g = ctx.createLinearGradient(pts[0].x, pts[0].y, pts[pts.length-1].x, pts[pts.length-1].y);
+    g.addColorStop(0, '#FFD700'); g.addColorStop(1, '#FFA500');
+    return g;
+  }
+  if (state.penStyle === 'rainbow') {
+    const g = ctx.createLinearGradient(pts[0].x, pts[0].y, pts[pts.length-1].x, pts[pts.length-1].y);
+    const colors = ['#EF4444','#F59E0B','#22C55E','#3B82F6','#A855F7','#EC4899'];
+    colors.forEach((c, i) => g.addColorStop(i / (colors.length - 1), c));
+    return g;
+  }
+  return null;
+}
+
+function drawTrail(pts, circle, realtime = false) {
+  if (pts.length < 2) return;
+
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  const penGrad = getPenGradient(ctx, pts);
+
+  if (realtime && circle) {
+    // Draw segments with color changing based on deviation
+    for (let i = 1; i < pts.length; i++) {
+      ctx.beginPath();
+      ctx.moveTo(pts[i-1].x, pts[i-1].y);
+      ctx.lineTo(pts[i].x, pts[i].y);
+      if (penGrad) {
+        ctx.strokeStyle = penGrad;
+      } else {
+        const dist = Math.hypot(pts[i].x - circle.cx, pts[i].y - circle.cy);
+        const dev = Math.abs(dist - circle.r) / circle.r;
+        if (dev < 0.03) ctx.strokeStyle = '#22C55E';
+        else if (dev < 0.08) ctx.strokeStyle = '#F59E0B';
+        else ctx.strokeStyle = '#EF4444';
+      }
+      ctx.stroke();
+    }
+  } else {
+    // Static draw with final color
+    const tier = lastScore != null ? getScoreTier(lastScore) : null;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      ctx.lineTo(pts[i].x, pts[i].y);
+    }
+    ctx.strokeStyle = penGrad || (tier ? tier.color : '#333');
+    ctx.stroke();
+  }
+}
+
+function drawPerfectCircle(circle, alpha = 1) {
+  if (!circle) return;
+  ctx.beginPath();
+  ctx.arc(circle.cx, circle.cy, circle.r, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(180,180,180,${alpha})`;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([8, 5]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // Draw center dot
+  ctx.beginPath();
+  ctx.arc(circle.cx, circle.cy, 2, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(200,200,200,${alpha})`;
+  ctx.fill();
+}
+
+function drawHotspots(pts, circle) {
+  if (!state.unlockedAchievements.includes('heatmap_unlock')) return;
+  const hotspots = getHotspots(pts, circle, 3);
+  for (const h of hotspots) {
+    if (h.dev / circle.r > 0.02) {
+      ctx.beginPath();
+      ctx.arc(h.x, h.y, 8, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.3)';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(h.x, h.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.6)';
+      ctx.fill();
+    }
+  }
+}
+
+function drawIdleState() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Show last circle faintly
+  if (lastPoints && lastFittedCircle) {
+    ctx.globalAlpha = 0.15;
+    drawTrail(lastPoints, lastFittedCircle);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// --- Particles ---
+function spawnParticles(cx, cy, r, count, color) {
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+    const speed = 1 + Math.random() * 3;
+    particles.push({
+      x: cx + Math.cos(angle) * r,
+      y: cy + Math.sin(angle) * r,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1,
+      decay: 0.01 + Math.random() * 0.02,
+      size: 2 + Math.random() * 4,
+      color
+    });
+  }
+}
+
+function updateParticles() {
+  pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+  particles = particles.filter(p => p.life > 0);
+  for (const p of particles) {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.05; // gravity
+    p.life -= p.decay;
+    pCtx.beginPath();
+    pCtx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+    pCtx.fillStyle = p.color + Math.round(p.life * 255).toString(16).padStart(2, '0');
+    pCtx.fill();
+  }
+  if (particles.length > 0) requestAnimationFrame(updateParticles);
+}
+
+// --- Audio ---
+function playTone(freq, duration, type = 'sine', vol = 0.3) {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration);
+}
+
+function playNoise(duration, vol = 0.15) {
+  if (!audioCtx) return;
+  const bufferSize = audioCtx.sampleRate * duration;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  source.connect(gain);
+  gain.connect(audioCtx.destination);
+  source.start();
+}
+
+function playScoreSound(score) {
+  if (score < 60) {
+    // Deflate
+    playTone(300, 0.3, 'sawtooth', 0.15);
+    setTimeout(() => playTone(150, 0.3, 'sawtooth', 0.1), 50);
+  } else if (score < 80) {
+    playTone(880, 0.15, 'sine', 0.3);
+  } else if (score < 90) {
+    playTone(880, 0.12, 'sine', 0.3);
+    setTimeout(() => playTone(1108, 0.15, 'sine', 0.3), 130);
+  } else if (score < 95) {
+    playTone(880, 0.1, 'sine', 0.3);
+    setTimeout(() => playTone(1108, 0.1, 'sine', 0.3), 110);
+    setTimeout(() => playTone(1318, 0.2, 'sine', 0.3), 220);
+  } else {
+    // Orchestral burst
+    const freqs = [523, 659, 784, 1046, 1318];
+    freqs.forEach((f, i) => {
+      setTimeout(() => {
+        playTone(f, 1.5, 'sine', 0.2);
+        playTone(f * 0.5, 1.5, 'triangle', 0.1);
+      }, i * 30);
+    });
+  }
+}
+
+// Hum while drawing
+let humOsc = null, humGain = null;
+function startHum() {
+  if (!audioCtx) return;
+  humOsc = audioCtx.createOscillator();
+  humGain = audioCtx.createGain();
+  humOsc.type = 'sine';
+  humOsc.frequency.setValueAtTime(220, audioCtx.currentTime);
+  humGain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+  humOsc.connect(humGain);
+  humGain.connect(audioCtx.destination);
+  humOsc.start();
+}
+
+function updateHum(score) {
+  if (!humOsc) return;
+  // Map score 0-100 to freq 130-520 Hz
+  const freq = 130 + (score / 100) * 390;
+  humOsc.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.05);
+}
+
+function stopHum() {
+  if (humGain) {
+    humGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+  }
+  if (humOsc) {
+    humOsc.stop(audioCtx.currentTime + 0.15);
+    humOsc = null;
+    humGain = null;
+  }
+}
+
+// --- Score Animation ---
+function animateScore(finalScore, circle) {
+  showingResult = true;
+  const tier = getScoreTier(finalScore);
+  const scoreEl = document.getElementById('scoreDisplay');
+  const scoreVal = document.getElementById('scoreValue');
+  const scoreLbl = document.getElementById('scoreLabel');
+  const tierLbl = document.getElementById('scoreTierLabel');
+  const newRecEl = document.getElementById('newRecord');
+
+  // Position score at circle center, scale font to fit
+  if (circle) {
+    scoreEl.style.left = circle.cx + 'px';
+    scoreEl.style.top = circle.cy + 'px';
+    const fontSize = Math.max(32, Math.min(80, circle.r * 0.7));
+    scoreVal.style.fontSize = fontSize + 'px';
+  } else {
+    scoreEl.style.left = '50%';
+    scoreEl.style.top = '50%';
+    scoreVal.style.fontSize = '80px';
+  }
+  scoreEl.style.opacity = '1';
+  scoreEl.style.transform = 'translate(-50%, -50%) scale(1)';
+  scoreLbl.textContent = '';
+  tierLbl.textContent = '';
+
+  // Roll up animation
+  const duration = 800;
+  const start = performance.now();
+  let isNewRecord = finalScore > state.bestScore;
+
+  function tick(now) {
+    const elapsed = now - start;
+    const progress = Math.min(1, elapsed / duration);
+    const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+    const current = Math.round(eased * finalScore * 10) / 10;
+    scoreVal.textContent = current.toFixed(1) + '%';
+    scoreVal.style.color = tier.color;
+
+    if (progress < 1) {
+      requestAnimationFrame(tick);
+    } else {
+      scoreVal.textContent = finalScore.toFixed(1) + '%';
+      tierLbl.textContent = lang === 'zh' ? tier.label_zh : tier.label_en;
+      tierLbl.style.color = tier.color;
+
+      // Bounce
+      scoreEl.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      scoreEl.style.transform = 'translate(-50%, -50%) scale(1.1)';
+      setTimeout(() => {
+        scoreEl.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 300);
+
+      // Particles
+      if (tier.particles > 0 && circle) {
+        spawnParticles(circle.cx, circle.cy, circle.r, tier.particles, tier.color);
+        requestAnimationFrame(updateParticles);
+      }
+
+      // New record
+      if (isNewRecord && state.totalCircles > 1) {
+        if (circle) {
+          newRecEl.style.left = circle.cx + 'px';
+          newRecEl.style.top = (circle.cy - circle.r - 30) + 'px';
+          newRecEl.style.transform = 'translate(-50%, 0)';
+        }
+        newRecEl.style.display = 'block';
+        newRecEl.style.opacity = '1';
+        newRecEl.style.transition = 'opacity 0.5s';
+        setTimeout(() => {
+          newRecEl.style.opacity = '0';
+          setTimeout(() => newRecEl.style.display = 'none', 500);
+        }, 2000);
+      }
+
+      // Show action bar
+      const actionBar = document.getElementById('actionBar');
+      actionBar.classList.add('visible');
+
+      // Play sound
+      playScoreSound(finalScore);
+
+      // Vibrate on high scores
+      if (finalScore >= 95 && navigator.vibrate) {
+        navigator.vibrate([50, 50, 50]);
+      }
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+// --- Touch/Mouse Handlers ---
+function getPos(e) {
+  if (e.touches && e.touches.length > 0) {
+    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+  return { x: e.clientX, y: e.clientY };
+}
+
+function onStart(e) {
+  e.preventDefault();
+  initAudio();
+
+  if (showingResult) {
+    // Clear result and start new
+    resetForNewCircle();
+  }
+
+  const pos = getPos(e);
+  isDrawing = true;
+  points = [{ x: pos.x, y: pos.y, t: performance.now() }];
+
+  document.getElementById('drawPrompt').style.opacity = '0';
+  document.getElementById('scoreDisplay').style.opacity = '0';
+  document.getElementById('actionBar').classList.remove('visible');
+
+  ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+  startHum();
+
+  // Blind mode
+  if (isDailyMode && currentDailyMode && currentDailyMode.screen_black) {
+    document.getElementById('blindOverlay').style.display = 'block';
+  }
+
+  // Timed mode
+  if (isDailyMode && currentDailyMode && currentDailyMode.time_limit > 0) {
+    timerStart = performance.now();
+    const bar = document.getElementById('timerBar');
+    bar.style.display = 'block';
+    bar.style.width = '100%';
+    bar.style.transition = `width ${currentDailyMode.time_limit}ms linear`;
+    requestAnimationFrame(() => { bar.style.width = '0%'; });
+    timerInterval = setTimeout(() => {
+      if (isDrawing) onEnd(e);
+    }, currentDailyMode.time_limit);
+  }
+
+  // Vibrate mode
+  if (isDailyMode && currentDailyMode && currentDailyMode.vibrate && navigator.vibrate) {
+    navigator.vibrate([100, 50, 100, 50, 100, 50, 100, 50, 100, 50, 100, 50, 100, 50, 100, 50, 100, 50, 100]);
+  }
+}
+
+function onMove(e) {
+  if (!isDrawing) return;
+  e.preventDefault();
+  const pos = getPos(e);
+  points.push({ x: pos.x, y: pos.y, t: performance.now() });
+
+  // Real-time draw
+  const circle = points.length > 10 ? fitCircle(points) : null;
+  ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  drawTrail(points, circle, true);
+
+  // Update hum
+  if (circle && points.length > 10) {
+    const tempScore = scoreCircle(points, circle);
+    updateHum(tempScore);
+  }
+}
+
+function onEnd(e) {
+  if (!isDrawing) return;
+  e.preventDefault();
+  isDrawing = false;
+  stopHum();
+
+  // Stop timer
+  if (timerInterval) { clearTimeout(timerInterval); timerInterval = null; }
+  document.getElementById('timerBar').style.display = 'none';
+  document.getElementById('blindOverlay').style.display = 'none';
+  if (navigator.vibrate) navigator.vibrate(0);
+
+  if (points.length < 10) {
+    // Not enough points
+    resetForNewCircle();
+    return;
+  }
+
+  // Fit and score
+  const circle = fitCircle(points);
+  let score = scoreCircle(points, circle);
+
+  // Apply daily multiplier
+  if (isDailyMode && currentDailyMode) {
+    score = Math.min(100, score * currentDailyMode.multiplier);
+    score = Math.round(score * 10) / 10;
+  }
+
+  lastScore = score;
+  lastFittedCircle = circle;
+  lastPoints = [...points];
+
+  // Draw final state
+  ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+  // Brief pause then reveal
+  setTimeout(() => {
+    drawPerfectCircle(circle);
+    drawTrail(lastPoints, circle);
+    drawHotspots(lastPoints, circle);
+    animateScore(score, circle);
+
+    // Update state
+    state.totalCircles++;
+    if (score > state.bestScore) state.bestScore = score;
+
+    // Daily challenge
+    if (isDailyMode) {
+      const today = new Date().toDateString();
+      if (state.lastDailyDate === today) {
+        // Already played today...
+      } else {
+        state.lastDailyDate = today;
+        state.lastDailyScore = score;
+        // Streak
+        const yesterday = new Date(Date.now() - 86400000).toDateString();
+        if (state.lastDailyDate === yesterday || state.dailyStreak === 0) {
+          state.dailyStreak++;
+        } else {
+          state.dailyStreak = 1;
+        }
+      }
+      isDailyMode = false;
+      currentDailyMode = null;
+    }
+
+    checkAchievements();
+    saveState();
+    updateStatsBar();
+  }, 300);
+}
+
+function resetForNewCircle() {
+  showingResult = false;
+  lastScore = null;
+  points = [];
+  document.getElementById('scoreDisplay').style.opacity = '0';
+  document.getElementById('actionBar').classList.remove('visible');
+  document.getElementById('drawPrompt').style.opacity = '1';
+  ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  if (lastPoints && lastFittedCircle) {
+    ctx.globalAlpha = 0.15;
+    drawTrail(lastPoints, lastFittedCircle);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// --- Achievements ---
+function checkAchievements() {
+  let newUnlocks = [];
+  for (const a of ACHIEVEMENTS) {
+    if (state.unlockedAchievements.includes(a.id)) continue;
+    let met = false;
+    if (a.type === 'total_circles' && state.totalCircles >= a.threshold) met = true;
+    if (a.type === 'best_score' && state.bestScore >= a.threshold) met = true;
+    if (a.type === 'daily_streak' && state.dailyStreak >= a.threshold) met = true;
+    if (met) {
+      state.unlockedAchievements.push(a.id);
+      newUnlocks.push(a);
+    }
+  }
+  if (newUnlocks.length > 0) {
+    // Show toast for first new unlock
+    showUnlockToast(newUnlocks[0]);
+    // Apply pen rewards
+    for (const a of newUnlocks) {
+      if (a.reward === 'pen_gold') state.penStyle = 'gold';
+      if (a.reward === 'pen_rainbow') state.penStyle = 'rainbow';
+    }
+  }
+}
+
+function showUnlockToast(achievement) {
+  const toast = document.getElementById('unlockToast');
+  toast.querySelector('.toast-icon').textContent = achievement.icon;
+  toast.querySelector('.toast-text').textContent = lang === 'zh' ? achievement.name_zh : achievement.name_en;
+  toast.querySelector('.toast-sub').textContent = lang === 'zh' ? '已解锁' : 'Unlocked';
+  toast.style.display = 'block';
+  toast.style.opacity = '0';
+  toast.style.transition = 'opacity 0.3s';
+  requestAnimationFrame(() => { toast.style.opacity = '1'; });
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.style.display = 'none', 300);
+  }, 2000);
+}
+
+// --- Stats Bar ---
+function updateStatsBar() {
+  const bar = document.getElementById('statsBar');
+  if (state.totalCircles > 0) {
+    bar.textContent = `#${state.totalCircles}  |  ${lang === 'zh' ? '最高' : 'Best'} ${state.bestScore.toFixed(1)}%`;
+    bar.style.opacity = '1';
+  }
+}
+
+// --- Daily Challenge ---
+function getTodayMode() {
+  const day = new Date().getDay(); // 0=Sun
+  return DAILY_MODES.find(m => m.weekday === day) || DAILY_MODES[0];
+}
+
+function openDailyPanel() {
+  if (!state.unlockedAchievements.includes('daily_unlock') && state.bestScore < 85) {
+    showUnlockToast({ icon: '🔒', name_zh: '画到85%解锁', name_en: 'Reach 85% to unlock', reward: '' });
+    return;
+  }
+
+  const mode = getTodayMode();
+  const overlay = document.getElementById('dailyOverlay');
+  document.getElementById('dailyModeName').textContent = lang === 'zh' ? mode.name_zh : mode.name_en;
+  document.getElementById('dailyModeDesc').textContent = lang === 'zh' ? mode.desc_zh : mode.desc_en;
+  document.getElementById('dailyMultiplier').textContent = `×${mode.multiplier} ${lang === 'zh' ? '加成' : 'bonus'}`;
+
+  const today = new Date().toDateString();
+  const btn = document.getElementById('btnDailyStart');
+  const result = document.getElementById('dailyResult');
+
+  if (state.lastDailyDate === today && state.lastDailyScore != null) {
+    btn.disabled = true;
+    btn.textContent = lang === 'zh' ? '今日已完成' : 'Done Today';
+    result.textContent = `${lang === 'zh' ? '今日成绩' : 'Today'}: ${state.lastDailyScore.toFixed(1)}%`;
+  } else {
+    btn.disabled = false;
+    btn.textContent = lang === 'zh' ? '开始挑战' : 'Start';
+    result.textContent = lang === 'zh' ? '只有1次机会！' : 'Only 1 chance!';
+  }
+
+  overlay.classList.add('active');
+}
+
+function startDailyChallenge() {
+  const mode = getTodayMode();
+  isDailyMode = true;
+  currentDailyMode = mode;
+  closeOverlay('dailyOverlay');
+  resetForNewCircle();
+  document.getElementById('drawPrompt').textContent = lang === 'zh' ? mode.name_zh : mode.name_en;
+  document.getElementById('drawPrompt').style.opacity = '1';
+}
+
+// --- Settings ---
+function openSettings() {
+  document.getElementById('statTotalCircles').textContent = state.totalCircles;
+  document.getElementById('statBestScore').textContent = state.bestScore.toFixed(1);
+
+  // Render achievements
+  const list = document.getElementById('achievementList');
+  list.innerHTML = '';
+  for (const a of ACHIEVEMENTS) {
+    const unlocked = state.unlockedAchievements.includes(a.id);
+    const item = document.createElement('div');
+    item.className = 'achievement-item';
+    item.innerHTML = `
+      <div class="achievement-icon ${unlocked ? 'unlocked' : ''}">${a.icon}</div>
+      <div class="achievement-info">
+        <div class="achievement-name">${lang === 'zh' ? a.name_zh : a.name_en}</div>
+        <div class="achievement-desc">${getAchievementDesc(a)}</div>
+      </div>
+      <div class="${unlocked ? 'achievement-status' : 'achievement-locked'}">${unlocked ? '✓' : '🔒'}</div>
+    `;
+    list.appendChild(item);
+  }
+
+  // Update lang buttons
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('primary', btn.dataset.lang === lang);
+  });
+
+  document.getElementById('settingsOverlay').classList.add('active');
+}
+
+function getAchievementDesc(a) {
+  if (a.type === 'total_circles') return `${lang === 'zh' ? '画' : 'Draw'} ${a.threshold} ${lang === 'zh' ? '个圆' : 'circles'}`;
+  if (a.type === 'best_score') return `${lang === 'zh' ? '达到' : 'Reach'} ${a.threshold}%`;
+  if (a.type === 'daily_streak') return `${lang === 'zh' ? '连续' : ''} ${a.threshold} ${lang === 'zh' ? '天每日挑战' : 'day streak'}`;
+  return '';
+}
+
+function closeOverlay(id) {
+  document.getElementById(id).classList.remove('active');
+}
+
+// --- Share ---
+function generateShareCard() {
+  if (!lastPoints || !lastFittedCircle || lastScore == null) return;
+
+  const sc = document.getElementById('shareCanvas');
+  const sctx = sc.getContext('2d');
+  const size = 1080;
+  const tier = getScoreTier(lastScore);
+
+  // White background
+  sctx.fillStyle = '#FFFFFF';
+  sctx.fillRect(0, 0, size, size);
+
+  // Draw the circle path centered and scaled
+  const circle = lastFittedCircle;
+  const scale = (size * 0.5) / (circle.r * 2);
+  const offsetX = size / 2 - circle.cx * scale;
+  const offsetY = size / 2 - circle.cy * scale - 40;
+
+  // Perfect circle (dashed)
+  sctx.beginPath();
+  sctx.arc(circle.cx * scale + offsetX, circle.cy * scale + offsetY, circle.r * scale, 0, Math.PI * 2);
+  sctx.strokeStyle = '#E0E0E0';
+  sctx.lineWidth = 2;
+  sctx.setLineDash([12, 8]);
+  sctx.stroke();
+  sctx.setLineDash([]);
+
+  // User's circle
+  sctx.beginPath();
+  sctx.moveTo(lastPoints[0].x * scale + offsetX, lastPoints[0].y * scale + offsetY);
+  for (let i = 1; i < lastPoints.length; i++) {
+    sctx.lineTo(lastPoints[i].x * scale + offsetX, lastPoints[i].y * scale + offsetY);
+  }
+  sctx.strokeStyle = tier.color;
+  sctx.lineWidth = 6;
+  sctx.lineCap = 'round';
+  sctx.lineJoin = 'round';
+  sctx.stroke();
+
+  // Score text
+  sctx.fillStyle = tier.color;
+  sctx.font = '900 160px -apple-system, BlinkMacSystemFont, sans-serif';
+  sctx.textAlign = 'right';
+  sctx.textBaseline = 'bottom';
+  sctx.fillText(lastScore.toFixed(1) + '%', size - 60, size - 120);
+
+  // Tier label
+  sctx.font = '400 36px -apple-system, BlinkMacSystemFont, sans-serif';
+  sctx.fillStyle = '#999';
+  sctx.fillText(lang === 'zh' ? tier.label_zh : tier.label_en, size - 60, size - 80);
+
+  // CTA
+  sctx.textAlign = 'center';
+  sctx.font = '400 32px -apple-system, BlinkMacSystemFont, sans-serif';
+  sctx.fillStyle = '#CCC';
+  sctx.fillText(lang === 'zh' ? '你能画多圆？' : 'How round can you draw?', size / 2, size - 30);
+
+  // App name
+  sctx.textAlign = 'left';
+  sctx.font = '300 28px -apple-system, BlinkMacSystemFont, sans-serif';
+  sctx.fillStyle = '#DDD';
+  sctx.fillText('画个圈 Circulio', 40, size - 30);
+
+  // Download
+  try {
+    const dataUrl = sc.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = `circulio_${lastScore.toFixed(1)}.png`;
+    link.href = dataUrl;
+    link.click();
+  } catch(e) {
+    // Fallback: open in new tab
+    sc.toBlob(blob => {
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        window.open(url);
+      }
+    });
+  }
+}
+
+// --- i18n ---
+function setLang(l) {
+  lang = l;
+  document.getElementById('drawPrompt').textContent = lang === 'zh' ? '画一个圆' : 'Draw a circle';
+  document.getElementById('btnRetry').textContent = lang === 'zh' ? '再来' : 'Again';
+  document.getElementById('btnShare').textContent = lang === 'zh' ? '分享' : 'Share';
+  document.getElementById('dailyTitle').textContent = lang === 'zh' ? '每日挑战' : 'Daily Challenge';
+  updateStatsBar();
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('primary', btn.dataset.lang === lang);
+  });
+  try { localStorage.setItem('circulio_lang', lang); } catch(e) {}
+}
+
+// --- Event Listeners ---
+canvas.addEventListener('touchstart', onStart, { passive: false });
+canvas.addEventListener('touchmove', onMove, { passive: false });
+canvas.addEventListener('touchend', onEnd, { passive: false });
+canvas.addEventListener('touchcancel', onEnd, { passive: false });
+canvas.addEventListener('mousedown', onStart);
+canvas.addEventListener('mousemove', onMove);
+canvas.addEventListener('mouseup', onEnd);
+canvas.addEventListener('mouseleave', (e) => { if (isDrawing) onEnd(e); });
+
+document.getElementById('btnRetry').addEventListener('click', (e) => {
+  e.stopPropagation();
+  resetForNewCircle();
+});
+
+document.getElementById('btnShare').addEventListener('click', (e) => {
+  e.stopPropagation();
+  generateShareCard();
+});
+
+document.getElementById('btnDaily').addEventListener('click', openDailyPanel);
+document.getElementById('btnSettings').addEventListener('click', openSettings);
+document.getElementById('btnDailyStart').addEventListener('click', startDailyChallenge);
+
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => setLang(btn.dataset.lang));
+});
+
+// Set today's date in calendar icon
+const todayDate = new Date().getDate();
+document.getElementById('dailyDateText').textContent = todayDate;
+
+window.addEventListener('resize', resizeCanvas);
+
+// --- Init ---
+loadState();
+try {
+  const savedLang = localStorage.getItem('circulio_lang');
+  if (savedLang) setLang(savedLang);
+} catch(e) {}
+resizeCanvas();
+updateStatsBar();
+
+// Detect language from browser
+if (!localStorage.getItem('circulio_lang')) {
+  const browserLang = navigator.language || navigator.languages?.[0] || 'zh';
+  if (browserLang.startsWith('zh')) setLang('zh');
+  else setLang('en');
+}
+</script>
+</body>
+</html>

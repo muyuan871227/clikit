@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>等你回家 — Waiting for You</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#0e0804;font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",serif}
+canvas{display:block;width:100%;height:100%;cursor:default;touch-action:none}
+#ld{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0e0804;color:#C8A060;font-size:1rem;gap:14px;z-index:999;transition:opacity 1s}
+#ld .b{width:180px;height:2px;background:#1a0e04;border-radius:1px;overflow:hidden}
+#ld .f{height:100%;width:0%;background:linear-gradient(90deg,#C8A060,#E8C878);transition:width 0.3s}
+#tb{position:fixed;left:50%;bottom:22%;transform:translateX(-50%);max-width:72%;padding:16px 32px;background:rgba(0,0,0,.9);border-radius:14px;color:#F5EDE0;font-size:clamp(15px,2.4vw,24px);line-height:1.7;text-align:center;pointer-events:none;z-index:10;opacity:0;transition:opacity .25s}
+#tb.show{opacity:1}
+#tb::after{content:'';display:block;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #F5EDE0;margin:10px auto 0;opacity:.4;animation:blink 1.2s infinite}
+@keyframes blink{0%,100%{opacity:.25}50%{opacity:.5}}
+</style>
+</head>
+<body>
+<div id="ld"><div style="letter-spacing:4px">等你回家</div><div class="b"><div class="f" id="lf"></div></div></div>
+<canvas id="c"></canvas>
+<div id="tb"></div>
+<script type="application/json" id="data-palette">{"spring": {"bg": "#FFF8E1", "accent": "#F8BBD0", "nature": "#C5E1A5", "light": "#FFFDE7"}, "summer": {"bg": "#FFE0B2", "accent": "#FDD835", "nature": "#66BB6A", "light": "#FFF9C4"}, "autumn": {"bg": "#FFB74D", "accent": "#8D6E63", "nature": "#90A4AE", "light": "#FFECB3"}, "winter": {"bg": "#ECEFF1", "accent": "#B3E5FC", "nature": "#CFD8DC", "light": "#F5F5F5"}, "memory": {"glow": "#FFF3E0", "warm": "#FFE082", "fade": "#FFFBF0"}, "hope": {"high": "#FFF8E1", "low": "#CFD8DC"}, "ui": {"text": "#5D4037", "bg": "#FFFBF0"}}</script>
+<script type="application/json" id="data-days">{"days": [{"day": 1, "season": "spring", "events": [{"time": "morning", "type": "routine", "desc": "主人出门前摸了你的头，说了句\"回见\"。早餐只吃了一半就走了。", "items": ["breakfast_half"], "hope_change": 0}, {"time": "afternoon", "type": "wait", "desc": "你在门口趴了一整天。每一个脚步声都让你竖起耳朵。", "hope_change": 0}, {"time": "evening", "type": "door_sound", "desc": "门外有脚步声！你冲到门口——是隔壁的人。不是他。", "hope_change": -5}, {"time": "night", "type": "sleep", "desc": "你在门口等到睡着了。他的拖鞋就在旁边。", "item_to_sleep": "slipper"}]}, {"day": 2, "season": "spring", "events": [{"time": "morning", "type": "routine", "desc": "又一个早晨。你去门口闻了闻。没有他的味道。", "hope_change": -2}, {"time": "afternoon", "type": "discovery", "desc": "你发现他的手机一直在茶几上响。没有人接。", "env_change": "phone_on_table", "hope_change": 0}, {"time": "night", "type": "sleep", "desc": "你叼着拖鞋回到狗窝。", "item_to_sleep": "slipper"}]}, {"day": 3, "season": "spring", "events": [{"time": "morning", "type": "discovery", "desc": "手机又响了。响了很多次。然后……不响了。", "env_change": "phone_stops", "hope_change": 0}, {"time": "afternoon", "type": "visitor", "desc": "一个女人来了。她是主人的妈妈。她抱着你哭了很久。", "visitor": "mother", "env_change": "crying_sounds", "hope_change": 5}, {"time": "night", "type": "sleep", "desc": "她走了。屋子里又只剩你一个。", "item_to_sleep": "slipper"}]}, {"day": 4, "season": "spring", "events": [{"time": "morning", "type": "routine", "desc": "阳光很好。你趴在窗边晒太阳，眼睛看着门。", "hope_change": -2}, {"time": "afternoon", "type": "door_sound", "desc": "邮递员来了！你跳起来冲到门口！——只是几封信从门缝塞进来。", "hope_change": -5}, {"time": "night", "type": "sleep", "desc": "你把信叼到门口的鞋垫上。也许他回来会看。", "item_to_sleep": "slipper"}]}, {"day": 5, "season": "spring", "events": [{"time": "morning", "type": "visitor", "desc": "主人的妈妈又来了。这次她带了一个黑色的相框。她把它放在柜子上，站了很久。", "visitor": "mother", "env_change": "photo_frame_placed", "hope_change": 0}, {"time": "afternoon", "type": "visitor", "desc": "邻居阿姨来了。她带了狗粮。她蹲下来摸你的头，眼睛红红的。", "visitor": "auntie", "hope_change": 5}, {"time": "night", "type": "sleep", "desc": "你蜷在拖鞋旁边。拖鞋上他的味道淡了一点。", "item_to_sleep": "slipper"}]}, {"day": 6, "season": "summer", "events": [{"time": "morning", "type": "routine", "desc": "天变热了。蝉开始叫了。院子里的草长高了，没人剪。", "env_change": "grass_grows", "hope_change": -2}, {"time": "afternoon", "type": "discovery", "desc": "信箱满了。信件从缝里掉出来。", "env_change": "mailbox_full", "hope_change": 0}, {"time": "night", "type": "sleep", "desc": "太热了。你趴在门口的地砖上。凉一点。", "item_to_sleep": "doormat"}]}, {"day": 7, "season": "summer", "events": [{"time": "morning", "type": "visitor", "desc": "有人来了。他们开始收拾主人的衣服。你看着他们把衣柜搬空。", "visitor": "relatives", "env_change": "clothes_removed", "hope_change": -10}, {"time": "afternoon", "type": "discovery", "desc": "你叼着一只拖鞋不放。他们看了看你，叹了口气。把拖鞋留给你了。还留下了一件旧毛衣。", "env_change": "sweater_left", "hope_change": 5}, {"time": "night", "type": "sleep", "desc": "你在旧毛衣上闻了很久。上面有他的味道。你蜷在毛衣上睡着了。", "item_to_sleep": "sweater"}]}, {"day": 8, "season": "summer", "events": [{"time": "morning", "type": "routine", "desc": "又一个炎热的早晨。灰尘在阳光里飘。", "hope_change": -2}, {"time": "afternoon", "type": "visitor", "desc": "隔壁的小男孩隔着院子扔了一个球过来。你看了看球，又看了看门。", "visitor": "boy", "hope_change": 3}, {"time": "night", "type": "sleep", "desc": "你把球叼到门口。也许他回来了可以一起玩。", "item_to_sleep": "sweater"}]}, {"day": 9, "season": "summer", "events": [{"time": "morning", "type": "door_sound", "desc": "门外有脚步声！还有钥匙声！你跳起来冲过去——是房东来检查房子。不是他。", "hope_change": -8}, {"time": "afternoon", "type": "routine", "desc": "房东走了。你趴在门口很久很久。", "hope_change": -2}, {"time": "night", "type": "sleep", "desc": "你把鼻子埋在毛衣里。味道又淡了一点。", "item_to_sleep": "sweater"}]}, {"day": 10, "season": "summer", "events": [{"time": "morning", "type": "visitor", "desc": "邻居阿姨来了。从今天开始她每天都会来喂你。她在黑色相框前站了一会儿。", "visitor": "auntie", "env_change": "regular_feeding", "hope_change": 5}, {"time": "afternoon", "type": "routine", "desc": "你坐在窗边看外面。树叶绿得发亮。去年这个时候你们一起去过公园。", "hope_change": -2}, {"time": "night", "type": "sleep", "desc": "阿姨走的时候摸了摸你的头。你看着她走，又转头看门。", "item_to_sleep": "sweater"}]}, {"day": 11, "season": "autumn", "events": [{"time": "morning", "type": "routine", "desc": "树叶开始变黄了。风把落叶吹进了院子。没人打扫。", "env_change": "leaves_falling", "hope_change": -2}, {"time": "afternoon", "type": "discovery", "desc": "你发现灰尘很厚了。桌子上有你看不懂的东西——一些信，一些纸。", "env_change": "dust_thick", "hope_change": 0}, {"time": "night", "type": "sleep", "desc": "屋子里越来越暗了。你蜷在毛衣上。", "item_to_sleep": "sweater"}]}, {"day": 12, "season": "autumn", "events": [{"time": "morning", "type": "discovery", "desc": "拖鞋被你叼碎了。碎成了好几块。但你还是把碎片一块一块叼到门口摆好。", "env_change": "slipper_destroyed", "hope_change": -3}, {"time": "afternoon", "type": "door_sound", "desc": "快递员按了门铃。你冲过去！——他把包裹放在门口就走了。不是他。", "hope_change": -5}, {"time": "night", "type": "sleep", "desc": "你趴在拖鞋碎片旁边。", "item_to_sleep": "slipper_pieces"}]}, {"day": 13, "season": "autumn", "events": [{"time": "morning", "type": "routine", "desc": "秋天的阳光变得温柔了。像他的手。", "hope_change": -2}, {"time": "afternoon", "type": "discovery", "desc": "收音机不知道怎么开了。你听到有人说话。说到了……\"那场车祸\"。你不懂。", "env_change": "radio_news", "hope_change": 0}, {"time": "night", "type": "sleep", "desc": "你蜷在毛衣上。味道越来越淡了。", "item_to_sleep": "sweater"}]}, {"day": 14, "season": "autumn", "events": [{"time": "morning", "type": "visitor", "desc": "一家三口来了。他们看了看屋子，看了看你。小男孩想抱你。", "visitor": "adopt_family", "hope_change": 0}, {"time": "afternoon", "type": "routine", "desc": "你从小男孩怀里挣脱出来，跑回门口趴下。你不走。他们叹了口气，走了。", "env_change": "adoption_rejected", "hope_change": -3}, {"time": "night", "type": "sleep", "desc": "你必须在这里等。他说过\"回见\"。", "item_to_sleep": "sweater"}]}, {"day": 15, "season": "autumn", "events": [{"time": "morning", "type": "routine", "desc": "最后的秋叶落了。院子里铺满了枯叶。", "env_change": "last_leaves", "hope_change": -2}, {"time": "afternoon", "type": "visitor", "desc": "邻居阿姨今天给你带了一条毛毯。她把毛毯铺在门口。你趴了上去。", "visitor": "auntie", "hope_change": 5}, {"time": "night", "type": "sleep", "desc": "你在毛毯上蜷成一团。门外的风很大。", "item_to_sleep": "blanket"}]}, {"day": 16, "season": "winter", "events": [{"time": "morning", "type": "discovery", "desc": "下雪了。第一场雪。窗户上结了冰花。屋子里很冷。", "env_change": "first_snow", "hope_change": -2}, {"time": "afternoon", "type": "discovery", "desc": "你在衣柜角落找到了他的旧毛衣。你把鼻子埋进去——还有一点点味道。一点点。", "env_change": "found_sweater_deep", "hope_change": 10}, {"time": "night", "type": "sleep", "desc": "你蜷在毛衣上。窗外的雪很安静。", "item_to_sleep": "sweater"}]}, {"day": 17, "season": "winter", "events": [{"time": "morning", "type": "routine", "desc": "雪停了。世界很白很安静。去年的圣诞装饰还挂在窗户上。", "env_change": "old_christmas_decor", "hope_change": -2}, {"time": "afternoon", "type": "door_sound", "desc": "门外有声音。铲雪的声音。你竖起耳朵——不是他的脚步声。是邻居在铲雪。", "hope_change": -3}, {"time": "night", "type": "sleep", "desc": "你看着窗户上的冰花。像他画过的那些画。", "item_to_sleep": "sweater"}]}, {"day": 18, "season": "winter", "events": [{"time": "morning", "type": "routine", "desc": "圣诞夜。远处传来歌声。灯光从窗户外面照进来，五颜六色的。", "hope_change": -2}, {"time": "afternoon", "type": "visitor", "desc": "邻居阿姨在门口放了一碗热食和一条新毛毯。小男孩给你带了一个系着铃铛的玩具。", "visitor": "auntie", "hope_change": 5}, {"time": "evening", "type": "routine", "desc": "你听着远处的歌声。去年这个时候，他抱着你一起看窗外的雪。", "hope_change": -5}, {"time": "night", "type": "sleep", "desc": "圣诞快乐。你蜷在新毛毯里。但鼻子还是埋在旧毛衣上。", "item_to_sleep": "sweater"}]}, {"day": 19, "season": "winter", "events": [{"time": "morning", "type": "discovery", "desc": "毛衣上的味道……几乎没有了。你把鼻子埋在毛衣里很久很久。使劲闻。", "env_change": "scent_almost_gone", "hope_change": -5}, {"time": "afternoon", "type": "routine", "desc": "你试着回忆他的味道。但记忆也像味道一样，在慢慢消散。", "hope_change": -3}, {"time": "night", "type": "sleep", "desc": "你把毛衣、毛毯、拖鞋碎片都堆在一起，蜷在中间。这些是他留给你的全部了。", "item_to_sleep": "all_items"}]}, {"day": 20, "season": "spring2", "events": [{"time": "morning", "type": "discovery", "desc": "春天又来了。门口的花开了。和去年一样的花。", "env_change": "flowers_bloom_again", "hope_change": 3}, {"time": "afternoon", "type": "routine", "desc": "你趴在门口。阳光暖暖的。尾巴偶尔动一下。你老了一点。但你还在等。", "hope_change": 0}, {"time": "evening", "type": "door_sound", "desc": "门外有脚步声。你的耳朵竖了起来——", "hope_change": 30, "is_ending": true}]}]}</script>
+<script type="application/json" id="data-items">{"items": [{"id": "slipper", "name": "拖鞋", "scent_initial": 100, "scent_decay_per_day": 5, "memory_trigger": "hand_petting", "interaction": "sniff_and_carry", "day_available": 1, "day_destroyed": 12, "destroyed_desc": "拖鞋被你叼碎了，但你还是把碎片放到门口"}, {"id": "sweater", "name": "旧毛衣", "scent_initial": 80, "scent_decay_per_day": 3, "memory_trigger": "park_running", "interaction": "curl_up_on", "day_available": 7, "day_destroyed": null}, {"id": "pillow", "name": "枕头", "scent_initial": 60, "scent_decay_per_day": 4, "memory_trigger": "sleeping_together", "interaction": "sniff", "day_available": 1, "day_destroyed": null}, {"id": "photo_frame", "name": "照片", "scent_initial": 0, "memory_trigger": "first_day_home", "interaction": "look_at", "day_available": 5, "day_destroyed": null}, {"id": "tennis_ball", "name": "网球", "scent_initial": 40, "scent_decay_per_day": 2, "memory_trigger": "playing_fetch", "interaction": "carry_and_drop_at_door", "day_available": 1, "day_destroyed": null}, {"id": "food_bowl", "name": "狗碗", "scent_initial": 20, "scent_decay_per_day": 1, "memory_trigger": null, "interaction": "eat", "day_available": 1, "day_destroyed": null}, {"id": "leash", "name": "牵绳", "scent_initial": 50, "scent_decay_per_day": 3, "memory_trigger": "walking_together", "interaction": "sniff_and_whimper", "day_available": 1, "day_destroyed": null}]}</script>
+<script type="application/json" id="data-neighbors">{"neighbors": [{"id": "auntie", "name": "邻居阿姨", "visits": [{"day": 5, "action": "带了狗粮来", "emotion": "crying", "pet_dog": true}, {"day": 10, "action": "开始每天来喂食", "emotion": "sad_smile", "pet_dog": true}, {"day": 15, "action": "给狗狗带了毛毯", "emotion": "gentle", "pet_dog": true}, {"day": 18, "action": "圣诞夜放了热食和毛毯", "emotion": "warm", "pet_dog": true}, {"day": 20, "action": "坐在门口陪狗狗看花开", "emotion": "peaceful", "pet_dog": true}]}, {"id": "boy", "name": "隔壁小男孩", "visits": [{"day": 8, "action": "隔着院子扔球给狗狗", "emotion": "curious", "pet_dog": false}, {"day": 16, "action": "给狗狗带了毛毯", "emotion": "kind", "pet_dog": false}]}, {"id": "adopt_family", "name": "领养家庭", "visits": [{"day": 14, "action": "来看狗狗想领养", "emotion": "hopeful", "pet_dog": false}, {"day": 14, "action": "狗狗跑回门口趴着，他们叹了口气走了", "emotion": "disappointed", "pet_dog": false}]}]}</script>
+<script type="application/json" id="data-ui">{"zh": {"title": "等你回家", "start": "（轻触这扇门）", "day": "第{n}天", "spring": "春", "summer": "夏", "autumn": "秋", "winter": "冬", "spring2": "春", "ending_stat_days": "等了 {n} 天", "ending_stat_door": "去门口 {n} 次", "ending_stat_sniff": "闻了 {n} 次门缝", "ending_global": "现在，还有 {n} 只团团在等", "share": "分享", "again": "再等一次"}, "en": {"title": "Waiting for You", "start": "(tap the door)", "day": "Day {n}", "spring": "Spring", "summer": "Summer", "autumn": "Autumn", "winter": "Winter", "spring2": "Spring", "ending_stat_days": "Waited {n} days", "ending_stat_door": "Went to the door {n} times", "ending_stat_sniff": "Sniffed through the crack {n} times", "ending_global": "Right now, {n} TuanTuans are still waiting", "share": "Share", "again": "Wait again"}, "ja": {"title": "あなたの帰りを待つ", "start": "（ドアをタップ）", "day": "{n}日目", "spring": "春", "summer": "夏", "autumn": "秋", "winter": "冬", "spring2": "春", "ending_stat_days": "{n}日間待った", "ending_stat_door": "ドアの前に{n}回行った", "ending_stat_sniff": "ドアの隙間を{n}回嗅いだ", "ending_global": "今、{n}匹の団団がまだ待っている", "share": "シェア", "again": "もう一度待つ"}}</script>
+<script type="application/json" id="data-memories">{"memories": [{"id": "hand_petting", "trigger_item": "slipper", "visual": "一只手轻轻摸过狗狗的头，手指在耳后挠了挠", "duration_ms": 1500, "audio": "gentle_hum", "warmth": 1.0}, {"id": "park_running", "trigger_item": "sweater", "visual": "公园草地上，主人在前面跑，回头笑着喊\"快跟上\"", "duration_ms": 2000, "audio": "laughter", "warmth": 1.0}, {"id": "sleeping_together", "trigger_item": "pillow", "visual": "夜晚的沙发，主人侧躺着，狗狗蜷在他脚边", "duration_ms": 1500, "audio": "breathing", "warmth": 0.8}, {"id": "first_day_home", "trigger_item": "photo_frame", "visual": "一双手把小狗从纸箱里抱出来，阳光下金色的毛", "duration_ms": 2500, "audio": "puppy_bark", "warmth": 1.0}, {"id": "playing_fetch", "trigger_item": "tennis_ball", "visual": "球飞出去，狗狗追着跑，叼回来，尾巴摇得像螺旋桨", "duration_ms": 2000, "audio": "bark_happy", "warmth": 0.9}, {"id": "walking_together", "trigger_item": "leash", "visual": "夕阳下的人行道，一人一狗的影子拉得很长", "duration_ms": 2000, "audio": "footsteps_two", "warmth": 0.9}, {"id": "final_memory", "trigger": "ending", "visual": "门打开了。他蹲下来。笑着说：\"团团，我回来了。\"", "duration_ms": 5000, "audio": "theme_full", "warmth": 1.0}]}</script>
+<script type="application/json" id="data-vfx">{"cherry_blossom": {"color": "#F8BBD0", "count": 5, "lifetime": 4000, "type": "drift_fall", "season": "spring"}, "sunbeam": {"color": "#FFF9C4", "count": 3, "lifetime": 6000, "type": "slow_ray", "season": "summer"}, "falling_leaf": {"color": "#8D6E63", "count": 4, "lifetime": 5000, "type": "spiral_fall", "season": "autumn"}, "snowflake": {"color": "#FAFAFA", "count": 8, "lifetime": 7000, "type": "drift", "season": "winter"}, "dust": {"color": "#D7CCC8", "count": 3, "lifetime": 8000, "type": "float", "season": "all"}, "memory_glow": {"color": "#FFE082", "count": 15, "lifetime": 2000, "type": "soft_radial"}, "hope_spark": {"color": "#FFF3E0", "count": 10, "lifetime": 500, "type": "burst_up"}}</script>
+<script>
+'use strict';
+/*══════════════════════════════════════════════════════════
+  《等你回家》v3 — Waiting for You
+  叙事探索 × 情感模拟 · 水彩绘本风
+  铁律 #6: 所有文案/配色/配置/数值从 assets/ 读取
+  铁律 #13-16: 全 fallback / clamp / 超时出口 / 深度限制
+══════════════════════════════════════════════════════════*/
+(async()=>{
+
+// ═══ 资产加载器（fallback + 进度条）═══════════════════
+const lf=document.getElementById('lf');
+let _ld=0,_lt=0;
+const tk=()=>{_ld++;lf.style.width=Math.round(_ld/_lt*100)+'%'};
+
+function LJ(u,fb){
+  _lt++;
+  // 优先从内联 DOM 读取（file:// 安全）
+  try {
+    const m = u.match(/([^/]+)\.json$/);
+    if (m) {
+      const el = document.getElementById('data-' + m[1]);
+      if (el) { tk(); return Promise.resolve(JSON.parse(el.textContent)); }
+    }
+  } catch(e){}
+  return fetch(u).then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{tk();return d}).catch(()=>{tk();return fb});
+}
+function LI(u){_lt++;return new Promise(r=>{const i=new Image;i.onload=()=>{tk();r(i)};i.onerror=()=>{tk();r(null)};i.src=u})}
+
+// ── JSON 配置 ──
+const[PAL,DAYS,ITEMS,NEIGH,UI,MEM,VFX]=await Promise.all([
+  LJ('assets/configs/palette.json',{spring:{bg:'#FFF8E1'},summer:{bg:'#FFE0B2'},autumn:{bg:'#FFB74D'},winter:{bg:'#ECEFF1'},memory:{glow:'#FFF3E0',warm:'#FFE082'},hope:{high:'#FFF8E1',low:'#CFD8DC'},ui:{text:'#5D4037',bg:'#FFFBF0'}}),
+  LJ('assets/configs/days.json',{days:[]}),
+  LJ('assets/configs/items.json',{items:[]}),
+  LJ('assets/configs/neighbors.json',{neighbors:[]}),
+  LJ('assets/strings/ui.json',{zh:{title:'等你回家',start:'（轻触这扇门）',day:'第{n}天',spring:'春',summer:'夏',autumn:'秋',winter:'冬',spring2:'春',ending_stat_days:'等了 {n} 天',ending_stat_door:'去门口 {n} 次',ending_stat_sniff:'闻了 {n} 次门缝',ending_global:'现在，还有 {n} 只团团在等',again:'再等一次'}}),
+  LJ('assets/configs/memories.json',{memories:[]}),
+  LJ('assets/configs/vfx.json',{}),
+]);
+const L=UI.zh;
+
+// ── 精灵图 ──
+const DS={};
+await Promise.all(['idle','walk','run','sniff','lie_down','curl_up'].map(async k=>{
+  DS[k]=await LI(`assets/sprites/dog_${k==='lie_down'?'lie':k==='curl_up'?'curl':k}.png`);
+}));
+
+// ── 背景 ──
+const BG={};
+await Promise.all(['spring','summer','autumn','winter'].map(async s=>{BG[s]=await LI(`assets/backgrounds/room_${s}.png`)}));
+
+// ── 物品图标 ──
+const II={};
+const ik=['slipper','slipper_pieces','sweater','photo_frame','tennis_ball','food_bowl','leash','blanket'];
+const if_=['item_slipper','item_slipper_pieces','item_sweater','item_photo','item_ball','item_bowl','item_leash','item_blanket'];
+await Promise.all(ik.map(async(k,i)=>{II[k]=await LI(`assets/icons/${if_[i]}.png`)}));
+
+// ── 标题 ──
+const TDI=await LI('assets/title/door.png');
+
+// 隐藏加载
+const ldEl=document.getElementById('ld');
+ldEl.style.opacity='0';setTimeout(()=>ldEl.style.display='none',1000);
+
+// ═══ Canvas ═══════════════════════════════════════════
+const cv=document.getElementById('c'),cx=cv.getContext('2d');
+let W,H;
+function rsz(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;cx.setTransform(d,0,0,d,0,0)}
+rsz();addEventListener('resize',rsz);
+
+// ═══ 常量 ═════════════════════════════════════════════
+const FY=0.75,ZN={door:.08,entry:.18,sofa:.40,table:.52,kitchen:.70,window:.88};
+
+// ═══ Web Audio 音效系统 ═══════════════════════════════
+let ac=null;
+function iA(){if(ac)return;try{ac=new(AudioContext||webkitAudioContext)}catch(e){}}
+
+function sfxTick(){
+  if(!ac)return;const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();
+  o.type='sine';o.frequency.value=900;g.gain.setValueAtTime(.02,t);
+  g.gain.exponentialRampToValueAtTime(.001,t+.06);
+  o.connect(g);g.connect(ac.destination);o.start();o.stop(t+.06);
+}
+function sfxHeart(){
+  if(!ac)return;const t=ac.currentTime;
+  [0,.22].forEach(d=>{const o=ac.createOscillator(),g=ac.createGain();
+    o.type='sine';o.frequency.value=50;g.gain.setValueAtTime(0,t+d);
+    g.gain.linearRampToValueAtTime(.12,t+d+.04);g.gain.exponentialRampToValueAtTime(.001,t+d+.18);
+    o.connect(g);g.connect(ac.destination);o.start(t+d);o.stop(t+d+.18);
+  });
+}
+function sfxSigh(){
+  if(!ac)return;const t=ac.currentTime,n=ac.createBufferSource(),
+  b=ac.createBuffer(1,ac.sampleRate*.4,ac.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*.06;n.buffer=b;
+  const f=ac.createBiquadFilter();f.type='lowpass';f.frequency.value=350;
+  f.frequency.linearRampToValueAtTime(180,t+.35);
+  const g=ac.createGain();g.gain.setValueAtTime(.05,t);g.gain.linearRampToValueAtTime(0,t+.4);
+  n.connect(f);f.connect(g);g.connect(ac.destination);n.start();n.stop(t+.4);
+}
+function sfxChime(){
+  if(!ac)return;[523.25,659.25,783.99].forEach((fr,i)=>{const t=ac.currentTime+i*.28,
+    o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.value=fr;
+    g.gain.setValueAtTime(.07,t);g.gain.exponentialRampToValueAtTime(.001,t+1.5);
+    o.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+1.5);
+  });
+}
+function sfxDoor(){
+  if(!ac)return;const t=ac.currentTime;
+  [261.63,329.63,392,523.25].forEach((fr,i)=>{const o=ac.createOscillator(),g=ac.createGain();
+    o.type='sine';o.frequency.value=fr;g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(.05,t+.4+i*.25);
+    g.gain.linearRampToValueAtTime(.03,t+2+i*.2);
+    g.gain.exponentialRampToValueAtTime(.001,t+4.5);
+    o.connect(g);g.connect(ac.destination);o.start(t+i*.25);o.stop(t+4.5);
+  });
+}
+function sfxClick(){
+  if(!ac)return;const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();
+  o.type='triangle';o.frequency.value=600;g.gain.setValueAtTime(.04,t);
+  g.gain.exponentialRampToValueAtTime(.001,t+.05);
+  o.connect(g);g.connect(ac.destination);o.start();o.stop(t+.05);
+}
+let clockIv=null;
+function startClock(){if(clockIv)return;clockIv=setInterval(()=>{if(phase===1)sfxTick()},2200)}
+function stopClock(){if(clockIv){clearInterval(clockIv);clockIv=null}}
+
+// ═══ 游戏状态 ═════════════════════════════════════════
+let phase=0; // 0=title,1=playing,2=transition,3=ending
+let day=1,evIdx=0,hope=100;
+let stat={door:0,sniff:0};
+let txt='',txtA=0,txtT=0,fadeA=0,fadeT=0;
+let wfc=false,dayTr=false,autoT=0;
+let mFlash=null,mT=0;
+let eStep=0,eT=0;
+let pts=[];
+
+const dog={x:.5,tx:.5,st:'idle',dir:1,ly:false,ts:5,ea:0};
+
+// ═══ 工具 ═════════════════════════════════════════════
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lp=(a,b,t)=>a+(b-a)*t;
+const sn=d=>d<=5?'spring':d<=10?'summer':d<=15?'autumn':d<=19?'winter':'spring';
+const hb=h=>h>=80?{sp:4,ts:6}:h>=60?{sp:3,ts:4}:h>=40?{sp:2,ts:2}:h>=20?{sp:1.5,ts:1}:{sp:1,ts:.3};
+
+// ═══ 渲染：cover-fit 图片 ═════════════════════════════
+function cvr(img,x,y,w,h){
+  if(!img)return;const ia=img.naturalWidth/img.naturalHeight,ca=w/h;
+  let sx=0,sy=0,sw=img.naturalWidth,sh=img.naturalHeight;
+  if(ca>ia){sh=sw/ca;sy=(img.naturalHeight-sh)/2}else{sw=sh*ca;sx=(img.naturalWidth-sw)/2}
+  cx.drawImage(img,sx,sy,sw,sh,x,y,w,h);
+}
+
+// ═══ 渲染：背景 ═══════════════════════════════════════
+function drBg(){
+  const s=day===20?'spring':sn(day),bg=BG[s];
+  if(bg)cvr(bg,0,0,W,H);
+  else{cx.fillStyle=PAL[s]?.bg||'#FFF8E1';cx.fillRect(0,0,W,H)}
+
+  // 季节色调叠加
+  if(s==='winter'){cx.fillStyle='rgba(180,210,240,.07)';cx.fillRect(0,0,W,H)}
+  else if(s==='autumn'){cx.fillStyle='rgba(30,15,5,.05)';cx.fillRect(0,0,W,H)}
+
+  // 物品图标
+  const fy=H*FY,sz=Math.min(W,H)*.055;
+  function di(img,xr,yo,sc){
+    if(!img)return;const a=img.naturalWidth/img.naturalHeight,h=sz*sc,w=h*a;
+    cx.drawImage(img,W*xr-w/2,fy-yo-h,w,h);
+  }
+  if(day<12)di(II.slipper,ZN.door+.06,sz*.1,.9);
+  else di(II.slipper_pieces,ZN.door+.05,sz*.05,.8);
+  if(day>=7)di(II.sweater,ZN.sofa+.08,sz*.05,.85);
+  if(day>=5)di(II.photo_frame,ZN.table+.02,H*FY*.12,.6);
+  di(II.food_bowl,ZN.kitchen,sz*.05,.55);
+  di(II.tennis_ball,ZN.sofa-.02,sz*.02,.35);
+  if(II.leash){const li=II.leash,la=li.naturalWidth/li.naturalHeight,lh=sz*1.1;
+    cx.drawImage(li,W*(ZN.door+.07)-lh*la*.2,H*FY*.22,lh*la*.4,lh)}
+  if(day>=15)di(II.blanket,ZN.door+.04,sz*.05,.7);
+}
+
+// ═══ 渲染：狗 ═════════════════════════════════════════
+function drDog(){
+  const fy=H*FY,px=dog.x*W,br=Math.sin(Date.now()/800)*1.5;
+  let sk='idle';
+  if(dog.ly||dog.st==='lie_down')sk='lie_down';
+  else if(dog.st==='curl_up')sk='curl_up';
+  else if(dog.st==='run')sk='run';
+  else if(dog.st==='walk')sk='walk';
+  else if(dog.st==='sniff')sk='sniff';
+  const sp=DS[sk]||DS.idle;if(!sp)return;
+  const isL=sk==='lie_down'||sk==='curl_up'||sk==='sniff';
+  const ref=Math.min(W,H),sh=isL?ref*.13:ref*.19,sw=sh*(sp.naturalWidth/sp.naturalHeight);
+  let bob=0;
+  if(dog.st==='walk')bob=Math.sin(Date.now()/200)*1.5;
+  else if(dog.st==='run')bob=Math.sin(Date.now()/120)*3;
+  cx.save();cx.translate(px,fy+br);
+  if(dog.dir<0)cx.scale(-1,1);
+  cx.drawImage(sp,-sw/2,-sh+bob,sw,sh);cx.restore();
+}
+
+// ═══ 粒子 ═════════════════════════════════════════════
+function spP(s){
+  const c=VFX[s==='spring'?'cherry_blossom':s==='summer'?'sunbeam':s==='autumn'?'falling_leaf':'snowflake']||{color:'#FFF',lifetime:5000};
+  pts.push({x:Math.random()*W,y:-10,vx:(Math.random()-.5)*.5,vy:.2+Math.random()*.4,
+    sz:2+Math.random()*4,co:c.color||'#FFF',li:c.lifetime||5000,ml:c.lifetime||5000,
+    ro:Math.random()*6.28,rv:(Math.random()-.5)*.02,tp:s==='autumn'?'l':'c'});
+}
+function spG(x,y){
+  for(let i=0;i<12;i++)pts.push({x:x+(Math.random()-.5)*40,y:y+(Math.random()-.5)*30,
+    vx:(Math.random()-.5)*.3,vy:-.4-Math.random()*.4,sz:2+Math.random()*5,
+    co:VFX.memory_glow?.color||'#FFE082',li:2000,ml:2000,ro:0,rv:0,tp:'g'});
+}
+function upP(dt){
+  for(let i=pts.length-1;i>=0;i--){const p=pts[i];p.li-=dt;
+    if(p.li<=0||p.y>H+20){pts.splice(i,1);continue}
+    p.x+=p.vx;p.y+=p.vy;p.ro+=p.rv;if(p.tp==='l')p.x+=Math.sin(Date.now()/500+i)*.4}
+}
+function drP(){
+  for(const p of pts){const a=cl(p.li/p.ml*2,0,1);cx.save();cx.translate(p.x,p.y);cx.rotate(p.ro);cx.globalAlpha=a;
+    if(p.tp==='g'){const g=cx.createRadialGradient(0,0,0,0,0,p.sz*2);
+      g.addColorStop(0,p.co);g.addColorStop(1,'rgba(255,224,130,0)');cx.fillStyle=g;cx.beginPath();cx.arc(0,0,p.sz*2,0,6.28);cx.fill()}
+    else if(p.tp==='l'){cx.fillStyle=p.co;cx.beginPath();cx.ellipse(0,0,p.sz,p.sz*.5,0,0,6.28);cx.fill()}
+    else{cx.fillStyle=p.co;cx.beginPath();cx.arc(0,0,p.sz,0,6.28);cx.fill()}
+    cx.globalAlpha=1;cx.restore()}
+}
+
+// ═══ 渲染：叙事文字 ═══════════════════════════════════
+// 文字框用 DOM 元素，不受 Canvas globalAlpha 影响
+const tbEl=document.getElementById('tb');
+function drTxt(){
+  if(txtA>.3&&txt){tbEl.textContent=txt;tbEl.classList.add('show')}
+  else{tbEl.classList.remove('show')}
+}
+
+// ═══ 渲染：HUD ════════════════════════════════════════
+function drHUD(){
+  const s=sn(day),nm=L[day===20?'spring2':s]||'';
+  cx.save();cx.font=`${Math.max(13,W*.013)}px "PingFang SC",sans-serif`;
+  cx.fillStyle='rgba(255,251,240,.6)';cx.textAlign='left';cx.textBaseline='top';
+  cx.shadowColor='rgba(0,0,0,.4)';cx.shadowBlur=4;
+  cx.fillText(L.day.replace('{n}',day)+' · '+nm,16,16);cx.shadowBlur=0;cx.restore();
+}
+
+// ═══ 渲染：回忆闪回 ═══════════════════════════════════
+function drMem(){
+  if(!mFlash)return;const p=mT/mFlash.duration_ms;
+  const a=p<.15?p/.15:p>.85?(1-p)/.15:1;cx.save();cx.globalAlpha=a*.85;
+  cx.fillStyle=PAL.memory?.glow||'#FFF3E0';cx.fillRect(0,0,W,H);
+  const vg=cx.createRadialGradient(W/2,H/2,W*.1,W/2,H/2,W*.5);
+  vg.addColorStop(0,'rgba(255,224,130,.12)');vg.addColorStop(1,`rgba(255,243,224,${a*.25})`);
+  cx.fillStyle=vg;cx.fillRect(0,0,W,H);
+  cx.fillStyle='#5D4037';const fs=Math.max(16,W*.024);
+  cx.font=`italic ${fs}px "PingFang SC",serif`;cx.textAlign='center';cx.textBaseline='middle';
+  const mw=W*.55,ls=[];let cc='';
+  for(const ch of mFlash.visual){if(cx.measureText(cc+ch).width>mw){ls.push(cc);cc=ch}else cc+=ch}
+  if(cc)ls.push(cc);const lhh=fs*1.8,sy=H/2-(ls.length-1)*lhh/2;
+  for(let i=0;i<ls.length;i++)cx.fillText(ls[i],W/2,sy+i*lhh);
+  cx.globalAlpha=1;cx.restore();
+}
+
+// ═══ 渲染：标题 ═══════════════════════════════════════
+function drTitle(){
+  const t=Date.now()/1000;
+  if(TDI)cvr(TDI,0,0,W,H);else{cx.fillStyle='#1a0e04';cx.fillRect(0,0,W,H)}
+  // 呼吸光
+  const gl=.05+Math.sin(t*1.5)*.03;
+  const g=cx.createRadialGradient(W/2,H*.45,10,W/2,H*.45,W*.3);
+  g.addColorStop(0,`rgba(255,248,225,${gl})`);g.addColorStop(1,'rgba(0,0,0,0)');
+  cx.fillStyle=g;cx.fillRect(0,0,W,H);
+  // 狗
+  const li=DS.lie_down;if(li){const ds=Math.min(W,H)*.13,da=li.naturalWidth/li.naturalHeight;
+    cx.globalAlpha=.85+Math.sin(t*.5)*.1;cx.drawImage(li,W/2-ds*da*.3,H*.62-ds*.5,ds*da,ds);cx.globalAlpha=1}
+  // 渐变
+  const tg=cx.createLinearGradient(0,H*.74,0,H);
+  tg.addColorStop(0,'rgba(20,12,6,0)');tg.addColorStop(.35,'rgba(20,12,6,.55)');tg.addColorStop(1,'rgba(20,12,6,.7)');
+  cx.fillStyle=tg;cx.fillRect(0,H*.74,W,H*.26);
+  // 标题
+  cx.fillStyle='#FFFBF0';cx.font=`bold ${Math.max(26,W*.038)}px "PingFang SC",serif`;
+  cx.textAlign='center';cx.textBaseline='middle';cx.shadowColor='rgba(0,0,0,.5)';cx.shadowBlur=6;
+  cx.fillText(L.title,W/2,H*.84);cx.shadowBlur=0;
+  cx.fillStyle=`rgba(255,251,240,${.35+Math.sin(t*2)*.15})`;
+  cx.font=`${Math.max(13,W*.015)}px "PingFang SC",sans-serif`;cx.fillText(L.start,W/2,H*.92);
+}
+
+// ═══ 渲染：结局 ═══════════════════════════════════════
+function drEnd(){
+  const t=eT/1000;cx.fillStyle='#080402';cx.fillRect(0,0,W,H);
+  const fs=Math.max(18,W*.024);cx.font=`italic ${fs}px "PingFang SC",serif`;
+  cx.textAlign='center';cx.textBaseline='middle';
+  if(eStep===0){
+    const a=cl(t/3,0,1);cx.fillStyle=`rgba(255,243,224,${a*.12})`;cx.fillRect(0,0,W,H);
+    cx.fillStyle=`rgba(255,251,240,${a})`;cx.fillText('门打开了。',W/2,H/2);
+    if(t>4){eStep=1;eT=0}
+  }else if(eStep===1){
+    const a=cl(t/2,0,1);cx.fillStyle=`rgba(255,243,224,${a*.08})`;cx.fillRect(0,0,W,H);
+    cx.fillStyle=`rgba(255,251,240,${a})`;cx.fillText('一束光照进来。',W/2,H*.4);
+    cx.fillText('他蹲下来。',W/2,H*.52);if(t>5){eStep=2;eT=0}
+  }else if(eStep===2){
+    const a=cl(t/2,0,1),ga=cl(t/8,0,.35);
+    cx.fillStyle=`rgba(255,224,130,${ga})`;cx.fillRect(0,0,W,H);
+    cx.fillStyle=`rgba(255,251,240,${a})`;cx.font=`italic ${Math.max(20,W*.028)}px "PingFang SC",serif`;
+    cx.fillText('"团团，我回来了。"',W/2,H/2);if(t>6){eStep=3;eT=0}
+  }else if(eStep===3){
+    if(t<3){const ga=cl(.3-t/10,0,.3);cx.fillStyle=`rgba(255,224,130,${ga})`;cx.fillRect(0,0,W,H)}
+    else{
+      const a=cl((t-3)/2,0,.7);cx.fillStyle=`rgba(255,251,240,${a})`;
+      cx.font=`${Math.max(14,W*.016)}px "PingFang SC",sans-serif`;
+      const sy=H*.35,lh=W*.04;
+      cx.fillText(L.ending_stat_days.replace('{n}','365'),W/2,sy);
+      cx.fillText(L.ending_stat_door.replace('{n}',stat.door),W/2,sy+lh);
+      cx.fillText(L.ending_stat_sniff.replace('{n}',stat.sniff),W/2,sy+lh*2);
+      if(t>5.5){const ga=cl((t-5.5)/2,0,.7);cx.fillStyle=`rgba(255,251,240,${ga})`;
+        cx.font=`${Math.max(15,W*.017)}px "PingFang SC",sans-serif`;
+        cx.fillText(L.ending_global.replace('{n}',(10000+Math.floor(Math.random()*50000)).toLocaleString()),W/2,sy+lh*4)}
+      if(t>8){const ba=cl((t-8)/1.5,0,.75);cx.fillStyle=`rgba(255,251,240,${ba})`;
+        cx.font=`${Math.max(15,W*.017)}px "PingFang SC",sans-serif`;cx.fillText('[ '+L.again+' ]',W/2,H*.78)}
+    }
+  }
+}
+function drFade(){if(fadeA<.005)return;cx.save();cx.globalAlpha=fadeA;cx.fillStyle='#080402';cx.fillRect(0,0,W,H);cx.globalAlpha=1;cx.restore()}
+
+// ═══ 事件系统 ═════════════════════════════════════════
+let evs=[];
+
+function loadDay(d){
+  const dd=DAYS.days.find(x=>x.day===d);
+  if(!dd){if(d>20)goEnd();return}
+  evs=dd.events.slice();evIdx=0;wfc=false;
+  dog.tx=.5;dog.ly=false;dog.st='idle';dog.ea=0;
+  if(d>1)hope=cl(hope-2,1,100);
+  dog.ts=hb(hope).ts;showEv();
+}
+
+function showEv(){
+  if(evIdx>=evs.length){
+    if(day>=20){goEnd();return}
+    dayTr=true;fadeT=1;
+    setTimeout(()=>{day++;loadDay(day);fadeT=0},2000);
+    setTimeout(()=>dayTr=false,3500);return;
+  }
+  const ev=evs[evIdx];txt=ev.desc||'';txtT=1;
+  if(ev.hope_change)hope=cl(hope+ev.hope_change,1,100);
+  dog.ts=hb(hope).ts;
+
+  if(ev.type==='door_sound'){
+    stat.door++;stat.sniff++;dog.tx=ZN.door+.05;dog.dir=-1;
+    dog.st=hope>40?'run':'walk';dog.ea=1;sfxHeart();
+    setTimeout(()=>{dog.ea=-1;dog.st='idle';sfxSigh();
+      setTimeout(()=>{dog.ea=0;dog.dir=1;dog.tx=.4},1500)},2500);
+  }else if(ev.type==='visitor'){dog.tx=ZN.entry;dog.st='walk';dog.dir=-1;
+  }else if(ev.type==='discovery'){dog.st='sniff';stat.sniff++;
+    setTimeout(()=>{if(dog.st==='sniff')dog.st='idle'},2000);
+  }else if(ev.type==='sleep'){dog.ly=true;
+    dog.st=(ev.item_to_sleep==='sweater'||ev.item_to_sleep==='all_items')?'curl_up':'lie_down';
+    dog.tx=['doormat','slipper','slipper_pieces','blanket'].includes(ev.item_to_sleep)?ZN.door+.07:ZN.sofa+.06;
+  }else if(ev.type==='routine'&&ev.time==='morning'){
+    dog.tx=ZN.door+.05;dog.dir=-1;dog.st='walk';stat.sniff++;
+  }
+
+  // 物品记忆触发
+  if(ev.items){for(const id of ev.items){
+    const it=ITEMS.items.find(i=>i.id===id);if(it?.memory_trigger){
+      const m=MEM.memories.find(x=>x.id===it.memory_trigger);
+      if(m){const sc=Math.max(0,(it.scent_initial||0)-(it.scent_decay_per_day||0)*(day-(it.day_available||1)));
+        if(sc>10)setTimeout(()=>trigMem(m),3000)}}}}
+  wfc=true;autoT=0;
+}
+
+function trigMem(m){mFlash=m;mT=0;spG(dog.x*W,H*FY-20);sfxChime()}
+function goEnd(){phase=3;eStep=0;eT=0;stopClock();sfxDoor()}
+
+// ═══ 输入 ═════════════════════════════════════════════
+function click(mx,my){
+  iA();sfxClick();
+  if(phase===0){
+    if(my<H*.75){
+      if(phase!==0)return; // 防止重复点击
+      phase=2;fadeT=1;startClock();
+      setTimeout(()=>{phase=1;day=1;hope=100;stat={door:0,sniff:0};
+        dog.x=.5;dog.tx=.5;dog.dir=1;dog.st='idle';dog.ly=false;dog.ts=6;dog.ea=0;
+        loadDay(1);fadeT=0},800)}return; // 缩短过渡时间
+  }
+  if(phase===3&&eStep===3&&eT>8000){phase=0;stopClock();return}
+  if(phase===1&&wfc&&!dayTr){txtT=0;wfc=false;setTimeout(()=>{evIdx++;showEv()},500);return}
+  if(phase===1&&!wfc&&!dayTr){
+    const fy=H*FY,cr=mx/W;
+    // 物品点击→回忆
+    const zones=[{z:ZN.door+.06,id:'slipper',ok:day<12},{z:ZN.door+.05,id:'slipper_pieces',ok:day>=12},
+      {z:ZN.sofa+.08,id:'sweater',ok:day>=7},{z:ZN.table+.02,id:'photo_frame',ok:day>=5},
+      {z:ZN.sofa-.02,id:'tennis_ball',ok:true},{z:ZN.kitchen,id:'food_bowl',ok:true}];
+    for(const z of zones){
+      if(z.ok&&Math.abs(cr-z.z)<.04&&my>fy-80&&!mFlash){
+        const it=ITEMS.items.find(i=>i.id===z.id);
+        if(it?.memory_trigger){const m=MEM.memories.find(x=>x.id===it.memory_trigger);
+          if(m){dog.tx=z.z;dog.st='sniff';dog.ly=false;stat.sniff++;
+            const sc=Math.max(0,(it.scent_initial||0)-(it.scent_decay_per_day||0)*(day-(it.day_available||1)));
+            if(sc>5)setTimeout(()=>trigMem(m),1000);return}}}}
+    // 移动狗
+    if(my>fy-100){dog.tx=cl(mx/W,.05,.95);dog.ly=false;dog.st='walk';
+      if(Math.abs(mx/W-ZN.door)<.06){stat.door++;stat.sniff++;dog.dir=-1;dog.st=hope>60?'run':'walk'}}
+  }
+}
+cv.addEventListener('click',e=>{const r=cv.getBoundingClientRect();click(e.clientX-r.left,e.clientY-r.top)});
+cv.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0],r=cv.getBoundingClientRect();click(t.clientX-r.left,t.clientY-r.top)},{passive:false});
+
+// ═══ 游戏循环 ═════════════════════════════════════════
+let lt=performance.now(),pst=0;
+function loop(now){
+  const dt=Math.min(50,now-lt);lt=now;
+
+  // 狗移动
+  const dx=dog.tx-dog.x;
+  if(Math.abs(dx)>.003){const sp=(dog.st==='run'?hb(hope).sp*2.5:hb(hope).sp*1.2)*.001;
+    dog.x+=Math.sign(dx)*sp*dt;dog.dir=dx>0?1:-1;
+    if(!dog.ly)dog.st=Math.abs(dx)>.08&&hope>50?'run':'walk';
+  }else if(dog.st==='walk'||dog.st==='run')dog.st=dog.ly?(dog.st==='curl_up'?'curl_up':'lie_down'):'idle';
+
+  if(dog.ea>.05)dog.ea-=.001*dt;if(dog.ea<-.05)dog.ea+=.0005*dt;
+  txtA=lp(txtA,txtT,.2);fadeA=lp(fadeA,fadeT,.1);
+  if(mFlash){mT+=dt;if(mT>mFlash.duration_ms){mFlash=null;mT=0}}
+  if(phase===3)eT+=dt;
+  if(wfc&&fadeA<.1){autoT+=dt;if(autoT>7000){autoT=0;txtT=0;wfc=false;setTimeout(()=>{evIdx++;showEv()},500)}}
+  pst+=dt;if(phase===1&&pst>1800){pst=0;spP(sn(day))}
+  upP(dt);
+
+  // 渲染
+  cx.clearRect(0,0,W,H);
+  if(phase===0)drTitle();
+  else if(phase===1||phase===2){drBg();drP();drDog();drHUD();if(mFlash)drMem();drFade();drTxt()}
+  else if(phase===3)drEnd();
+
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

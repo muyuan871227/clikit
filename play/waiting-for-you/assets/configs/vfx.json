@@ -1,0 +1,9 @@
+{
+  "cherry_blossom": {"color": "#F8BBD0", "count": 5, "lifetime": 4000, "type": "drift_fall", "season": "spring"},
+  "sunbeam": {"color": "#FFF9C4", "count": 3, "lifetime": 6000, "type": "slow_ray", "season": "summer"},
+  "falling_leaf": {"color": "#8D6E63", "count": 4, "lifetime": 5000, "type": "spiral_fall", "season": "autumn"},
+  "snowflake": {"color": "#FAFAFA", "count": 8, "lifetime": 7000, "type": "drift", "season": "winter"},
+  "dust": {"color": "#D7CCC8", "count": 3, "lifetime": 8000, "type": "float", "season": "all"},
+  "memory_glow": {"color": "#FFE082", "count": 15, "lifetime": 2000, "type": "soft_radial"},
+  "hope_spark": {"color": "#FFF3E0", "count": 10, "lifetime": 500, "type": "burst_up"}
+}

@@ -1,0 +1,14 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 垂耳 -->
+  <rect x="4" y="24" width="12" height="24" rx="6" fill="#C4A484" />
+  <rect x="48" y="24" width="12" height="24" rx="6" fill="#C4A484" />
+  <!-- 身体 -->
+  <circle cx="32" cy="36" r="24" fill="#DFC5A0" />
+  <!-- 面部 -->
+  <circle cx="25" cy="36" r="2.5" fill="#3E2723" />
+  <circle cx="39" cy="36" r="2.5" fill="#3E2723" />
+  <rect x="30" y="38" width="4" height="3" rx="2" fill="#3E2723" /> <!-- 鼻头 -->
+  <!-- 舌头 -->
+  <rect x="31" y="43" width="6" height="8" rx="3" fill="#FF8B94" />
+  <line x1="34" y1="44" x2="34" y2="48" stroke="#D6757C" stroke-width="1" />
+</svg>

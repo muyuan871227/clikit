@@ -1,0 +1,19 @@
+{
+  "game.title": "TABS Lite · 황당한 전쟁 시뮬레이터",
+  "menu.start": "시작",
+  "menu.sandbox": "샌드박스",
+  "menu.continue": "계속",
+  "menu.highest": "최고: {n}관",
+  "plan.start": "전투 시작!",
+  "plan.reset": "초기화",
+  "plan.timer": "남은: {s}초",
+  "battle.timer": "전투: {s}s",
+  "result.victory": "승리!",
+  "result.defeat": "패배",
+  "unit.pikeman": "창병",
+  "unit.archer": "궁수",
+  "unit.cavalry": "기병",
+  "unit.giant": "거인",
+  "unit.mage": "마법사",
+  "unit.shield": "방패병"
+}

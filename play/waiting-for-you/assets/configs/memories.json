@@ -1,0 +1,11 @@
+{
+  "memories": [
+    {"id": "hand_petting", "trigger_item": "slipper", "visual": "一只手轻轻摸过狗狗的头，手指在耳后挠了挠", "duration_ms": 1500, "audio": "gentle_hum", "warmth": 1.0},
+    {"id": "park_running", "trigger_item": "sweater", "visual": "公园草地上，主人在前面跑，回头笑着喊\"快跟上\"", "duration_ms": 2000, "audio": "laughter", "warmth": 1.0},
+    {"id": "sleeping_together", "trigger_item": "pillow", "visual": "夜晚的沙发，主人侧躺着，狗狗蜷在他脚边", "duration_ms": 1500, "audio": "breathing", "warmth": 0.8},
+    {"id": "first_day_home", "trigger_item": "photo_frame", "visual": "一双手把小狗从纸箱里抱出来，阳光下金色的毛", "duration_ms": 2500, "audio": "puppy_bark", "warmth": 1.0},
+    {"id": "playing_fetch", "trigger_item": "tennis_ball", "visual": "球飞出去，狗狗追着跑，叼回来，尾巴摇得像螺旋桨", "duration_ms": 2000, "audio": "bark_happy", "warmth": 0.9},
+    {"id": "walking_together", "trigger_item": "leash", "visual": "夕阳下的人行道，一人一狗的影子拉得很长", "duration_ms": 2000, "audio": "footsteps_two", "warmth": 0.9},
+    {"id": "final_memory", "trigger": "ending", "visual": "门打开了。他蹲下来。笑着说：\"团团，我回来了。\"", "duration_ms": 5000, "audio": "theme_full", "warmth": 1.0}
+  ]
+}

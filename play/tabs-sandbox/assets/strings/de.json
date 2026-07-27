@@ -1,0 +1,16 @@
+{
+  "game.title": "TABS Lite · Absurder Schlachtsimulator",
+  "menu.start": "Start",
+  "menu.sandbox": "Sandkasten",
+  "menu.continue": "Fortsetzen",
+  "plan.start": "Kampf starten!",
+  "plan.reset": "Zurücksetzen",
+  "result.victory": "SIEG!",
+  "result.defeat": "NIEDERLAGE",
+  "unit.pikeman": "Spießer",
+  "unit.archer": "Bogenschütze",
+  "unit.cavalry": "Kavallerie",
+  "unit.giant": "Riese",
+  "unit.mage": "Magier",
+  "unit.shield": "Schildträger"
+}

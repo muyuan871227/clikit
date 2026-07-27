@@ -1,0 +1,9 @@
+{
+  "spring": {"bg": "#FFF8E1", "accent": "#F8BBD0", "nature": "#C5E1A5", "light": "#FFFDE7"},
+  "summer": {"bg": "#FFE0B2", "accent": "#FDD835", "nature": "#66BB6A", "light": "#FFF9C4"},
+  "autumn": {"bg": "#FFB74D", "accent": "#8D6E63", "nature": "#90A4AE", "light": "#FFECB3"},
+  "winter": {"bg": "#ECEFF1", "accent": "#B3E5FC", "nature": "#CFD8DC", "light": "#F5F5F5"},
+  "memory": {"glow": "#FFF3E0", "warm": "#FFE082", "fade": "#FFFBF0"},
+  "hope": {"high": "#FFF8E1", "low": "#CFD8DC"},
+  "ui": {"text": "#5D4037", "bg": "#FFFBF0"}
+}

@@ -1,0 +1,29 @@
+{
+  "faded": {
+    "bg": "#E8E8E8",
+    "outline": "#B0B0B0",
+    "shadow": "#9E9E9E",
+    "highlight": "#F5F5F5"
+  },
+  "restored": {
+    "grass": "#4CAF50",
+    "flower": "#E91E63",
+    "water": "#2196F3",
+    "sky": "#87CEEB",
+    "earth": "#8D6E63",
+    "gold": "#FFC107"
+  },
+  "ink": {
+    "black": "#1A1A1A",
+    "fire": "#FF5722",
+    "ice": "#03A9F4",
+    "thunder": "#FDD835",
+    "life": "#66BB6A"
+  },
+  "ui": {
+    "paper": "#FAF3E0",
+    "text": "#3E2723",
+    "hp_red": "#E53935",
+    "ink_bar": "#1A1A1A"
+  }
+}

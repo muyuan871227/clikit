@@ -1,0 +1,22 @@
+{
+  "stages": [
+    {"id": "rookie", "name_key": "stage.rookie", "threshold_rep": 0, "unlock_cases": ["case_1_tutorial"]},
+    {"id": "sleuth", "name_key": "stage.sleuth", "threshold_rep": 200, "unlock_cases": ["case_2"]},
+    {"id": "detective", "name_key": "stage.detective", "threshold_rep": 500, "unlock_cases": ["case_3"]},
+    {"id": "master", "name_key": "stage.master", "threshold_rep": 1000, "unlock_cases": []}
+  ],
+  "rewards": {
+    "win_as_detective": 100,
+    "win_as_killer": 120,
+    "loss_consolation": 20,
+    "correct_lens_use_bonus": 30,
+    "correct_vote_bonus": 40,
+    "survived_round_bonus_killer": 30
+  },
+  "achievements": [
+    {"id": "first_solve", "name_key": "ach.first_solve", "reward_rep": 50, "condition": "win_case_1"},
+    {"id": "lens_master", "name_key": "ach.lens_master", "reward_rep": 80, "condition": "use_lens_correctly_3_times"},
+    {"id": "perfect_deduction", "name_key": "ach.perfect", "reward_rep": 150, "condition": "win_without_wrong_accusation"},
+    {"id": "master_of_lies", "name_key": "ach.master_liar", "reward_rep": 150, "condition": "win_as_killer_undetected"}
+  ]
+}

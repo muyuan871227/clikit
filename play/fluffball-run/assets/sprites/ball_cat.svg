@@ -1,0 +1,14 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 耳朵 -->
+  <path d="M12 25l8-15 10 10z" fill="#FFE0C0" />
+  <path d="M52 25l-8-15-10 10z" fill="#FFE0C0" />
+  <!-- 身体 -->
+  <circle cx="32" cy="36" r="24" fill="#FFE0C0" />
+  <!-- 眼睛 -->
+  <circle cx="24" cy="38" r="2.5" fill="#5D4037" />
+  <circle cx="40" cy="38" r="2.5" fill="#5D4037" />
+  <!-- 胡须 -->
+  <path d="M14 40h-6M14 43h-5M50 40h6M50 43h5" stroke="#8D775F" stroke-width="1.5" stroke-linecap="round" />
+  <!-- 嘴巴 -->
+  <path d="M30 43a2 2 0 004 0" stroke="#5D4037" stroke-width="1.5" />
+</svg>

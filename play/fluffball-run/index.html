@@ -1,0 +1,1945 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>毛球快跑 Fluffball Run</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #FFF8F0; touch-action: none; user-select: none; -webkit-user-select: none; }
+canvas { display: block; margin: 0 auto; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+// ============================================================
+// 毛球快跑 (Fluffball Run) - Main Game
+// ============================================================
+
+// --- Asset Loading ---
+const Assets = { configs: {}, strings: {} };
+
+async function loadJSON(path) {
+  const resp = await fetch(path);
+  return resp.json();
+}
+
+async function loadAllAssets() {
+  const [palette, yarnColors, skins, uiStrings, shareStrings, achievements, vfx, levels] = await Promise.all([
+    loadJSON('assets/configs/palette.json'),
+    loadJSON('assets/configs/yarn_colors.json'),
+    loadJSON('assets/configs/skins.json'),
+    loadJSON('assets/strings/ui.json'),
+    loadJSON('assets/strings/share.json'),
+    loadJSON('assets/configs/achievements.json'),
+    loadJSON('assets/configs/vfx.json'),
+    loadJSON('assets/configs/levels.json'),
+  ]);
+  Assets.configs.palette = palette;
+  Assets.configs.yarnColors = yarnColors;
+  Assets.configs.skins = skins;
+  Assets.strings.ui = uiStrings;
+  Assets.strings.share = shareStrings;
+  Assets.configs.achievements = achievements;
+  Assets.configs.vfx = vfx;
+  Assets.configs.levels = levels;
+}
+
+// --- i18n ---
+const Lang = { current: 'zh' };
+function t(key) {
+  return (Assets.strings.ui[Lang.current] && Assets.strings.ui[Lang.current][key]) || key;
+}
+
+// --- Canvas Setup ---
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let W, H, scale;
+
+function resizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  // Portrait mode, 9:16 aspect ratio
+  const maxW = window.innerWidth;
+  const maxH = window.innerHeight;
+  const aspect = 9 / 16;
+  if (maxW / maxH < aspect) {
+    W = maxW;
+    H = maxW / aspect;
+  } else {
+    H = maxH;
+    W = maxH * aspect;
+  }
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  scale = W / 390; // base design width 390
+}
+
+// --- Audio (Web Audio API for synth sounds) ---
+let audioCtx;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function playSound(type) {
+  try {
+    ensureAudio();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    const now = audioCtx.currentTime;
+    switch(type) {
+      case 'collect':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523 + Math.random() * 200, now);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.start(now); osc.stop(now + 0.15);
+        break;
+      case 'jump':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(330, now);
+        osc.frequency.exponentialRampToValueAtTime(660, now + 0.12);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+        osc.start(now); osc.stop(now + 0.2);
+        break;
+      case 'land':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(220, now);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.start(now); osc.stop(now + 0.12);
+        break;
+      case 'hit':
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.3);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.start(now); osc.stop(now + 0.3);
+        break;
+      case 'combo':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, now);
+        osc.frequency.setValueAtTime(1108, now + 0.08);
+        osc.frequency.setValueAtTime(1318, now + 0.16);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.start(now); osc.stop(now + 0.3);
+        break;
+      case 'finish':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523, now);
+        osc.frequency.setValueAtTime(659, now + 0.15);
+        osc.frequency.setValueAtTime(784, now + 0.3);
+        osc.frequency.setValueAtTime(1047, now + 0.45);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+        osc.start(now); osc.stop(now + 0.8);
+        break;
+      case 'frozen':
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.5);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        osc.start(now); osc.stop(now + 0.5);
+        break;
+    }
+  } catch(e) {}
+}
+
+// --- Particle System ---
+class Particle {
+  constructor(x, y, color, vx, vy, size, life, gravity) {
+    this.x = x; this.y = y; this.color = color;
+    this.vx = vx; this.vy = vy;
+    this.size = size; this.maxLife = life; this.life = life;
+    this.gravity = gravity || 0;
+  }
+  update(dt) {
+    this.vy += this.gravity * dt;
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.life -= dt;
+  }
+  draw(ctx) {
+    const alpha = Math.max(0, this.life / this.maxLife);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size * alpha, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  get dead() { return this.life <= 0; }
+}
+
+const particles = [];
+
+function spawnParticles(x, y, color, count, spread, life, size, gravity) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = spread * (0.3 + Math.random() * 0.7);
+    particles.push(new Particle(
+      x, y, color,
+      Math.cos(angle) * speed, Math.sin(angle) * speed,
+      size * (0.5 + Math.random() * 0.5), life, gravity || 0
+    ));
+  }
+}
+
+// --- Fluff Particles (attached to ball) ---
+class FluffParticle {
+  constructor(angle, dist, size, color) {
+    this.baseAngle = angle;
+    this.baseDist = dist;
+    this.size = size;
+    this.color = color;
+    this.angle = angle;
+    this.dist = dist;
+    this.phase = Math.random() * Math.PI * 2;
+  }
+  update(t) {
+    this.angle = this.baseAngle + Math.sin(t * 2 + this.phase) * 0.1;
+    this.dist = this.baseDist + Math.sin(t * 3 + this.phase) * 1.5;
+  }
+}
+
+// --- Game State ---
+const GameState = {
+  MENU: 0, PLAYING: 1, DEAD: 2, FINISH: 3, SKINS: 4
+};
+
+const game = {
+  state: GameState.MENU,
+  level: 1,
+  fluffiness: 10,
+  combo: 0,
+  hasShield: false,
+  shieldTimer: 0,
+  shieldCooldown: 0,
+  comboTimer: 0,
+  time: 0,
+  cameraX: 0,
+  // Ball
+  ballX: 0,
+  ballY: 0,
+  ballVY: 0,
+  ballRadius: 16,
+  isGrounded: false,
+  isCrouching: false,
+  squash: 1,
+  stretch: 1,
+  ballRotation: 0,
+  expression: 'happy', // happy, tense, hurt, frozen
+  expressionTimer: 0,
+  // Fluff
+  fluffParticles: [],
+  fluffColors: [],
+  // Level data
+  worldObjects: [],
+  groundY: 0,
+  levelLength: 0,
+  finishX: 0,
+  segments: [],
+  segmentZones: [],
+  // Meta
+  currentSkin: 'cotton',
+  totalFluffiness: 0,
+  highScores: [],
+  unlockedSkins: ['cotton'],
+  collectCount: 0,
+  // Animation
+  menuBounce: 0,
+  finishTimer: 0,
+  petMode: false,
+  petOffsetX: 0,
+  petOffsetY: 0,
+  // Input
+  touchStartY: 0,
+  touchStartTime: 0,
+  // Speed
+  baseSpeed: 180,
+  speed: 180,
+};
+
+// --- Fluff Management ---
+function rebuildFluffParticles() {
+  const targetCount = Math.floor(game.fluffiness);
+  const skin = getSkin(game.currentSkin);
+  const baseColor = skin ? skin.base_color : '#FFFBF5';
+
+  // Add particles if needed
+  while (game.fluffParticles.length < targetCount && game.fluffParticles.length < 100) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = game.ballRadius * (0.6 + Math.random() * 0.8);
+    const size = (2 + Math.random() * 2.5) * scale;
+    const color = game.fluffColors.length > 0
+      ? game.fluffColors[Math.floor(Math.random() * game.fluffColors.length)]
+      : baseColor;
+    game.fluffParticles.push(new FluffParticle(angle, dist, size, color));
+  }
+  // Remove if too many
+  while (game.fluffParticles.length > targetCount) {
+    game.fluffParticles.pop();
+  }
+}
+
+function getSkin(id) {
+  if (!Assets.configs.skins) return null;
+  return Assets.configs.skins.skins.find(s => s.id === id);
+}
+
+function getFluffRadius() {
+  // Core 16px, at 100% = 48px
+  return (16 + 32 * (game.fluffiness / 100)) * scale;
+}
+
+function getBounceBonus() {
+  const f = game.fluffiness;
+  if (f >= 90) return 0.3;
+  if (f >= 80) return 0.3;
+  if (f >= 60) return 0.2;
+  if (f >= 30) return 0.1;
+  return 0;
+}
+
+// --- Level Generation ---
+function generateLevel(levelNum) {
+  const levelsData = Assets.configs.levels;
+  let levelDef = levelsData.levels.find(l => l.level === levelNum);
+  if (!levelDef) {
+    // Generate procedurally for levels beyond defined ones
+    const templates = levelsData.levels;
+    const base = templates[templates.length - 1];
+    levelDef = { level: levelNum, segments: [...base.segments] };
+  }
+
+  const segmentDefs = levelsData.segments;
+  const yarnColors = Assets.configs.yarnColors.yarns;
+
+  game.worldObjects = [];
+  game.segmentZones = [];
+  let currentX = 100 * scale;
+
+  for (const segId of levelDef.segments) {
+    const seg = segmentDefs.find(s => s.id === segId);
+    if (!seg) continue;
+
+    const startX = currentX;
+    const length = seg.length * scale;
+
+    game.segmentZones.push({
+      startX, endX: startX + length, type: seg.type,
+      id: seg.id, rain: seg.rain || false
+    });
+
+    // Place yarn
+    const yarnCount = seg.yarn_count || 0;
+    for (let i = 0; i < yarnCount; i++) {
+      const x = startX + (i + 0.5) * (length / yarnCount) + (Math.random() - 0.5) * 30 * scale;
+      const yarnDef = yarnColors[Math.floor(Math.random() * 6)]; // common ones
+      const sizeRoll = Math.random();
+      let yarnSize = 'small', value = 5;
+      if (sizeRoll > 0.85) { yarnSize = 'large'; value = 15; }
+      else if (sizeRoll > 0.5) { yarnSize = 'medium'; value = 10; }
+
+      const yarnRadius = (yarnSize === 'large' ? 14 : yarnSize === 'medium' ? 11 : 8) * scale;
+      game.worldObjects.push({
+        type: 'yarn', x, y: H * 0.72 - yarnRadius - 15 * scale,
+        radius: yarnRadius,
+        color: yarnDef.hex, name: yarnDef.name, value,
+        collected: false, floatPhase: Math.random() * Math.PI * 2
+      });
+    }
+
+    // Place obstacles
+    if (seg.obstacle_types) {
+      const obsCount = seg.obstacle_count || 3;
+      const difficultyScale = 1 + (levelNum - 1) * 0.05;
+      const actualCount = Math.min(Math.floor(obsCount * difficultyScale), 8);
+      for (let i = 0; i < actualCount; i++) {
+        const x = startX + (i + 0.5) * (length / actualCount) + (Math.random() - 0.5) * 20 * scale;
+        const obsType = seg.obstacle_types[Math.floor(Math.random() * seg.obstacle_types.length)];
+        const damage = obsType === 'scissor' ? 20 : 10;
+        game.worldObjects.push({
+          type: 'obstacle', obstacleType: obsType,
+          x, y: 0, width: 36 * scale, height: 40 * scale,
+          damage, hit: false
+        });
+      }
+    }
+
+    // Fan zones
+    if (seg.fan_zones) {
+      for (let i = 0; i < seg.fan_zones; i++) {
+        const x = startX + (i + 0.5) * (length / seg.fan_zones);
+        game.worldObjects.push({
+          type: 'fan_zone', x, y: 0,
+          width: 80 * scale, height: 100 * scale,
+          damagePerSec: 5
+        });
+      }
+    }
+
+    currentX += length;
+  }
+
+  game.levelLength = currentX + 100 * scale;
+  game.finishX = currentX - 100 * scale;
+
+  // Place finish line
+  game.worldObjects.push({
+    type: 'finish', x: game.finishX, y: 0
+  });
+}
+
+function startLevel(levelNum) {
+  game.state = GameState.PLAYING;
+  game.level = levelNum;
+  game.fluffiness = 10;
+  game.combo = 0;
+  game.hasShield = false;
+  game.shieldTimer = 0;
+  game.shieldCooldown = 0;
+  game.comboTimer = 0;
+  game.time = 0;
+  game.cameraX = 0;
+  game.ballX = 60 * scale;
+  game.groundY = H * 0.72;
+  game.ballY = game.groundY;
+  game.ballVY = 0;
+  game.isGrounded = true;
+  game.isCrouching = false;
+  game.squash = 1;
+  game.stretch = 1;
+  game.ballRotation = 0;
+  game.expression = 'happy';
+  game.expressionTimer = 0;
+  game.fluffParticles = [];
+  game.fluffColors = [];
+  game.speed = game.baseSpeed * scale;
+  game.collectCount = 0;
+  game.comboDisplay = '';
+  game.finishTimer = 0;
+  game.petMode = false;
+  particles.length = 0;
+
+  generateLevel(levelNum);
+  rebuildFluffParticles();
+}
+
+// --- Input ---
+let inputDown = false;
+let inputDownTime = 0;
+let inputStartY = 0;
+let swipedDown = false;
+
+function handleInputStart(x, y) {
+  ensureAudio();
+  inputDown = true;
+  inputDownTime = performance.now();
+  inputStartY = y;
+  swipedDown = false;
+
+  if (game.state === GameState.MENU) {
+    // Check if clicked on ball (wake up easter egg)
+    const ballCenterX = W / 2;
+    const ballCenterY = H * 0.42;
+    const dist = Math.sqrt((x - ballCenterX) ** 2 + (y - ballCenterY) ** 2);
+    if (dist < 50 * scale) {
+      game.menuBounce = 1;
+    }
+    return;
+  }
+
+  if (game.state === GameState.FINISH) {
+    return;
+  }
+
+  if (game.state === GameState.PLAYING) {
+    if (game.isGrounded && !game.isCrouching) {
+      // Jump
+      const bounceBonus = getBounceBonus();
+      game.ballVY = -(350 + 350 * bounceBonus) * scale;
+      game.isGrounded = false;
+      game.squash = 0.7;
+      game.stretch = 1.3;
+      playSound('jump');
+    }
+  }
+}
+
+function handleInputMove(x, y) {
+  if (!inputDown) return;
+  if (game.state === GameState.PLAYING) {
+    const dy = y - inputStartY;
+    if (dy > 30 * scale && !swipedDown) {
+      swipedDown = true;
+      if (!game.isGrounded) {
+        // Fast fall
+        game.ballVY = 400 * scale;
+      } else {
+        // Crouch
+        game.isCrouching = true;
+        game.squash = 1.3;
+        game.stretch = 0.7;
+      }
+    }
+  }
+
+  if (game.state === GameState.FINISH && game.petMode) {
+    game.petOffsetX = (x - W / 2) * 0.1;
+    game.petOffsetY = (y - H * 0.4) * 0.1;
+  }
+}
+
+function handleInputEnd(x, y) {
+  inputDown = false;
+
+  if (game.state === GameState.MENU) {
+    // Check button clicks
+    const btnY = H * 0.72;
+    const btnW = 180 * scale;
+    const btnH = 55 * scale;
+    if (x > W / 2 - btnW / 2 && x < W / 2 + btnW / 2 && y > btnY - btnH / 2 && y < btnY + btnH / 2) {
+      startLevel(game.level);
+      return;
+    }
+    // Skins button
+    const skinsY = H * 0.82;
+    if (x > W / 2 - 60 * scale && x < W / 2 + 60 * scale && y > skinsY - 20 * scale && y < skinsY + 20 * scale) {
+      game.state = GameState.SKINS;
+      return;
+    }
+  }
+
+  if (game.state === GameState.SKINS) {
+    // Back button
+    if (y < 60 * scale) {
+      game.state = GameState.MENU;
+      return;
+    }
+    return;
+  }
+
+  if (game.state === GameState.PLAYING) {
+    const holdTime = performance.now() - inputDownTime;
+    if (holdTime > 200 && !game.isGrounded && !swipedDown) {
+      // Long press held in air = float a tiny bit (no actual mechanic, but feels nice)
+    }
+    game.isCrouching = false;
+  }
+
+  if (game.state === GameState.FINISH) {
+    const btnW = 140 * scale;
+    const btnH = 45 * scale;
+    const btnGap = 15 * scale;
+    const btnY = H * 0.72;
+    const totalW = btnW * 2 + btnGap;
+    const startBtnX = W / 2 - totalW / 2;
+
+    // Retry button
+    if (x > startBtnX && x < startBtnX + btnW && y > btnY - btnH / 2 && y < btnY + btnH / 2) {
+      startLevel(game.level);
+      return;
+    }
+    // Next/Share button
+    if (x > startBtnX + btnW + btnGap && x < startBtnX + totalW && y > btnY - btnH / 2 && y < btnY + btnH / 2) {
+      if (game.fluffiness > 0) {
+        startLevel(game.level + 1);
+      } else {
+        startLevel(game.level);
+      }
+      return;
+    }
+    // Pet button
+    const petBtnY = H * 0.82;
+    if (x > W / 2 - 60 * scale && x < W / 2 + 60 * scale && y > petBtnY - 20 * scale && y < petBtnY + 20 * scale) {
+      game.petMode = !game.petMode;
+      return;
+    }
+  }
+
+  if (game.state === GameState.DEAD) {
+    const btnY = H * 0.65;
+    const btnW = 160 * scale;
+    const btnH = 50 * scale;
+    if (x > W / 2 - btnW / 2 && x < W / 2 + btnW / 2 && y > btnY - btnH / 2 && y < btnY + btnH / 2) {
+      startLevel(game.level);
+    }
+  }
+}
+
+// Touch events
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  handleInputStart(touch.clientX - rect.left, touch.clientY - rect.top);
+});
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  handleInputMove(touch.clientX - rect.left, touch.clientY - rect.top);
+});
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  const touch = e.changedTouches[0];
+  const rect = canvas.getBoundingClientRect();
+  handleInputEnd(touch.clientX - rect.left, touch.clientY - rect.top);
+});
+// Mouse events (for desktop testing)
+canvas.addEventListener('mousedown', e => {
+  const rect = canvas.getBoundingClientRect();
+  handleInputStart(e.clientX - rect.left, e.clientY - rect.top);
+});
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  handleInputMove(e.clientX - rect.left, e.clientY - rect.top);
+});
+canvas.addEventListener('mouseup', e => {
+  const rect = canvas.getBoundingClientRect();
+  handleInputEnd(e.clientX - rect.left, e.clientY - rect.top);
+});
+
+// --- Update ---
+let lastTime = 0;
+
+function update(dt) {
+  game.time += dt;
+
+  // Update particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    particles[i].update(dt);
+    if (particles[i].dead) particles.splice(i, 1);
+  }
+
+  if (game.state === GameState.MENU) {
+    if (game.menuBounce > 0) {
+      game.menuBounce -= dt * 3;
+    }
+    return;
+  }
+
+  if (game.state !== GameState.PLAYING) return;
+
+  // --- Physics ---
+  const gravity = 900 * scale;
+
+  // Auto-scroll
+  game.cameraX += game.speed * dt;
+  game.ballX = game.cameraX + 100 * scale;
+
+  // Speed increases slightly over time
+  game.speed = game.baseSpeed * scale * (1 + game.time * 0.003);
+
+  // Vertical physics
+  if (!game.isGrounded) {
+    game.ballVY += gravity * dt;
+    game.ballY += game.ballVY * dt;
+
+    if (game.ballY >= game.groundY) {
+      game.ballY = game.groundY;
+      game.ballVY = 0;
+      game.isGrounded = true;
+      game.squash = 1.3;
+      game.stretch = 0.7;
+      playSound('land');
+      // Landing particles
+      spawnParticles(game.ballX, game.ballY, '#FFFBF5', 4, 60 * scale, 0.3, 3 * scale, 0);
+    }
+  }
+
+  // Squash/stretch recovery
+  game.squash += (1 - game.squash) * dt * 10;
+  game.stretch += (1 - game.stretch) * dt * 10;
+
+  // Ball rotation
+  game.ballRotation += game.speed * dt * 0.01;
+
+  // Expression timer
+  if (game.expressionTimer > 0) {
+    game.expressionTimer -= dt;
+    if (game.expressionTimer <= 0) {
+      game.expression = 'happy';
+    }
+  }
+
+  // Combo timer
+  if (game.comboTimer > 0) {
+    game.comboTimer -= dt;
+    if (game.comboTimer <= 0) {
+      game.combo = 0;
+    }
+  }
+
+  // Shield timer
+  if (game.shieldTimer > 0) {
+    game.shieldTimer -= dt;
+    if (game.shieldTimer <= 0) {
+      game.hasShield = false;
+    }
+  }
+
+  // Update shield status based on fluffiness (with cooldown after use)
+  if (game.shieldCooldown > 0) game.shieldCooldown -= dt;
+  if (game.fluffiness >= 90 && !game.hasShield && game.shieldCooldown <= 0) {
+    game.hasShield = true;
+    game.shieldTimer = 999;
+    spawnParticles(game.ballX, game.ballY, '#FFBDD6', 10, 80 * scale, 0.6, 4 * scale, 0);
+  }
+
+  // Fluff particles animation
+  game.fluffParticles.forEach(fp => fp.update(game.time));
+
+  // Collision detection
+  const ballR = getFluffRadius();
+  const ballEffectiveY = game.ballY - ballR * 0.3;
+  const crouchOffset = game.isCrouching ? ballR * 0.4 : 0;
+
+  for (const obj of game.worldObjects) {
+    if (obj.type === 'yarn' && !obj.collected) {
+      const dx = game.ballX - obj.x;
+      const dy = (ballEffectiveY - crouchOffset) - obj.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < ballR + obj.radius + 5 * scale) {
+        obj.collected = true;
+        game.collectCount++;
+        // Apply value
+        let value = obj.value;
+        if (game.combo >= 3) value *= 2; // combo bonus
+        game.fluffiness = Math.min(100, game.fluffiness + value);
+
+        // Add color
+        if (obj.color !== 'rainbow') {
+          game.fluffColors.push(obj.color);
+          if (game.fluffColors.length > 10) game.fluffColors.shift();
+        }
+
+        // Combo
+        game.combo++;
+        game.comboTimer = 2;
+        if (game.combo === 3) {
+          playSound('combo');
+          spawnParticles(game.ballX, game.ballY - ballR, '#FFD93D', 15, 100 * scale, 0.5, 4 * scale, -50 * scale);
+        }
+
+        rebuildFluffParticles();
+        playSound('collect');
+        // Collect particles
+        spawnParticles(obj.x, obj.y || game.groundY - 20 * scale, obj.color === 'rainbow' ? '#FFD93D' : obj.color, 8, 60 * scale, 0.4, 3 * scale, 0);
+
+        // Overshoot squash
+        game.squash = 0.85;
+        game.stretch = 1.15;
+      }
+    }
+
+    if (obj.type === 'obstacle' && !obj.hit) {
+      const obsY = game.groundY - obj.height / 2;
+      const dx = game.ballX - obj.x;
+      const dy = (ballEffectiveY - crouchOffset) - obsY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < ballR + obj.width / 2) {
+        obj.hit = true;
+        let damage = obj.damage;
+        if (game.hasShield) {
+          damage = 5;
+          game.hasShield = false;
+          game.shieldTimer = 0;
+          game.shieldCooldown = 3; // 3 second cooldown before shield can re-activate
+        }
+        game.fluffiness = Math.max(0, game.fluffiness - damage);
+        game.combo = 0;
+        game.comboTimer = 0;
+        game.expression = 'hurt';
+        game.expressionTimer = 0.8;
+
+        rebuildFluffParticles();
+        playSound('hit');
+
+        // Shed particles
+        const shedColor = game.fluffColors.length > 0
+          ? game.fluffColors[Math.floor(Math.random() * game.fluffColors.length)]
+          : '#FFFBF5';
+        spawnParticles(game.ballX + (obj.x > game.ballX ? ballR : -ballR), game.ballY - ballR / 2, shedColor, 12, 120 * scale, 0.8, 3 * scale, 200 * scale);
+
+        // Squash from hit
+        game.squash = 1.4;
+        game.stretch = 0.6;
+
+        // Check death
+        if (game.fluffiness <= 0) {
+          game.state = GameState.DEAD;
+          game.expression = 'frozen';
+          playSound('frozen');
+          spawnParticles(game.ballX, game.ballY - ballR, '#90CAF9', 20, 100 * scale, 1.2, 4 * scale, 100 * scale);
+          return;
+        }
+      }
+    }
+
+    if (obj.type === 'fan_zone') {
+      const fx = obj.x;
+      const fw = obj.width;
+      if (game.ballX > fx - fw / 2 && game.ballX < fx + fw / 2) {
+        game.fluffiness = Math.max(0, game.fluffiness - obj.damagePerSec * dt);
+        rebuildFluffParticles();
+        // Wind particles
+        if (Math.random() < dt * 5) {
+          spawnParticles(game.ballX + ballR, game.ballY - ballR / 2, '#FFFBF5', 2, 40 * scale, 0.4, 2 * scale, 0);
+        }
+        if (game.fluffiness <= 0) {
+          game.state = GameState.DEAD;
+          game.expression = 'frozen';
+          playSound('frozen');
+          return;
+        }
+      }
+    }
+
+    // Finish line
+    if (obj.type === 'finish') {
+      if (game.ballX >= obj.x) {
+        game.state = GameState.FINISH;
+        game.finishTimer = 0;
+        game.totalFluffiness += game.fluffiness;
+        playSound('finish');
+        if (game.fluffiness >= 95) {
+          spawnParticles(game.ballX, game.ballY - ballR, '#FFD700', 30, 150 * scale, 1.5, 5 * scale, -50 * scale);
+        }
+        return;
+      }
+    }
+  }
+
+  // Check current zone for expression
+  for (const zone of game.segmentZones) {
+    if (game.ballX >= zone.startX && game.ballX <= zone.endX) {
+      if (zone.type === 'danger' && game.expression === 'happy') {
+        game.expression = 'tense';
+      } else if (zone.type === 'collect' && game.expression === 'tense') {
+        game.expression = 'happy';
+      }
+
+      // Rain zone effect
+      if (zone.rain) {
+        // Rain particles
+        if (Math.random() < dt * 15) {
+          const rx = game.ballX + (Math.random() - 0.5) * W * 0.8;
+          particles.push(new Particle(rx, 0, '#90CAF9', 0, 300 * scale, 2 * scale, 0.6, 0));
+        }
+      }
+      break;
+    }
+  }
+}
+
+// --- Drawing ---
+function drawBackground() {
+  // Determine current zone type
+  let currentZone = 'collect';
+  for (const zone of game.segmentZones) {
+    if (game.ballX >= zone.startX && game.ballX <= zone.endX) {
+      currentZone = zone.type;
+      break;
+    }
+  }
+
+  const pal = Assets.configs.palette;
+
+  if (currentZone === 'danger') {
+    // Cold background
+    ctx.fillStyle = '#CFD8DC';
+    ctx.fillRect(0, 0, W, H * 0.4);
+    ctx.fillStyle = '#B0BEC5';
+    ctx.fillRect(0, H * 0.4, W, H * 0.6);
+  } else if (currentZone === 'weather') {
+    // Rainy
+    ctx.fillStyle = '#B0BEC5';
+    ctx.fillRect(0, 0, W, H * 0.4);
+    ctx.fillStyle = '#A5D6A7';
+    ctx.fillRect(0, H * 0.4, W, H * 0.6);
+  } else {
+    // Warm meadow
+    ctx.fillStyle = pal.bg_sky;
+    ctx.fillRect(0, 0, W, H * 0.4);
+    // Gradient transition
+    const grad = ctx.createLinearGradient(0, H * 0.35, 0, H * 0.45);
+    grad.addColorStop(0, pal.bg_sky);
+    grad.addColorStop(1, pal.bg_grass);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, H * 0.35, W, H * 0.1);
+    ctx.fillStyle = pal.bg_grass;
+    ctx.fillRect(0, H * 0.45, W, H * 0.55);
+
+    // Clouds
+    drawCloud(W * 0.2 + Math.sin(game.time * 0.3) * 10, H * 0.12, 40 * scale);
+    drawCloud(W * 0.7 + Math.sin(game.time * 0.2 + 1) * 15, H * 0.18, 30 * scale);
+    drawCloud(W * 0.5 + Math.sin(game.time * 0.25 + 2) * 12, H * 0.08, 25 * scale);
+
+    // Small flowers on ground
+    for (let i = 0; i < 8; i++) {
+      const fx = ((i * 137 + game.cameraX * 0.3) % (W + 40)) - 20;
+      const fy = game.groundY + 10 * scale + (i % 3) * 8 * scale;
+      drawFlower(fx, fy, 4 * scale, ['#FF6B6B', '#FFD93D', '#9B72FF', '#FFBDD6'][i % 4]);
+    }
+  }
+
+  // Ground line
+  ctx.strokeStyle = currentZone === 'danger' ? '#90A4AE' : '#A5D6A7';
+  ctx.lineWidth = 2 * scale;
+  ctx.beginPath();
+  ctx.moveTo(0, game.groundY);
+  ctx.lineTo(W, game.groundY);
+  ctx.stroke();
+
+  // Felt texture dots (subtle)
+  ctx.globalAlpha = 0.03;
+  for (let i = 0; i < 30; i++) {
+    const tx = (i * 97 + game.time * 10) % W;
+    const ty = (i * 73) % H;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(tx, ty, 1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawCloud(x, y, size) {
+  ctx.fillStyle = '#FFFFFF';
+  ctx.globalAlpha = 0.7;
+  ctx.beginPath();
+  ctx.arc(x, y, size, 0, Math.PI * 2);
+  ctx.arc(x - size * 0.7, y + size * 0.2, size * 0.7, 0, Math.PI * 2);
+  ctx.arc(x + size * 0.7, y + size * 0.2, size * 0.65, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function drawFlower(x, y, size, color) {
+  ctx.fillStyle = color;
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(a) * size, y + Math.sin(a) * size, size * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#FFD93D';
+  ctx.beginPath();
+  ctx.arc(x, y, size * 0.4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawBall(x, y, radius, rotation, squashX, stretchY, expression) {
+  ctx.save();
+  ctx.translate(x, y - radius * stretchY * 0.5);
+
+  const skin = getSkin(game.currentSkin);
+  const baseColor = skin ? skin.base_color : '#FFFBF5';
+
+  // Fluff particles (behind)
+  game.fluffParticles.forEach((fp, i) => {
+    if (i % 2 === 0) {
+      const px = Math.cos(fp.angle) * fp.dist * squashX * scale;
+      const py = Math.sin(fp.angle) * fp.dist * stretchY * scale;
+      ctx.fillStyle = fp.color;
+      ctx.globalAlpha = 0.8;
+      ctx.beginPath();
+      ctx.arc(px, py, fp.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+  ctx.globalAlpha = 1;
+
+  // Core ball
+  ctx.save();
+  ctx.scale(squashX, stretchY);
+
+  // Ball body
+  const gradient = ctx.createRadialGradient(-radius * 0.2, -radius * 0.2, 0, 0, 0, radius);
+  if (baseColor === 'rainbow') {
+    gradient.addColorStop(0, '#FFB7C5');
+    gradient.addColorStop(0.5, '#FFD93D');
+    gradient.addColorStop(1, '#87CEEB');
+  } else {
+    gradient.addColorStop(0, '#FFFFFF');
+    gradient.addColorStop(0.4, baseColor);
+    gradient.addColorStop(1, darkenColor(baseColor, 0.15));
+  }
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Soft edge
+  ctx.strokeStyle = darkenColor(baseColor === 'rainbow' ? '#FFBDD6' : baseColor, 0.2);
+  ctx.lineWidth = 1.5 * scale;
+  ctx.globalAlpha = 0.3;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  ctx.restore(); // undo scale
+
+  // Fluff particles (front)
+  game.fluffParticles.forEach((fp, i) => {
+    if (i % 2 === 1) {
+      const px = Math.cos(fp.angle) * fp.dist * squashX * scale;
+      const py = Math.sin(fp.angle) * fp.dist * stretchY * scale;
+      ctx.fillStyle = fp.color;
+      ctx.globalAlpha = 0.7;
+      ctx.beginPath();
+      ctx.arc(px, py, fp.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+  ctx.globalAlpha = 1;
+
+  // Face
+  const faceScale = radius / (20 * scale);
+  const eyeSize = 2.5 * scale * faceScale;
+  const eyeY = -2 * scale * faceScale;
+  const eyeSpacing = 6 * scale * faceScale;
+
+  // Eyes
+  ctx.fillStyle = '#333';
+  if (expression === 'happy') {
+    ctx.beginPath();
+    ctx.arc(-eyeSpacing, eyeY, eyeSize, 0, Math.PI * 2);
+    ctx.arc(eyeSpacing, eyeY, eyeSize, 0, Math.PI * 2);
+    ctx.fill();
+    // Eye shine
+    ctx.fillStyle = '#FFF';
+    ctx.beginPath();
+    ctx.arc(-eyeSpacing + 1 * scale, eyeY - 1 * scale, eyeSize * 0.4, 0, Math.PI * 2);
+    ctx.arc(eyeSpacing + 1 * scale, eyeY - 1 * scale, eyeSize * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (expression === 'tense') {
+    // Worried eyes (smaller, moved up)
+    ctx.beginPath();
+    ctx.arc(-eyeSpacing, eyeY - 1 * scale, eyeSize * 0.8, 0, Math.PI * 2);
+    ctx.arc(eyeSpacing, eyeY - 1 * scale, eyeSize * 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    // Worried brows
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1.5 * scale;
+    ctx.beginPath();
+    ctx.moveTo(-eyeSpacing - 3 * scale, eyeY - 5 * scale);
+    ctx.lineTo(-eyeSpacing + 2 * scale, eyeY - 6 * scale);
+    ctx.moveTo(eyeSpacing + 3 * scale, eyeY - 5 * scale);
+    ctx.lineTo(eyeSpacing - 2 * scale, eyeY - 6 * scale);
+    ctx.stroke();
+  } else if (expression === 'hurt') {
+    // Closed eyes (squinting)
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2 * scale;
+    ctx.beginPath();
+    ctx.moveTo(-eyeSpacing - 3 * scale, eyeY);
+    ctx.lineTo(-eyeSpacing + 3 * scale, eyeY);
+    ctx.moveTo(eyeSpacing - 3 * scale, eyeY);
+    ctx.lineTo(eyeSpacing + 3 * scale, eyeY);
+    ctx.stroke();
+    // Sweat drop
+    ctx.fillStyle = '#90CAF9';
+    ctx.beginPath();
+    ctx.ellipse(eyeSpacing + 8 * scale, eyeY - 3 * scale, 1.5 * scale, 2.5 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (expression === 'frozen') {
+    // X eyes
+    ctx.strokeStyle = '#90CAF9';
+    ctx.lineWidth = 2 * scale;
+    const xs = 3 * scale;
+    ctx.beginPath();
+    ctx.moveTo(-eyeSpacing - xs, eyeY - xs);
+    ctx.lineTo(-eyeSpacing + xs, eyeY + xs);
+    ctx.moveTo(-eyeSpacing + xs, eyeY - xs);
+    ctx.lineTo(-eyeSpacing - xs, eyeY + xs);
+    ctx.moveTo(eyeSpacing - xs, eyeY - xs);
+    ctx.lineTo(eyeSpacing + xs, eyeY + xs);
+    ctx.moveTo(eyeSpacing + xs, eyeY - xs);
+    ctx.lineTo(eyeSpacing - xs, eyeY + xs);
+    ctx.stroke();
+  }
+
+  // Blush
+  ctx.fillStyle = '#FFBDD6';
+  ctx.globalAlpha = 0.4;
+  ctx.beginPath();
+  ctx.ellipse(-eyeSpacing - 2 * scale, eyeY + 5 * scale, 3 * scale * faceScale, 2 * scale * faceScale, 0, 0, Math.PI * 2);
+  ctx.ellipse(eyeSpacing + 2 * scale, eyeY + 5 * scale, 3 * scale * faceScale, 2 * scale * faceScale, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Mouth
+  if (expression === 'happy') {
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1.5 * scale;
+    ctx.beginPath();
+    ctx.arc(0, eyeY + 5 * scale, 3 * scale * faceScale, 0.1 * Math.PI, 0.9 * Math.PI);
+    ctx.stroke();
+  } else if (expression === 'hurt' || expression === 'frozen') {
+    // Wavy sad mouth
+    ctx.strokeStyle = expression === 'frozen' ? '#90CAF9' : '#333';
+    ctx.lineWidth = 1.5 * scale;
+    ctx.beginPath();
+    ctx.moveTo(-4 * scale, eyeY + 7 * scale);
+    ctx.quadraticCurveTo(0, eyeY + 4 * scale, 4 * scale, eyeY + 7 * scale);
+    ctx.stroke();
+  }
+
+  // Shield glow
+  if (game.hasShield && game.state === GameState.PLAYING) {
+    ctx.strokeStyle = '#FFBDD6';
+    ctx.lineWidth = 2 * scale;
+    ctx.globalAlpha = 0.4 + Math.sin(game.time * 4) * 0.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 1.3 + Math.sin(game.time * 3) * 3 * scale, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+}
+
+function drawWorldObjects() {
+  const pal = Assets.configs.palette;
+
+  for (const obj of game.worldObjects) {
+    const screenX = obj.x - game.cameraX;
+    if (screenX < -60 * scale || screenX > W + 60 * scale) continue;
+
+    if (obj.type === 'yarn' && !obj.collected) {
+      const floatY = Math.sin(game.time * 3 + obj.floatPhase) * 5 * scale;
+      const y = (obj.y || game.groundY - obj.radius - 15 * scale) + floatY;
+
+      // Yarn ball
+      const color = obj.color === 'rainbow' ? '#FFD93D' : obj.color;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(screenX, y, obj.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Spiral pattern
+      ctx.strokeStyle = lightenColor(color, 0.3);
+      ctx.lineWidth = 1.5 * scale;
+      ctx.beginPath();
+      for (let a = 0; a < Math.PI * 3; a += 0.3) {
+        const sr = a / (Math.PI * 3) * obj.radius * 0.7;
+        const sx = screenX + Math.cos(a + game.time) * sr;
+        const sy = y + Math.sin(a + game.time) * sr;
+        if (a === 0) ctx.moveTo(sx, sy);
+        else ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+
+      // Small thread tail
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1 * scale;
+      ctx.beginPath();
+      ctx.moveTo(screenX + obj.radius * 0.7, y - obj.radius * 0.3);
+      ctx.quadraticCurveTo(
+        screenX + obj.radius * 1.3, y - obj.radius * 0.8,
+        screenX + obj.radius * 1.1 + Math.sin(game.time * 5) * 3 * scale, y - obj.radius * 1.2
+      );
+      ctx.stroke();
+
+      // Glow for rare yarns
+      if (obj.value >= 15) {
+        ctx.globalAlpha = 0.3 + Math.sin(game.time * 4) * 0.15;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(screenX, y, obj.radius * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    if (obj.type === 'obstacle' && !obj.hit) {
+      const y = game.groundY;
+
+      if (obj.obstacleType === 'cactus') {
+        // Cute round cactus
+        ctx.fillStyle = pal.cactus;
+        // Body
+        ctx.beginPath();
+        ctx.ellipse(screenX, y - obj.height * 0.4, obj.width * 0.3, obj.height * 0.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Arms
+        ctx.beginPath();
+        ctx.ellipse(screenX - obj.width * 0.3, y - obj.height * 0.5, obj.width * 0.12, obj.height * 0.2, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(screenX + obj.width * 0.28, y - obj.height * 0.45, obj.width * 0.1, obj.height * 0.18, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        // Spines
+        ctx.strokeStyle = '#81C784';
+        ctx.lineWidth = 1 * scale;
+        for (let i = 0; i < 6; i++) {
+          const a = -Math.PI * 0.8 + (i / 5) * Math.PI * 0.6;
+          const cx = screenX + Math.cos(a) * obj.width * 0.32;
+          const cy = y - obj.height * 0.4 + Math.sin(a) * obj.height * 0.4;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + Math.cos(a) * 5 * scale, cy + Math.sin(a) * 5 * scale);
+          ctx.stroke();
+        }
+        // Cute face
+        ctx.fillStyle = '#333';
+        ctx.beginPath();
+        ctx.arc(screenX - 4 * scale, y - obj.height * 0.5, 1.5 * scale, 0, Math.PI * 2);
+        ctx.arc(screenX + 4 * scale, y - obj.height * 0.5, 1.5 * scale, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      if (obj.obstacleType === 'scissor') {
+        // Cartoon scissors
+        ctx.fillStyle = pal.scissor;
+        // Blade 1
+        ctx.save();
+        ctx.translate(screenX, y - obj.height * 0.3);
+        ctx.rotate(Math.sin(game.time * 4) * 0.3);
+        ctx.beginPath();
+        ctx.ellipse(-2 * scale, -obj.height * 0.25, 4 * scale, obj.height * 0.3, -0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        // Blade 2
+        ctx.save();
+        ctx.translate(screenX, y - obj.height * 0.3);
+        ctx.rotate(-Math.sin(game.time * 4) * 0.3);
+        ctx.beginPath();
+        ctx.ellipse(2 * scale, -obj.height * 0.25, 4 * scale, obj.height * 0.3, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        // Handle circles
+        ctx.strokeStyle = '#F44336';
+        ctx.lineWidth = 2 * scale;
+        ctx.beginPath();
+        ctx.arc(screenX - 6 * scale, y - 5 * scale, 5 * scale, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(screenX + 6 * scale, y - 5 * scale, 5 * scale, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      if (obj.obstacleType === 'fan') {
+        // Placeholder for fan visual in fan_zone
+      }
+    }
+
+    if (obj.type === 'fan_zone') {
+      // Draw fan and wind lines
+      ctx.fillStyle = '#42A5F5';
+      ctx.globalAlpha = 0.15;
+      ctx.fillRect(screenX - obj.width / 2, game.groundY - obj.height, obj.width, obj.height);
+      ctx.globalAlpha = 1;
+      // Fan icon
+      ctx.fillStyle = '#42A5F5';
+      const fanX = screenX - obj.width / 2;
+      const fanY = game.groundY - obj.height * 0.8;
+      ctx.beginPath();
+      ctx.arc(fanX, fanY, 12 * scale, 0, Math.PI * 2);
+      ctx.fill();
+      // Blades
+      ctx.save();
+      ctx.translate(fanX, fanY);
+      ctx.rotate(game.time * 8);
+      for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = '#64B5F6';
+        ctx.beginPath();
+        ctx.ellipse(0, -8 * scale, 3 * scale, 8 * scale, (i / 3) * Math.PI * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      // Wind lines
+      ctx.strokeStyle = '#90CAF9';
+      ctx.lineWidth = 1 * scale;
+      ctx.globalAlpha = 0.4;
+      for (let i = 0; i < 4; i++) {
+        const wx = fanX + 15 * scale + ((game.time * 100 + i * 30) % (obj.width * 0.8));
+        const wy = fanY + (i - 1.5) * 12 * scale;
+        ctx.beginPath();
+        ctx.moveTo(wx, wy);
+        ctx.lineTo(wx + 20 * scale, wy + Math.sin(game.time * 3 + i) * 3 * scale);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    if (obj.type === 'finish') {
+      // Finish line
+      const flagHeight = 60 * scale;
+      ctx.fillStyle = '#FFD93D';
+      // Pole
+      ctx.fillRect(screenX - 2 * scale, game.groundY - flagHeight, 4 * scale, flagHeight);
+      // Flag
+      ctx.fillStyle = '#FF6B6B';
+      ctx.beginPath();
+      ctx.moveTo(screenX + 2 * scale, game.groundY - flagHeight);
+      ctx.lineTo(screenX + 30 * scale, game.groundY - flagHeight + 10 * scale);
+      ctx.lineTo(screenX + 2 * scale, game.groundY - flagHeight + 20 * scale);
+      ctx.fill();
+      // Star on top
+      drawStar(screenX, game.groundY - flagHeight - 6 * scale, 6 * scale, '#FFD93D');
+    }
+  }
+}
+
+function drawStar(x, y, size, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a = (i * 4 * Math.PI / 5) - Math.PI / 2;
+    const r = i === 0 ? size : size;
+    if (i === 0) ctx.moveTo(x + Math.cos(a) * size, y + Math.sin(a) * size);
+    const outerA = (i * 2 * Math.PI / 5) - Math.PI / 2;
+    const innerA = outerA + Math.PI / 5;
+    ctx.lineTo(x + Math.cos(outerA) * size, y + Math.sin(outerA) * size);
+    ctx.lineTo(x + Math.cos(innerA) * size * 0.4, y + Math.sin(innerA) * size * 0.4);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawHUD() {
+  const pal = Assets.configs.palette;
+
+  // Fluffiness bar
+  const barW = W * 0.6;
+  const barH = 16 * scale;
+  const barX = (W - barW) / 2;
+  const barY = 30 * scale;
+
+  // Bar background
+  ctx.fillStyle = pal.hp_empty;
+  ctx.beginPath();
+  roundRect(ctx, barX, barY, barW, barH, barH / 2);
+  ctx.fill();
+
+  // Bar fill
+  const fillW = barW * (game.fluffiness / 100);
+  if (fillW > 0) {
+    const barGrad = ctx.createLinearGradient(barX, barY, barX + fillW, barY);
+    barGrad.addColorStop(0, pal.primary_pink);
+    barGrad.addColorStop(1, '#FF8CAD');
+    ctx.fillStyle = barGrad;
+    ctx.beginPath();
+    roundRect(ctx, barX, barY, fillW, barH, barH / 2);
+    ctx.fill();
+  }
+
+  // Fluffiness text
+  ctx.fillStyle = pal.text_brown;
+  ctx.font = `bold ${12 * scale}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText(`${Math.round(game.fluffiness)}%`, W / 2, barY + barH + 14 * scale);
+
+  // Level text
+  ctx.font = `${10 * scale}px -apple-system, sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.fillText(t('level').replace('{n}', game.level), 15 * scale, 25 * scale);
+
+  // Combo indicator
+  if (game.combo >= 3) {
+    ctx.fillStyle = '#FFD93D';
+    ctx.font = `bold ${16 * scale}px -apple-system, sans-serif`;
+    ctx.textAlign = 'center';
+    const comboAlpha = Math.min(1, game.comboTimer);
+    ctx.globalAlpha = comboAlpha;
+    ctx.fillText(t('combo') + ' x' + game.combo, W / 2, barY + barH + 35 * scale);
+    ctx.globalAlpha = 1;
+  }
+
+  // Shield indicator
+  if (game.hasShield) {
+    ctx.fillStyle = '#FFBDD6';
+    ctx.font = `bold ${11 * scale}px -apple-system, sans-serif`;
+    ctx.textAlign = 'right';
+    ctx.globalAlpha = 0.6 + Math.sin(game.time * 3) * 0.3;
+    ctx.fillText(t('shield'), W - 15 * scale, 25 * scale);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawMenu() {
+  const pal = Assets.configs.palette;
+
+  // Background
+  ctx.fillStyle = pal.bg_cream;
+  ctx.fillRect(0, 0, W, H);
+
+  // Soft gradient overlay
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, pal.bg_sky + '80');
+  grad.addColorStop(0.5, 'transparent');
+  grad.addColorStop(1, pal.bg_grass + '60');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Floating particles
+  for (let i = 0; i < 8; i++) {
+    const px = (W * (i / 8) + Math.sin(game.time + i) * 30) % W;
+    const py = H * 0.3 + Math.sin(game.time * 0.7 + i * 2) * H * 0.15;
+    ctx.fillStyle = ['#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#9B72FF', '#FFBDD6', '#FFA36B', '#FFFBF5'][i];
+    ctx.globalAlpha = 0.3;
+    ctx.beginPath();
+    ctx.arc(px, py, (3 + Math.sin(game.time + i) * 1.5) * scale, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Title
+  ctx.fillStyle = pal.text_brown;
+  ctx.font = `bold ${32 * scale}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('毛球快跑', W / 2, H * 0.18);
+
+  ctx.font = `${14 * scale}px -apple-system, sans-serif`;
+  ctx.fillStyle = pal.text_brown + 'AA';
+  ctx.fillText('Fluffball Run', W / 2, H * 0.23);
+
+  // Menu ball (sleeping/bouncing)
+  const ballY = H * 0.42 + (game.menuBounce > 0 ? -Math.sin(game.menuBounce * Math.PI) * 20 * scale : Math.sin(game.time * 1.5) * 5 * scale);
+  const ballR = 35 * scale;
+
+  // Fake fluff particles for menu ball
+  const menuFluffCount = 40;
+  for (let i = 0; i < menuFluffCount; i++) {
+    const a = (i / menuFluffCount) * Math.PI * 2;
+    const d = ballR * (0.7 + Math.sin(game.time * 2 + i * 0.5) * 0.15);
+    const px = W / 2 + Math.cos(a) * d;
+    const py = ballY + Math.sin(a) * d;
+    const colors = ['#FFFBF5', '#FFBDD6', '#FFD4A8', '#FFFBF5'];
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.arc(px, py, (2.5 + Math.sin(game.time * 3 + i) * 0.5) * scale, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Ball body
+  const menuGrad = ctx.createRadialGradient(W / 2 - 5 * scale, ballY - 5 * scale, 0, W / 2, ballY, ballR);
+  menuGrad.addColorStop(0, '#FFFFFF');
+  menuGrad.addColorStop(0.4, '#FFFBF5');
+  menuGrad.addColorStop(1, '#FFE8D6');
+  ctx.fillStyle = menuGrad;
+  ctx.beginPath();
+  ctx.arc(W / 2, ballY, ballR * 0.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Sleeping face (unless bounced)
+  if (game.menuBounce > 0) {
+    // Awake face!
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.arc(W / 2 - 8 * scale, ballY - 3 * scale, 3 * scale, 0, Math.PI * 2);
+    ctx.arc(W / 2 + 8 * scale, ballY - 3 * scale, 3 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#FFF';
+    ctx.beginPath();
+    ctx.arc(W / 2 - 7 * scale, ballY - 4 * scale, 1.2 * scale, 0, Math.PI * 2);
+    ctx.arc(W / 2 + 9 * scale, ballY - 4 * scale, 1.2 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    // Happy mouth
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1.5 * scale;
+    ctx.beginPath();
+    ctx.arc(W / 2, ballY + 2 * scale, 4 * scale, 0.1 * Math.PI, 0.9 * Math.PI);
+    ctx.stroke();
+  } else {
+    // Sleeping face
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2 * scale;
+    // Closed eyes
+    ctx.beginPath();
+    ctx.arc(W / 2 - 8 * scale, ballY - 2 * scale, 3 * scale, 0, Math.PI);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(W / 2 + 8 * scale, ballY - 2 * scale, 3 * scale, 0, Math.PI);
+    ctx.stroke();
+    // Zzz
+    ctx.font = `${10 * scale}px -apple-system, sans-serif`;
+    ctx.fillStyle = pal.text_brown + '80';
+    ctx.fillText('z', W / 2 + ballR + 10 * scale, ballY - 20 * scale + Math.sin(game.time * 2) * 5 * scale);
+    ctx.font = `${8 * scale}px -apple-system, sans-serif`;
+    ctx.fillText('z', W / 2 + ballR + 20 * scale, ballY - 30 * scale + Math.sin(game.time * 2 + 0.5) * 5 * scale);
+  }
+
+  // Blush
+  ctx.fillStyle = '#FFBDD6';
+  ctx.globalAlpha = 0.35;
+  ctx.beginPath();
+  ctx.ellipse(W / 2 - 12 * scale, ballY + 4 * scale, 5 * scale, 3 * scale, 0, 0, Math.PI * 2);
+  ctx.ellipse(W / 2 + 12 * scale, ballY + 4 * scale, 5 * scale, 3 * scale, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Grass under ball
+  ctx.fillStyle = pal.bg_grass;
+  ctx.beginPath();
+  ctx.ellipse(W / 2, H * 0.42 + ballR * 0.5, ballR * 1.5, 8 * scale, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Start button
+  const btnY = H * 0.72;
+  const btnW = 180 * scale;
+  const btnH = 55 * scale;
+
+  // Button shadow
+  ctx.fillStyle = '#00000010';
+  ctx.beginPath();
+  roundRect(ctx, W / 2 - btnW / 2 + 2 * scale, btnY - btnH / 2 + 3 * scale, btnW, btnH, btnH / 2);
+  ctx.fill();
+
+  // Button
+  const btnGrad = ctx.createLinearGradient(0, btnY - btnH / 2, 0, btnY + btnH / 2);
+  btnGrad.addColorStop(0, '#FFBDD6');
+  btnGrad.addColorStop(1, '#FF8CAD');
+  ctx.fillStyle = btnGrad;
+  ctx.beginPath();
+  roundRect(ctx, W / 2 - btnW / 2, btnY - btnH / 2, btnW, btnH, btnH / 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#FFF';
+  ctx.font = `bold ${20 * scale}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText(t('start'), W / 2, btnY + 7 * scale);
+
+  // Skins button
+  ctx.fillStyle = pal.text_brown + 'AA';
+  ctx.font = `${13 * scale}px -apple-system, sans-serif`;
+  ctx.fillText(t('skins'), W / 2, H * 0.83);
+}
+
+function drawFinishScreen() {
+  game.finishTimer += 1 / 60;
+  const pal = Assets.configs.palette;
+
+  // Background with fade
+  ctx.fillStyle = pal.bg_cream + 'E0';
+  ctx.fillRect(0, 0, W, H);
+
+  // Big ball at center
+  const ballY = H * 0.38;
+  const baseR = 50 * scale;
+  const pulseR = baseR + Math.sin(game.time * 2) * 3 * scale;
+  const rotation = game.finishTimer * 0.5;
+
+  // Celebration particles
+  if (game.fluffiness >= 80 && Math.random() < 0.1) {
+    const angle = Math.random() * Math.PI * 2;
+    spawnParticles(
+      W / 2 + Math.cos(angle) * pulseR * 1.5,
+      ballY + Math.sin(angle) * pulseR * 1.5,
+      '#FFD93D', 2, 30 * scale, 0.5, 3 * scale, 0
+    );
+  }
+
+  // Draw the ball large
+  ctx.save();
+  ctx.translate(W / 2, ballY);
+
+  // Fluff particles large
+  const fluffCount = Math.floor(game.fluffiness * 0.8);
+  for (let i = 0; i < fluffCount; i++) {
+    const a = (i / fluffCount) * Math.PI * 2 + rotation;
+    const d = pulseR * (0.6 + Math.sin(game.time * 2 + i * 0.3) * 0.2);
+    const color = game.fluffColors.length > 0
+      ? game.fluffColors[i % game.fluffColors.length]
+      : '#FFFBF5';
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    ctx.arc(Math.cos(a) * d, Math.sin(a) * d, (3 + Math.random()) * scale, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Core
+  const skin = getSkin(game.currentSkin);
+  const baseColor = skin ? skin.base_color : '#FFFBF5';
+  const grad = ctx.createRadialGradient(-pulseR * 0.2, -pulseR * 0.2, 0, 0, 0, pulseR * 0.7);
+  grad.addColorStop(0, '#FFFFFF');
+  grad.addColorStop(0.4, baseColor === 'rainbow' ? '#FFB7C5' : baseColor);
+  grad.addColorStop(1, darkenColor(baseColor === 'rainbow' ? '#FFB7C5' : baseColor, 0.15));
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(0, 0, pulseR * 0.7, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Happy face
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(-8 * scale, -4 * scale, 3.5 * scale, 0, Math.PI * 2);
+  ctx.arc(8 * scale, -4 * scale, 3.5 * scale, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#FFF';
+  ctx.beginPath();
+  ctx.arc(-7 * scale, -5 * scale, 1.5 * scale, 0, Math.PI * 2);
+  ctx.arc(9 * scale, -5 * scale, 1.5 * scale, 0, Math.PI * 2);
+  ctx.fill();
+  // Smile
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2 * scale;
+  ctx.beginPath();
+  ctx.arc(0, 2 * scale, 6 * scale, 0.1 * Math.PI, 0.9 * Math.PI);
+  ctx.stroke();
+  // Blush
+  ctx.fillStyle = '#FFBDD6';
+  ctx.globalAlpha = 0.4;
+  ctx.beginPath();
+  ctx.ellipse(-14 * scale, 4 * scale, 5 * scale, 3 * scale, 0, 0, Math.PI * 2);
+  ctx.ellipse(14 * scale, 4 * scale, 5 * scale, 3 * scale, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Pet mode wobble
+  if (game.petMode) {
+    ctx.translate(game.petOffsetX, game.petOffsetY);
+  }
+
+  ctx.restore();
+
+  // Score
+  const scoreStr = Math.round(game.fluffiness) + '%';
+  ctx.fillStyle = pal.text_brown;
+  ctx.font = `bold ${40 * scale}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText(scoreStr, W / 2, H * 0.56);
+
+  // Rating text
+  let rating;
+  if (game.fluffiness >= 95) rating = t('rating_95');
+  else if (game.fluffiness >= 80) rating = t('rating_80');
+  else if (game.fluffiness >= 60) rating = t('rating_60');
+  else if (game.fluffiness >= 30) rating = t('rating_30');
+  else rating = t('rating_0');
+
+  ctx.font = `${18 * scale}px -apple-system, sans-serif`;
+  ctx.fillText(rating, W / 2, H * 0.62);
+
+  // Buttons
+  const btnW = 140 * scale;
+  const btnH = 45 * scale;
+  const btnGap = 15 * scale;
+  const btnY = H * 0.72;
+  const totalBtnW = btnW * 2 + btnGap;
+  const startBtnX = W / 2 - totalBtnW / 2;
+
+  // Retry button
+  ctx.fillStyle = pal.hp_empty;
+  ctx.beginPath();
+  roundRect(ctx, startBtnX, btnY - btnH / 2, btnW, btnH, btnH / 2);
+  ctx.fill();
+  ctx.fillStyle = pal.text_brown;
+  ctx.font = `bold ${14 * scale}px -apple-system, sans-serif`;
+  ctx.fillText(t('retry'), startBtnX + btnW / 2, btnY + 5 * scale);
+
+  // Next button
+  const nextGrad = ctx.createLinearGradient(0, btnY - btnH / 2, 0, btnY + btnH / 2);
+  nextGrad.addColorStop(0, '#FFBDD6');
+  nextGrad.addColorStop(1, '#FF8CAD');
+  ctx.fillStyle = nextGrad;
+  ctx.beginPath();
+  roundRect(ctx, startBtnX + btnW + btnGap, btnY - btnH / 2, btnW, btnH, btnH / 2);
+  ctx.fill();
+  ctx.fillStyle = '#FFF';
+  ctx.fillText('下一关 →', startBtnX + btnW + btnGap + btnW / 2, btnY + 5 * scale);
+
+  // Pet button
+  ctx.fillStyle = game.petMode ? pal.primary_pink : pal.text_brown + '80';
+  ctx.font = `${13 * scale}px -apple-system, sans-serif`;
+  ctx.fillText(t('pet'), W / 2, H * 0.83);
+
+  // Draw particles on top
+  particles.forEach(p => p.draw(ctx));
+}
+
+function drawDeadScreen() {
+  const pal = Assets.configs.palette;
+
+  ctx.fillStyle = pal.danger_cold + 'E0';
+  ctx.fillRect(0, 0, W, H);
+
+  // Frozen ball
+  const ballY = H * 0.4;
+  const ballR = 30 * scale;
+
+  // Ice effect
+  ctx.fillStyle = '#E3F2FD';
+  ctx.beginPath();
+  ctx.arc(W / 2, ballY, ballR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#90CAF9';
+  ctx.lineWidth = 2 * scale;
+  ctx.stroke();
+
+  // Frozen face
+  ctx.strokeStyle = '#90CAF9';
+  ctx.lineWidth = 2 * scale;
+  const xs = 4 * scale;
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - 8 * scale - xs, ballY - xs);
+  ctx.lineTo(W / 2 - 8 * scale + xs, ballY + xs);
+  ctx.moveTo(W / 2 - 8 * scale + xs, ballY - xs);
+  ctx.lineTo(W / 2 - 8 * scale - xs, ballY + xs);
+  ctx.moveTo(W / 2 + 8 * scale - xs, ballY - xs);
+  ctx.lineTo(W / 2 + 8 * scale + xs, ballY + xs);
+  ctx.moveTo(W / 2 + 8 * scale + xs, ballY - xs);
+  ctx.lineTo(W / 2 + 8 * scale - xs, ballY + xs);
+  ctx.stroke();
+  // Wavy mouth
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - 5 * scale, ballY + 8 * scale);
+  ctx.quadraticCurveTo(W / 2, ballY + 5 * scale, W / 2 + 5 * scale, ballY + 8 * scale);
+  ctx.stroke();
+
+  // Shiver animation
+  const shiver = Math.sin(game.time * 20) * 2 * scale;
+  ctx.save();
+  ctx.translate(shiver, 0);
+  ctx.restore();
+
+  // Text
+  ctx.fillStyle = '#5D4037';
+  ctx.font = `bold ${24 * scale}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText(t('frozen'), W / 2, H * 0.55);
+
+  // Ice crystals
+  for (let i = 0; i < 6; i++) {
+    const ix = W * 0.2 + (i % 3) * W * 0.3 + Math.sin(game.time + i) * 10 * scale;
+    const iy = H * 0.25 + Math.floor(i / 3) * H * 0.4 + Math.cos(game.time * 0.7 + i) * 10 * scale;
+    ctx.fillStyle = '#90CAF9';
+    ctx.globalAlpha = 0.3;
+    drawStar(ix, iy, 8 * scale, '#90CAF9');
+  }
+  ctx.globalAlpha = 1;
+
+  // Retry button
+  const btnW = 160 * scale;
+  const btnH = 50 * scale;
+  const btnY = H * 0.65;
+  ctx.fillStyle = '#FFBDD6';
+  ctx.beginPath();
+  roundRect(ctx, W / 2 - btnW / 2, btnY - btnH / 2, btnW, btnH, btnH / 2);
+  ctx.fill();
+  ctx.fillStyle = '#FFF';
+  ctx.font = `bold ${16 * scale}px -apple-system, sans-serif`;
+  ctx.fillText(t('retry'), W / 2, btnY + 6 * scale);
+
+  particles.forEach(p => p.draw(ctx));
+}
+
+function drawSkinsScreen() {
+  const pal = Assets.configs.palette;
+  ctx.fillStyle = pal.bg_cream;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = pal.text_brown;
+  ctx.font = `bold ${22 * scale}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText(t('skins'), W / 2, 45 * scale);
+
+  // Back button
+  ctx.font = `${14 * scale}px -apple-system, sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.fillText('← ' + t('back'), 15 * scale, 45 * scale);
+
+  // Skin grid
+  const skins = Assets.configs.skins.skins;
+  const cols = 4;
+  const cellSize = (W - 40 * scale) / cols;
+  const startY = 70 * scale;
+
+  skins.forEach((skin, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const cx = 20 * scale + col * cellSize + cellSize / 2;
+    const cy = startY + row * (cellSize + 10 * scale) + cellSize / 2;
+
+    const isUnlocked = game.unlockedSkins.includes(skin.id);
+    const isSelected = game.currentSkin === skin.id;
+
+    // Cell background
+    ctx.fillStyle = isSelected ? pal.primary_pink + '40' : '#FFF';
+    ctx.beginPath();
+    roundRect(ctx, cx - cellSize / 2 + 4, cy - cellSize / 2 + 4, cellSize - 8, cellSize - 8, 10 * scale);
+    ctx.fill();
+
+    if (isSelected) {
+      ctx.strokeStyle = pal.primary_pink;
+      ctx.lineWidth = 2 * scale;
+      ctx.stroke();
+    }
+
+    if (isUnlocked) {
+      // Draw mini ball
+      const ballColor = skin.base_color === 'rainbow' ? '#FFB7C5' : skin.base_color;
+      ctx.fillStyle = ballColor;
+      ctx.beginPath();
+      ctx.arc(cx, cy - 5 * scale, 15 * scale, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Mini face
+      ctx.fillStyle = '#333';
+      ctx.beginPath();
+      ctx.arc(cx - 4 * scale, cy - 7 * scale, 1.5 * scale, 0, Math.PI * 2);
+      ctx.arc(cx + 4 * scale, cy - 7 * scale, 1.5 * scale, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Locked
+      ctx.fillStyle = '#E0E0E0';
+      ctx.beginPath();
+      ctx.arc(cx, cy - 5 * scale, 15 * scale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#999';
+      ctx.font = `${16 * scale}px -apple-system, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('🔒', cx, cy);
+    }
+
+    // Name
+    ctx.fillStyle = isUnlocked ? pal.text_brown : '#999';
+    ctx.font = `${8 * scale}px -apple-system, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(skin.name, cx, cy + 18 * scale);
+  });
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+}
+
+// --- Color helpers ---
+function darkenColor(hex, amount) {
+  if (hex === 'rainbow') return '#CC8899';
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgb(${Math.floor(r * (1 - amount))},${Math.floor(g * (1 - amount))},${Math.floor(b * (1 - amount))})`;
+}
+
+function lightenColor(hex, amount) {
+  if (hex === 'rainbow') return '#FFD4E0';
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgb(${Math.min(255, Math.floor(r + (255 - r) * amount))},${Math.min(255, Math.floor(g + (255 - g) * amount))},${Math.min(255, Math.floor(b + (255 - b) * amount))})`;
+}
+
+// --- Main Draw ---
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  if (game.state === GameState.MENU) {
+    drawMenu();
+    return;
+  }
+
+  if (game.state === GameState.SKINS) {
+    drawSkinsScreen();
+    return;
+  }
+
+  if (game.state === GameState.FINISH) {
+    drawFinishScreen();
+    return;
+  }
+
+  if (game.state === GameState.DEAD) {
+    drawDeadScreen();
+    return;
+  }
+
+  // Playing state
+  // Save and translate for camera
+  ctx.save();
+
+  drawBackground();
+
+  drawWorldObjects();
+
+  // Draw ball at fixed screen position
+  const screenBallX = 100 * scale;
+  drawBall(screenBallX, game.ballY, getFluffRadius(), game.ballRotation, game.squash, game.stretch, game.expression);
+
+  // Particles
+  ctx.save();
+  // Translate particles relative to camera
+  particles.forEach(p => {
+    const screenP = { ...p, x: p.x - game.cameraX + screenBallX - game.ballX + game.cameraX };
+    p.draw(ctx);
+  });
+  ctx.restore();
+
+  ctx.restore();
+
+  // HUD on top
+  drawHUD();
+}
+
+// --- Game Loop ---
+function gameLoop(timestamp) {
+  if (!lastTime) lastTime = timestamp;
+  const dt = Math.min((timestamp - lastTime) / 1000, 0.05); // cap dt
+  lastTime = timestamp;
+
+  update(dt);
+  draw();
+
+  requestAnimationFrame(gameLoop);
+}
+
+// --- Init ---
+async function init() {
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  await loadAllAssets();
+
+  // Load saved state from localStorage
+  try {
+    const saved = JSON.parse(localStorage.getItem('fluffball_save'));
+    if (saved) {
+      game.level = saved.level || 1;
+      game.totalFluffiness = saved.totalFluffiness || 0;
+      game.unlockedSkins = saved.unlockedSkins || ['cotton'];
+      game.currentSkin = saved.currentSkin || 'cotton';
+    }
+  } catch(e) {}
+
+  requestAnimationFrame(gameLoop);
+
+  // Auto-save
+  setInterval(() => {
+    localStorage.setItem('fluffball_save', JSON.stringify({
+      level: game.level,
+      totalFluffiness: game.totalFluffiness,
+      unlockedSkins: game.unlockedSkins,
+      currentSkin: game.currentSkin,
+    }));
+  }, 5000);
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+{
+  "achievements": [
+    {
+      "id": "first_run",
+      "name_zh": "第一次奔跑",
+      "name_en": "First Run",
+      "condition": "complete_level_1",
+      "reward": "none"
+    },
+    {
+      "id": "perfect_fluff",
+      "name_zh": "完美毛球",
+      "name_en": "Perfect Fluffball",
+      "condition": "finish_95_plus",
+      "reward": "title"
+    },
+    {
+      "id": "bald_ball",
+      "name_zh": "光秃秃",
+      "name_en": "Bald Ball",
+      "condition": "reach_0_percent",
+      "reward": "skin_crystal"
+    },
+    {
+      "id": "rainbow",
+      "name_zh": "彩虹收藏家",
+      "name_en": "Rainbow Collector",
+      "condition": "collect_all_12_colors",
+      "reward": "skin_rainbow"
+    },
+    {
+      "id": "fluff_master",
+      "name_zh": "毛绒大师",
+      "name_en": "Fluff Master",
+      "condition": "5_consecutive_80_plus",
+      "reward": "title"
+    },
+    {
+      "id": "combo_10",
+      "name_zh": "连击王",
+      "name_en": "Combo King",
+      "condition": "10_combo_in_one_level",
+      "reward": "yarn_gold"
+    },
+    {
+      "id": "endless_100",
+      "name_zh": "无尽远征",
+      "name_en": "Endless Journey",
+      "condition": "endless_mode_100",
+      "reward": "skin_aurora"
+    },
+    {
+      "id": "daily_7",
+      "name_zh": "每日坚持",
+      "name_en": "Daily Streak",
+      "condition": "7_day_daily_streak",
+      "reward": "skin_star"
+    },
+    {
+      "id": "no_jump",
+      "name_zh": "脚踏实地",
+      "name_en": "No Jump",
+      "condition": "complete_without_jumping",
+      "reward": "title"
+    },
+    {
+      "id": "speed_run",
+      "name_zh": "毛球飞奔",
+      "name_en": "Speed Run",
+      "condition": "finish_under_45s",
+      "reward": "title"
+    }
+  ]
+}

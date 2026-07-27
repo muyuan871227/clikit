@@ -1,0 +1,11 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+    <linearGradient id="heatmapGradient" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF0000"/>
+      <stop offset="0.33" stop-color="#FFFF00"/>
+      <stop offset="0.66" stop-color="#00FF00"/>
+      <stop offset="1" stop-color="#0000FF"/>
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="30" stroke="url(#heatmapGradient)" stroke-width="4"/>
+</svg>

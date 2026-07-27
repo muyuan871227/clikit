@@ -1,0 +1,108 @@
+{
+  "session": {
+    "rounds": 3,
+    "investigate_seconds": 180,
+    "trial_seconds": 120,
+    "voting_seconds": 30,
+    "total_seconds": 990,
+    "_comment": "3 rounds × (180 investigate + 120 trial + 30 voting) = 990s ≈ 16min; matches anchor 900s+buffer"
+  },
+  "map": {
+    "room_count": 7,
+    "room_ids": ["foyer", "library", "kitchen", "dining", "bedroom_a", "study", "garden"],
+    "item_slots_per_room": 3,
+    "map_width_px": 720,
+    "map_height_px": 600,
+    "room_width_px": 240,
+    "room_height_px": 200,
+    "_comment": "3 cols × 2 rows + garden right (240w x 400h spanning 2 rows). Total 720x600. Right side reserved for activity log + roster panel"
+  },
+  "players": {
+    "total": 6,
+    "human_index": 0,
+    "killer_count": 1,
+    "names_zh": ["你", "艾丽卡", "本", "卡洛斯", "黛安", "埃利奥"],
+    "names_en": ["You", "Erica", "Ben", "Carlos", "Diane", "Elio"],
+    "colors": ["#FF3B30", "#007AFF", "#34C759", "#FF9500", "#AF52DE", "#00C7BE"]
+  },
+  "evidence": {
+    "total_slots": 21,
+    "real_clue_count": 15,
+    "forgeable_slot_count": 6,
+    "types_real_only": ["physical_trace", "time_clue"],
+    "types_forgeable": ["weapon", "motive_doc", "movement_log", "fingerprint"],
+    "search_duration_seconds": 4.0,
+    "initial_report_delay_seconds": 2.0,
+    "_comment": "2 always-real types + 4 forgeable types; first reward at 2s (initial report) <15s anchor"
+  },
+  "killer_actions": {
+    "frame_linger_seconds": 5.0,
+    "frame_per_round": 1,
+    "tamper_per_round": 1,
+    "destroy_per_game": 1,
+    "false_testimony_per_game": 1,
+    "_comment": "Mechanics spec from one-liner"
+  },
+  "lens": {
+    "total_count": 3,
+    "spawn_per_round": 1,
+    "verify_reveal_real_or_fake": true,
+    "can_lie_about_result": true,
+    "_comment": "3 lenses = comeback lever for detectives"
+  },
+  "voting": {
+    "abstain_allowed": true,
+    "no_one_out_if_abstain_majority": true,
+    "abstain_threshold_pct": 50,
+    "majority_needed": true,
+    "tie_breaker": "no_elimination",
+    "_comment": "Abstain strategy from design: no elim if no majority"
+  },
+  "win_conditions": {
+    "detective_win": "eliminate_killer",
+    "killer_win": "survive_all_rounds_or_detectives_outnumbered",
+    "min_detectives_to_continue": 3
+  },
+  "camera": {
+    "viewport_w": 960,
+    "viewport_h": 720,
+    "hud_height": 80
+  },
+  "audio": {
+    "bgm_volume": 0.4,
+    "sfx_volume": 0.7,
+    "master_volume": 1.0
+  },
+  "feel": {
+    "click_tolerance_ms": 120,
+    "hover_delay_ms": 80,
+    "search_progress_step": 0.25,
+    "evidence_reveal_duration_ms": 400,
+    "screen_shake_on_reveal_px": 4,
+    "flash_ms_on_reveal": 180
+  },
+  "vision": {
+    "radius": 170,
+    "fade_band": 40,
+    "fog_alpha": 0.82,
+    "wall_blocking": true,
+    "_comment": "Vision: 170px circle around player (tight range). Walls block line of sight. Outside vision = dim fog."
+  },
+  "ai": {
+    "suspicion_max": 100,
+    "suspicion_threshold_vote": 60,
+    "suspicion_decay_per_round": 10,
+    "killer_aggression": 0.75,
+    "detective_trust_start": 50
+  },
+  "progression": {
+    "reputation_win": 100,
+    "reputation_loss": 20,
+    "reputation_lens_correct": 30,
+    "stage_thresholds": [0, 200, 500, 1000]
+  },
+  "localization": {
+    "default_lang": "zh",
+    "supported_langs": ["zh", "en"]
+  }
+}

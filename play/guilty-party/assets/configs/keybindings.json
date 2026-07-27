@@ -1,0 +1,24 @@
+{
+  "player1": {
+    "move_up": ["KeyW", "ArrowUp"],
+    "move_down": ["KeyS", "ArrowDown"],
+    "move_left": ["KeyA", "ArrowLeft"],
+    "move_right": ["KeyD", "ArrowRight"],
+    "search_interact": ["Space", "KeyE"],
+    "open_evidence_book": ["Tab", "KeyI"],
+    "accuse_present_evidence": ["Enter"],
+    "use_lens": ["KeyL"],
+    "pause_menu": ["Escape"]
+  },
+  "mouse": {
+    "click_primary": "left",
+    "click_examine": "right"
+  },
+  "ui_hotkeys": {
+    "frame_action": ["KeyF"],
+    "tamper_action": ["KeyT"],
+    "destroy_action": ["KeyX"],
+    "false_testimony": ["KeyY"],
+    "vent_use": ["KeyV"]
+  }
+}

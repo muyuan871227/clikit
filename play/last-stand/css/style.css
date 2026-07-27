@@ -1,0 +1,302 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+body {
+    background: #0a0a0a;
+    overflow: hidden;
+    font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    touch-action: none;
+}
+
+#gameCanvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* Overlays */
+.overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.85);
+}
+
+/* Main Menu */
+.menu-content {
+    text-align: center;
+}
+
+.game-title {
+    font-size: 4rem;
+    color: #39FF14;
+    text-shadow: 0 0 30px rgba(57, 255, 20, 0.5), 0 0 60px rgba(57, 255, 20, 0.3);
+    letter-spacing: 0.2em;
+    margin-bottom: 0.2em;
+}
+
+.game-subtitle {
+    font-size: 1.5rem;
+    color: #888;
+    letter-spacing: 0.5em;
+    margin-bottom: 2em;
+}
+
+.menu-btn {
+    display: block;
+    margin: 0.8em auto;
+    padding: 0.8em 3em;
+    font-size: 1.2rem;
+    color: #39FF14;
+    background: rgba(57, 255, 20, 0.1);
+    border: 2px solid #39FF14;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    letter-spacing: 0.1em;
+    min-width: 220px;
+}
+
+.menu-btn:hover {
+    background: rgba(57, 255, 20, 0.25);
+    box-shadow: 0 0 20px rgba(57, 255, 20, 0.3);
+}
+
+.menu-btn.secondary {
+    color: #888;
+    border-color: #555;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.menu-btn.secondary:hover {
+    color: #aaa;
+    border-color: #888;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.controls-hint {
+    color: #555;
+    font-size: 0.85rem;
+    margin-top: 1em;
+}
+
+/* Upgrade Card Selection */
+.upgrade-content {
+    text-align: center;
+    width: 90%;
+    max-width: 800px;
+}
+
+.upgrade-title {
+    font-size: 2rem;
+    color: #39FF14;
+    text-shadow: 0 0 20px rgba(57, 255, 20, 0.4);
+    margin-bottom: 1em;
+}
+
+.card-container {
+    display: flex;
+    justify-content: center;
+    gap: 1.2em;
+    flex-wrap: wrap;
+}
+
+.upgrade-card {
+    width: 200px;
+    padding: 1.5em 1em;
+    background: rgba(30, 30, 30, 0.95);
+    border: 2px solid #444;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.25s;
+    text-align: center;
+}
+
+.upgrade-card:hover {
+    border-color: #39FF14;
+    transform: translateY(-8px);
+    box-shadow: 0 8px 30px rgba(57, 255, 20, 0.2);
+}
+
+.card-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5em;
+}
+
+.card-name {
+    font-size: 1.1rem;
+    color: #e0e0e0;
+    margin-bottom: 0.5em;
+    font-weight: bold;
+}
+
+.card-desc {
+    font-size: 0.85rem;
+    color: #999;
+    line-height: 1.4;
+}
+
+.card-rarity-common { border-color: #666; }
+.card-rarity-rare { border-color: #00D4FF; }
+.card-rarity-epic { border-color: #b44dff; }
+.card-rarity-legendary { border-color: #FFD700; }
+
+.card-rarity-rare .card-name { color: #00D4FF; }
+.card-rarity-epic .card-name { color: #b44dff; }
+.card-rarity-legendary .card-name { color: #FFD700; }
+
+.reroll-btn {
+    margin-top: 1.5em;
+    padding: 0.6em 2em;
+    font-size: 0.95rem;
+    color: #FFD700;
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid #FFD700;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+.reroll-btn:hover {
+    background: rgba(255, 215, 0, 0.2);
+}
+
+.reroll-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* Game Over */
+.gameover-content {
+    text-align: center;
+}
+
+.gameover-title {
+    font-size: 2.5rem;
+    color: #ff4444;
+    text-shadow: 0 0 20px rgba(255, 68, 68, 0.4);
+    margin-bottom: 1em;
+}
+
+.gameover-title.victory {
+    color: #FFD700;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1em;
+    margin-bottom: 2em;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.stat-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1em;
+    border-radius: 6px;
+    border: 1px solid #333;
+}
+
+.stat-label {
+    display: block;
+    color: #888;
+    font-size: 0.85rem;
+    margin-bottom: 0.3em;
+}
+
+.stat-value {
+    display: block;
+    color: #39FF14;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+/* Upgrade Tree */
+.tree-content {
+    text-align: center;
+    width: 90%;
+    max-width: 700px;
+}
+
+.tree-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1em;
+    margin-bottom: 1.5em;
+}
+
+.tree-node {
+    background: rgba(30, 30, 30, 0.95);
+    border: 2px solid #333;
+    border-radius: 8px;
+    padding: 1em;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tree-node:hover {
+    border-color: #39FF14;
+}
+
+.tree-node.maxed {
+    border-color: #FFD700;
+    opacity: 0.7;
+}
+
+.tree-node-icon {
+    font-size: 2rem;
+    margin-bottom: 0.3em;
+}
+
+.tree-node-name {
+    color: #e0e0e0;
+    font-size: 0.95rem;
+    margin-bottom: 0.2em;
+}
+
+.tree-node-level {
+    color: #39FF14;
+    font-size: 0.85rem;
+}
+
+.tree-node-cost {
+    color: #FFD700;
+    font-size: 0.8rem;
+    margin-top: 0.3em;
+}
+
+.tree-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#goldDisplay {
+    color: #FFD700;
+    font-size: 1.2rem;
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+    .game-title { font-size: 2.5rem; }
+    .game-subtitle { font-size: 1rem; }
+    .upgrade-card { width: 160px; padding: 1em 0.8em; }
+    .card-icon { font-size: 2rem; }
+    .card-name { font-size: 0.95rem; }
+    .card-desc { font-size: 0.75rem; }
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 0.6em; }
+}

@@ -1,0 +1,67 @@
+{
+  "tiers": [
+    {
+      "id": "beginner",
+      "min": 0,
+      "max": 59,
+      "color": "#EF4444",
+      "sfx": "deflate",
+      "particles": 0,
+      "label_zh": "初学者",
+      "label_en": "Beginner"
+    },
+    {
+      "id": "decent",
+      "min": 60,
+      "max": 79,
+      "color": "#F59E0B",
+      "sfx": "ding1",
+      "particles": 0,
+      "label_zh": "不错了",
+      "label_en": "Decent"
+    },
+    {
+      "id": "good",
+      "min": 80,
+      "max": 89,
+      "color": "#22C55E",
+      "sfx": "ding2",
+      "particles": 5,
+      "label_zh": "厉害",
+      "label_en": "Great"
+    },
+    {
+      "id": "master",
+      "min": 90,
+      "max": 94,
+      "color": "#3B82F6",
+      "sfx": "ding3",
+      "particles": 12,
+      "label_zh": "大师",
+      "label_en": "Master"
+    },
+    {
+      "id": "genius",
+      "min": 95,
+      "max": 97,
+      "color": "#A855F7",
+      "sfx": "orchestral",
+      "particles": 30,
+      "glow": true,
+      "label_zh": "天才",
+      "label_en": "Genius"
+    },
+    {
+      "id": "legend",
+      "min": 98,
+      "max": 100,
+      "color": "#FFD700",
+      "sfx": "orchestral_full",
+      "particles": 50,
+      "glow": true,
+      "shake": true,
+      "label_zh": "传说",
+      "label_en": "Legend"
+    }
+  ]
+}

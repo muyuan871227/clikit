@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>碎星对决 STAR CRUSH DUEL</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0D0D1A; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Segoe UI', sans-serif; }
+canvas { display: block; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<script>
+// ============================================================
+// 《碎星对决》STAR CRUSH DUEL v2 - Juicy Edition
+// ============================================================
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// --- Constants ---
+const COLS = 7, ROWS = 9;
+const GEM_COLORS = ['#E63946','#4361EE','#2DC653','#9B5DE5','#F7B731'];
+const GEM_GLOW =   ['#FF6B7A','#6B8AFF','#5AE67A','#BE8AFF','#FFD06B'];
+const BG_COLOR = '#0D0D1A';
+const INITIAL_HP = 200;
+const GARBAGE_DAMAGE = 10;
+const FEVER_MAX = 100, FEVER_DURATION = 8, FEVER_COOLDOWN = 20;
+const ICE_MAX_USES = 3, ICE_DURATION = 1.5;
+const MAX_SINGLE_SEND = 5, MAX_SINGLE_DAMAGE = 80;
+const MATCH_TIME = 180;
+const SPECIAL_NONE = 0, SPECIAL_BOMB = 1, SPECIAL_RAINBOW = 2, SPECIAL_FIRE = 3, SPECIAL_ICE = 4;
+const GARBAGE = -1;
+
+// Animation timing (seconds) - THE KEY TO JUICE
+const ANIM = {
+    SWAP: 0.18,           // Swap slide duration
+    SWAP_BACK: 0.22,      // Invalid swap bounce back
+    MATCH_FLASH: 0.25,    // Matched gems flash before breaking
+    BREAK: 0.2,           // Break/explode animation
+    FALL_PER_CELL: 0.08,  // Gravity fall speed per cell
+    FALL_BOUNCE: 0.12,    // Bounce at landing
+    CHAIN_PAUSE: 0.35,    // Pause between chain steps (让玩家看到连锁)
+    GARBAGE_FLY: 0.45,    // Garbage flight time
+    SPECIAL_TRIGGER: 0.3, // Special gem trigger effect
+};
+
+// --- Layout ---
+let W, H, CELL, boardW, boardH, centerW;
+let board1X, board1Y, board2X, board2Y, centerX;
+
+function resize() {
+    W = Math.min(window.innerWidth, 1200);
+    H = Math.min(window.innerHeight, 900);
+    CELL = Math.floor(Math.min((W * 0.42) / COLS, (H * 0.82) / ROWS));
+    boardW = CELL * COLS;
+    boardH = CELL * ROWS;
+    centerW = Math.floor(W * 0.12);
+    const totalW = boardW * 2 + centerW + 40;
+    if (totalW > W) {
+        CELL = Math.floor((W - centerW - 40) / (COLS * 2));
+        boardW = CELL * COLS;
+        boardH = CELL * ROWS;
+    }
+    board1X = Math.floor((W - boardW * 2 - centerW) / 2);
+    board1Y = Math.floor((H - boardH) / 2) + 20;
+    centerX = board1X + boardW + 5;
+    board2X = centerX + centerW + 5;
+    board2Y = board1Y;
+    canvas.width = W;
+    canvas.height = H;
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+}
+
+// --- Easing ---
+function easeOutBounce(t) {
+    if (t < 1/2.75) return 7.5625*t*t;
+    if (t < 2/2.75) return 7.5625*(t-=1.5/2.75)*t+0.75;
+    if (t < 2.5/2.75) return 7.5625*(t-=2.25/2.75)*t+0.9375;
+    return 7.5625*(t-=2.625/2.75)*t+0.984375;
+}
+function easeOutQuad(t) { return t*(2-t); }
+function easeInQuad(t) { return t*t; }
+function easeOutBack(t) { const c=1.70158; return 1+(t-1)*(t-1)*((c+1)*(t-1)+c); }
+function lerp(a,b,t) { return a+(b-a)*t; }
+
+// --- Seeded Random ---
+class SeededRandom {
+    constructor(seed) { this.seed = seed; }
+    next() { this.seed = (this.seed * 16807) % 2147483647; return (this.seed - 1) / 2147483646; }
+    nextInt(max) { return Math.floor(this.next() * max); }
+}
+
+// --- Audio ---
+class AudioSystem {
+    constructor() {
+        this.ctx = null; this.enabled = true;
+        try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { this.enabled = false; }
+    }
+    resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
+    play(freq, dur, type='sine', vol=0.12) {
+        if (!this.enabled || !this.ctx) return;
+        const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+        osc.type = type; osc.frequency.value = freq;
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(); osc.stop(this.ctx.currentTime + dur);
+    }
+    playMatch(colorIdx, chainLevel) {
+        const base = [523,587,659,698,784];
+        this.play(base[colorIdx%5] * (1+chainLevel*0.15), 0.25, 'sine', 0.1);
+    }
+    playChain(level) {
+        const f = 400+level*120;
+        this.play(f, 0.35, 'triangle', 0.14);
+        setTimeout(() => this.play(f*1.25, 0.25, 'sine', 0.1), 80);
+        if (level >= 3) setTimeout(() => this.play(f*1.5, 0.2, 'sine', 0.08), 160);
+    }
+    playGarbageSend() { this.play(150, 0.4, 'sawtooth', 0.07); }
+    playGarbageHit() { this.play(80, 0.5, 'square', 0.1); }
+    playFever() { [0,80,160,240].forEach((d,i)=>setTimeout(()=>this.play(600+i*180,0.3,'sine',0.12),d)); }
+    playIce() { this.play(1200, 0.6, 'sine', 0.07); this.play(1600, 0.5, 'sine', 0.05); }
+    playSwap() { this.play(660, 0.06, 'sine', 0.06); }
+    playInvalid() { this.play(200, 0.12, 'square', 0.05); }
+    playSelect() { this.play(880, 0.05, 'sine', 0.05); }
+    playCountdown() { this.play(880, 0.15, 'sine', 0.1); }
+    playGo() { this.play(1047, 0.3, 'sine', 0.14); setTimeout(()=>this.play(1319, 0.3, 'sine', 0.12), 150); }
+    playWin() { [0,120,240,360].forEach((d,i)=>setTimeout(()=>this.play([523,659,784,1047][i],0.4,'sine',0.12),d)); }
+    playLose() { this.play(300, 0.5, 'sawtooth', 0.07); setTimeout(()=>this.play(200, 0.8, 'sawtooth', 0.05),300); }
+    playBomb() { this.play(120, 0.4, 'sawtooth', 0.12); this.play(80, 0.6, 'square', 0.08); }
+    playRainbow() { [0,60,120,180,240].forEach((d,i)=>setTimeout(()=>this.play(523+i*100,0.2,'sine',0.08),d)); }
+}
+const audio = new AudioSystem();
+
+// --- Particles ---
+class Particle {
+    constructor(x, y, color, size) {
+        this.x = x; this.y = y; this.color = color;
+        const a = Math.random()*Math.PI*2, spd = 60+Math.random()*180;
+        this.vx = Math.cos(a)*spd; this.vy = Math.sin(a)*spd;
+        this.life = 0.4+Math.random()*0.4; this.maxLife = this.life;
+        this.size = (size||3)+Math.random()*3;
+    }
+    update(dt) { this.x+=this.vx*dt; this.y+=this.vy*dt; this.vy+=300*dt; this.life-=dt; }
+    draw(ctx) {
+        const a = Math.max(0, this.life/this.maxLife);
+        ctx.globalAlpha = a;
+        ctx.fillStyle = this.color;
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.size*a, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1;
+    }
+}
+
+// --- Floating Text ---
+class FloatingText {
+    constructor(x, y, text, color, size, duration) {
+        this.x = x; this.y = y; this.text = text; this.color = color;
+        this.size = size||24; this.life = duration||1.2; this.maxLife = this.life;
+    }
+    update(dt) { this.y -= 50*dt; this.life -= dt; }
+    draw(ctx) {
+        const t = 1-this.life/this.maxLife;
+        const alpha = t < 0.1 ? t/0.1 : (t > 0.7 ? (1-t)/0.3 : 1);
+        const scale = t < 0.15 ? easeOutBack(t/0.15) : 1;
+        ctx.globalAlpha = Math.max(0, alpha);
+        ctx.font = `bold ${Math.floor(this.size * scale)}px 'Segoe UI', sans-serif`;
+        ctx.textAlign = 'center';
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillText(this.text, this.x+2, this.y+2);
+        ctx.fillStyle = this.color;
+        ctx.fillText(this.text, this.x, this.y);
+        ctx.globalAlpha = 1;
+    }
+}
+
+// --- Flying Garbage ---
+class FlyingGarbage {
+    constructor(fx, fy, tx, ty, count) {
+        this.fx=fx; this.fy=fy; this.tx=tx; this.ty=ty;
+        this.count=count; this.t=0; this.dur=ANIM.GARBAGE_FLY; this.done=false;
+    }
+    update(dt) { this.t+=dt; if(this.t>=this.dur) this.done=true; }
+    draw(ctx) {
+        const p = Math.min(1, this.t/this.dur);
+        const ep = easeInQuad(p);
+        const x = lerp(this.fx, this.tx, ep);
+        const midY = Math.min(this.fy, this.ty) - 100;
+        const y = (1-p)*(1-p)*this.fy + 2*(1-p)*p*midY + p*p*this.ty;
+        const s = CELL*0.4;
+        // Trail
+        ctx.globalAlpha = 0.3*(1-p);
+        ctx.fillStyle = '#666';
+        for(let i=1;i<=3;i++){
+            const tp=Math.max(0,p-i*0.05);
+            const tx2=lerp(this.fx,this.tx,easeInQuad(tp));
+            const ty2=(1-tp)*(1-tp)*this.fy+2*(1-tp)*tp*midY+tp*tp*this.ty;
+            ctx.fillRect(tx2-s*0.3,ty2-s*0.3,s*0.6,s*0.6);
+        }
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#555'; ctx.strokeStyle = '#999'; ctx.lineWidth = 2;
+        ctx.fillRect(x-s/2, y-s/2, s, s); ctx.strokeRect(x-s/2, y-s/2, s, s);
+        if(this.count>1){ctx.font='bold 14px sans-serif';ctx.fillStyle='#FFF';ctx.textAlign='center';ctx.fillText('×'+this.count,x,y+5);}
+    }
+}
+
+// --- Gem ---
+function makeGem(color) {
+    return { color, special: SPECIAL_NONE, garbageLayers: 0,
+        // Animation state
+        drawX: 0, drawY: 0, targetX: 0, targetY: 0, // pixel positions for animation
+        scale: 1, targetScale: 1,
+        flash: 0, // 0-1 flash intensity for matching
+        removing: false, removeTimer: 0,
+    };
+}
+
+// --- Board ---
+class Board {
+    constructor(isPlayer, rng) {
+        this.isPlayer = isPlayer;
+        this.rng = rng;
+        this.grid = []; // grid[col][row]
+        this.hp = INITIAL_HP;
+        this.score = 0;
+        this.energy = 0;
+        this.feverActive = false; this.feverTimer = 0; this.feverCooldown = 0;
+        this.frozen = false; this.frozenTimer = 0;
+        this.iceUsed = 0;
+        this.totalGarbageSent = 0; this.maxChain = 0; this.totalDamage = 0;
+        this.opponent = null;
+        this.particles = []; this.floatingTexts = []; this.flyingGarbage = [];
+        this.shakeTimer = 0; this.shakeIntensity = 0;
+        this.selectedCell = null;
+        this.chainLevel = 0;
+        this.comboCount = 0; // total matches in current chain sequence
+
+        // State machine with proper timing
+        this.state = 'idle';
+        // States: idle, swapping, swap_back, matching_flash, breaking, falling, chain_pause, frozen_wait
+        this.stateTimer = 0;
+        this.swapFrom = null; this.swapTo = null;
+        this.matchedCells = new Set();
+        this.pendingGarbageCount = 0; // garbage waiting to drop
+
+        this.init();
+    }
+
+    init() {
+        this.grid = [];
+        for (let c = 0; c < COLS; c++) {
+            this.grid[c] = [];
+            for (let r = 0; r < ROWS; r++) {
+                this.grid[c][r] = makeGem(this.rng.nextInt(5));
+            }
+        }
+        // Remove initial matches
+        let safe = 0;
+        while (safe++ < 100) {
+            let clean = true;
+            for (let c = 0; c < COLS; c++) {
+                for (let r = 0; r < ROWS; r++) {
+                    if (this.hasMatchAt(c, r)) {
+                        this.grid[c][r].color = this.rng.nextInt(5);
+                        clean = false;
+                    }
+                }
+            }
+            if (clean) break;
+        }
+        // Initialize draw positions
+        this.syncDrawPositions(true);
+    }
+
+    hasMatchAt(c, r) {
+        const g = this.grid[c][r];
+        if (!g || g.color < 0) return false;
+        const col = g.color;
+        // Horizontal
+        let h = 1;
+        for (let d=-1; c+d>=0 && this.grid[c+d][r] && this.grid[c+d][r].color===col; d--) h++;
+        for (let d=1; c+d<COLS && this.grid[c+d][r] && this.grid[c+d][r].color===col; d++) h++;
+        if (h >= 3) return true;
+        // Vertical
+        let v = 1;
+        for (let d=-1; r+d>=0 && this.grid[c][r+d] && this.grid[c][r+d].color===col; d--) v++;
+        for (let d=1; r+d<ROWS && this.grid[c][r+d] && this.grid[c][r+d].color===col; d++) v++;
+        return v >= 3;
+    }
+
+    syncDrawPositions(instant) {
+        for (let c = 0; c < COLS; c++) {
+            for (let r = 0; r < ROWS; r++) {
+                const g = this.grid[c][r];
+                if (!g) continue;
+                g.targetX = c * CELL + CELL/2;
+                g.targetY = r * CELL + CELL/2;
+                if (instant) { g.drawX = g.targetX; g.drawY = g.targetY; }
+            }
+        }
+    }
+
+    getCell(c, r) {
+        if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return null;
+        return this.grid[c][r];
+    }
+
+    swap(c1, r1, c2, r2) {
+        const t = this.grid[c1][r1];
+        this.grid[c1][r1] = this.grid[c2][r2];
+        this.grid[c2][r2] = t;
+    }
+
+    findMatchGroups() {
+        const groups = [];
+        // Horizontal
+        for (let r = 0; r < ROWS; r++) {
+            let c = 0;
+            while (c < COLS) {
+                const g = this.grid[c][r];
+                if (!g || g.color < 0) { c++; continue; }
+                let len = 1;
+                while (c+len < COLS && this.grid[c+len][r] && this.grid[c+len][r].color === g.color) len++;
+                if (len >= 3) {
+                    const cells = [];
+                    for (let i = 0; i < len; i++) cells.push({c:c+i, r});
+                    groups.push({cells, color: g.color, length: len});
+                }
+                c += Math.max(1, len);
+            }
+        }
+        // Vertical
+        for (let c = 0; c < COLS; c++) {
+            let r = 0;
+            while (r < ROWS) {
+                const g = this.grid[c][r];
+                if (!g || g.color < 0) { r++; continue; }
+                let len = 1;
+                while (r+len < ROWS && this.grid[c][r+len] && this.grid[c][r+len].color === g.color) len++;
+                if (len >= 3) {
+                    const cells = [];
+                    for (let i = 0; i < len; i++) cells.push({c, r:r+i});
+                    groups.push({cells, color: g.color, length: len});
+                }
+                r += Math.max(1, len);
+            }
+        }
+        return groups;
+    }
+
+    // Check if any valid moves exist
+    hasValidMoves() {
+        for (let c = 0; c < COLS; c++) {
+            for (let r = 0; r < ROWS; r++) {
+                if (!this.grid[c][r] || this.grid[c][r].color < 0) continue;
+                if (c+1<COLS && this.grid[c+1][r] && this.grid[c+1][r].color>=0) {
+                    this.swap(c,r,c+1,r);
+                    const has = this.findMatchGroups().length > 0;
+                    this.swap(c,r,c+1,r);
+                    if (has) return true;
+                }
+                if (r+1<ROWS && this.grid[c][r+1] && this.grid[c][r+1].color>=0) {
+                    this.swap(c,r,c,r+1);
+                    const has = this.findMatchGroups().length > 0;
+                    this.swap(c,r,c,r+1);
+                    if (has) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    shuffleBoard() {
+        const gems = [];
+        for (let c = 0; c < COLS; c++)
+            for (let r = 0; r < ROWS; r++)
+                if (this.grid[c][r] && this.grid[c][r].color >= 0)
+                    gems.push(this.grid[c][r]);
+        for (let i = gems.length-1; i > 0; i--) {
+            const j = Math.floor(Math.random()*(i+1));
+            [gems[i], gems[j]] = [gems[j], gems[i]];
+        }
+        let idx = 0;
+        for (let c = 0; c < COLS; c++)
+            for (let r = 0; r < ROWS; r++)
+                if (this.grid[c][r] && this.grid[c][r].color >= 0)
+                    this.grid[c][r] = gems[idx++];
+        this.syncDrawPositions(true);
+    }
+
+    // Start a swap animation
+    startSwap(c1, r1, c2, r2) {
+        if (this.state !== 'idle' || this.frozen) return false;
+        const g1 = this.grid[c1][r1], g2 = this.grid[c2][r2];
+        if (!g1 || !g2 || g1.color < 0 || g2.color < 0) return false;
+
+        this.swapFrom = {c:c1, r:r1};
+        this.swapTo = {c:c2, r:r2};
+        this.swap(c1, r1, c2, r2);
+
+        // Check if valid
+        const matches = this.findMatchGroups();
+        if (matches.length === 0) {
+            // Invalid - swap back
+            this.swap(c1, r1, c2, r2);
+            // Animate a quick back-and-forth
+            this.state = 'swap_back';
+            this.stateTimer = ANIM.SWAP_BACK;
+            // Temporarily swap draw positions for animation
+            const g1now = this.grid[c1][r1], g2now = this.grid[c2][r2];
+            if (g1now && g2now) {
+                // Animate g1 towards g2's position and back
+                g1now.drawX = c2 * CELL + CELL/2;
+                g1now.drawY = r2 * CELL + CELL/2;
+                g2now.drawX = c1 * CELL + CELL/2;
+                g2now.drawY = r1 * CELL + CELL/2;
+            }
+            audio.playInvalid();
+            return false;
+        }
+
+        // Valid swap
+        this.state = 'swapping';
+        this.stateTimer = ANIM.SWAP;
+        this.chainLevel = 0;
+        this.comboCount = 0;
+        // Set draw positions to old positions (will animate to new)
+        const g1now = this.grid[c1][r1], g2now = this.grid[c2][r2];
+        if (g1now) { g1now.drawX = c2*CELL+CELL/2; g1now.drawY = r2*CELL+CELL/2; }
+        if (g2now) { g2now.drawX = c1*CELL+CELL/2; g2now.drawY = r1*CELL+CELL/2; }
+        this.syncDrawPositions(false); // update targets
+        audio.playSwap();
+        return true;
+    }
+
+    // Process current matches - find them, mark cells, generate specials
+    processCurrentMatches(bx, by) {
+        const groups = this.findMatchGroups();
+        if (groups.length === 0) return false;
+
+        this.chainLevel++;
+        this.comboCount += groups.length;
+        if (this.chainLevel > this.maxChain) this.maxChain = this.chainLevel;
+
+        let totalCleared = 0;
+        let garbageToSend = 0;
+        let adjacentToGarbage = false;
+        this.matchedCells = new Set();
+
+        for (const group of groups) {
+            for (const {c,r} of group.cells) {
+                this.matchedCells.add(`${c},${r}`);
+                // Check garbage adjacency
+                for (const [dc,dr] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+                    const ng = this.getCell(c+dc, r+dr);
+                    if (ng && ng.color === GARBAGE) adjacentToGarbage = true;
+                }
+            }
+            totalCleared += group.cells.length;
+            if (group.length >= 4) garbageToSend += group.length - 3;
+
+            // Generate special gems
+            const mid = group.cells[Math.floor(group.cells.length/2)];
+            if (group.length === 4) {
+                this.grid[mid.c][mid.r] = makeGem(group.color);
+                this.grid[mid.c][mid.r].special = SPECIAL_BOMB;
+                this.matchedCells.delete(`${mid.c},${mid.r}`);
+            } else if (group.length >= 5) {
+                this.grid[mid.c][mid.r] = makeGem(group.color);
+                this.grid[mid.c][mid.r].special = SPECIAL_RAINBOW;
+                this.matchedCells.delete(`${mid.c},${mid.r}`);
+            }
+        }
+
+        // Fire gem from chain >= 3
+        if (this.chainLevel >= 3) {
+            const arr = Array.from(this.matchedCells);
+            if (arr.length > 0) {
+                const [fc,fr] = arr[arr.length-1].split(',').map(Number);
+                const g = this.grid[fc][fr];
+                if (g && g.color >= 0) {
+                    this.grid[fc][fr] = makeGem(g.color);
+                    this.grid[fc][fr].special = SPECIAL_FIRE;
+                    this.matchedCells.delete(`${fc},${fr}`);
+                }
+            }
+        }
+
+        // Ice gem
+        if (adjacentToGarbage && Math.random() < 0.5 && this.iceUsed < ICE_MAX_USES) {
+            const arr = Array.from(this.matchedCells);
+            if (arr.length > 0) {
+                const [ic,ir] = arr[0].split(',').map(Number);
+                const g = this.grid[ic][ir];
+                if (g && g.color >= 0) {
+                    this.grid[ic][ir] = makeGem(g.color);
+                    this.grid[ic][ir].special = SPECIAL_ICE;
+                    this.matchedCells.delete(`${ic},${ir}`);
+                }
+            }
+        }
+
+        // Chain bonus garbage
+        if (this.chainLevel >= 2) garbageToSend += this.chainLevel >= 3 ? 2 : 1;
+        garbageToSend = Math.min(garbageToSend, MAX_SINGLE_SEND);
+
+        // Fever multiplier
+        const dmgMult = this.feverActive ? 2 : 1;
+
+        // Energy
+        this.energy = Math.min(FEVER_MAX, this.energy + 10 + (this.chainLevel > 1 ? this.chainLevel * 5 : 0));
+
+        // Score
+        let baseScore = totalCleared * 10;
+        if (this.chainLevel >= 2) baseScore = Math.floor(baseScore * (this.chainLevel >= 3 ? 2.0 : 1.5));
+        this.score += baseScore;
+
+        // Flash matched gems
+        for (const key of this.matchedCells) {
+            const [c,r] = key.split(',').map(Number);
+            const g = this.grid[c][r];
+            if (g) g.flash = 1;
+        }
+
+        // Score popup
+        if (baseScore > 0) {
+            const cx = bx + boardW/2, cy = by + boardH/2 - 30;
+            this.floatingTexts.push(new FloatingText(cx, cy, '+' + baseScore, '#FFF', 22, 1.0));
+        }
+
+        // Chain popup
+        if (this.chainLevel >= 2) {
+            const cx = bx + boardW/2, cy = by + 20;
+            const chainColors = ['','','#FFD700','#FF6600','#FF0044','#FF00FF'];
+            const col = chainColors[Math.min(this.chainLevel, 5)];
+            const sz = 28 + this.chainLevel * 4;
+            this.floatingTexts.push(new FloatingText(cx, cy, `×${this.chainLevel} CHAIN!`, col, sz, 1.5));
+            audio.playChain(this.chainLevel);
+        }
+
+        // Play match sounds for first group
+        if (groups.length > 0) {
+            audio.playMatch(groups[0].color, this.chainLevel);
+        }
+
+        // Send garbage
+        if (garbageToSend > 0 && this.opponent) {
+            let damage = garbageToSend * GARBAGE_DAMAGE * dmgMult;
+            damage = Math.min(damage, MAX_SINGLE_DAMAGE);
+            const actual = Math.ceil(damage / GARBAGE_DAMAGE);
+            this.pendingGarbageCount = actual;
+            this.totalGarbageSent += actual;
+            this.totalDamage += damage;
+        }
+
+        // Enter flash state
+        this.state = 'matching_flash';
+        this.stateTimer = ANIM.MATCH_FLASH;
+        return true;
+    }
+
+    // Break matched gems - called after flash
+    breakMatched(bx, by) {
+        // Process special gem triggers
+        for (const key of this.matchedCells) {
+            const [c,r] = key.split(',').map(Number);
+            const g = this.grid[c][r];
+            if (g && g.special !== SPECIAL_NONE) {
+                this.triggerSpecial(c, r, g.special, g.color, bx, by);
+            }
+        }
+
+        // Remove matched cells and spawn particles
+        for (const key of this.matchedCells) {
+            const [c,r] = key.split(',').map(Number);
+            const g = this.grid[c][r];
+            if (g) {
+                const px = bx + c*CELL + CELL/2, py = by + r*CELL + CELL/2;
+                const col = g.color >= 0 ? GEM_COLORS[g.color] : '#888';
+                for (let i = 0; i < 12; i++) this.particles.push(new Particle(px, py, col, 2));
+                // White flash particles
+                for (let i = 0; i < 4; i++) this.particles.push(new Particle(px, py, '#FFF', 1));
+            }
+            this.grid[c][r] = null;
+        }
+
+        // Clear garbage adjacent to matches
+        const garbageCleared = new Set();
+        for (const key of this.matchedCells) {
+            const [c,r] = key.split(',').map(Number);
+            for (const [dc,dr] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+                const nc=c+dc, nr=r+dr;
+                const ng = this.getCell(nc, nr);
+                if (ng && ng.color === GARBAGE && !garbageCleared.has(`${nc},${nr}`)) {
+                    ng.garbageLayers--;
+                    if (ng.garbageLayers <= 0) {
+                        this.grid[nc][nr] = null;
+                        garbageCleared.add(`${nc},${nr}`);
+                        const px = bx + nc*CELL+CELL/2, py = by + nr*CELL+CELL/2;
+                        for (let i = 0; i < 6; i++) this.particles.push(new Particle(px, py, '#999', 2));
+                    }
+                }
+            }
+        }
+
+        // Send flying garbage
+        if (this.pendingGarbageCount > 0 && this.opponent) {
+            const fromX = bx + boardW/2, fromY = by;
+            const toX = (this.isPlayer ? board2X : board1X) + boardW/2;
+            const toY = (this.isPlayer ? board2Y : board1Y);
+            this.flyingGarbage.push(new FlyingGarbage(fromX, fromY, toX, toY, this.pendingGarbageCount));
+            // Schedule garbage delivery
+            const count = this.pendingGarbageCount;
+            const opp = this.opponent;
+            setTimeout(() => {
+                opp.receiveGarbage(count);
+                audio.playGarbageHit();
+            }, ANIM.GARBAGE_FLY * 1000);
+            audio.playGarbageSend();
+            this.pendingGarbageCount = 0;
+        }
+
+        this.matchedCells.clear();
+    }
+
+    triggerSpecial(c, r, special, color, bx, by) {
+        if (special === SPECIAL_BOMB) {
+            audio.playBomb();
+            for (let dc=-1; dc<=1; dc++) {
+                for (let dr=-1; dr<=1; dr++) {
+                    const nc=c+dc, nr=r+dr;
+                    if (nc>=0&&nc<COLS&&nr>=0&&nr<ROWS&&(nc!==c||nr!==r)) {
+                        const g = this.grid[nc][nr];
+                        if (g) {
+                            const px = bx+nc*CELL+CELL/2, py = by+nr*CELL+CELL/2;
+                            for (let i=0;i<8;i++) this.particles.push(new Particle(px,py,'#FF6600',3));
+                            if (g.color === GARBAGE) { g.garbageLayers--; if(g.garbageLayers<=0) this.grid[nc][nr]=null; }
+                            else this.grid[nc][nr] = null;
+                        }
+                    }
+                }
+            }
+            // Screen shake
+            this.shakeTimer = 0.3; this.shakeIntensity = 6;
+        } else if (special === SPECIAL_RAINBOW) {
+            audio.playRainbow();
+            for (let cc=0;cc<COLS;cc++) for (let rr=0;rr<ROWS;rr++) {
+                const g = this.grid[cc][rr];
+                if (g && g.color === color) {
+                    const px=bx+cc*CELL+CELL/2, py=by+rr*CELL+CELL/2;
+                    for(let i=0;i<8;i++) this.particles.push(new Particle(px,py,GEM_COLORS[color],3));
+                    this.grid[cc][rr] = null;
+                }
+            }
+            this.shakeTimer = 0.4; this.shakeIntensity = 8;
+        } else if (special === SPECIAL_FIRE) {
+            for (const [dc,dr] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+                const nc=c+dc, nr=r+dr;
+                const g = this.getCell(nc,nr);
+                if (g && g.color === color) {
+                    const px=bx+nc*CELL+CELL/2, py=by+nr*CELL+CELL/2;
+                    for(let i=0;i<8;i++) this.particles.push(new Particle(px,py,'#FF4400',3));
+                    this.grid[nc][nr] = null;
+                }
+            }
+        } else if (special === SPECIAL_ICE && this.opponent && this.iceUsed < ICE_MAX_USES) {
+            this.opponent.frozen = true;
+            this.opponent.frozenTimer = ICE_DURATION;
+            this.iceUsed++;
+            audio.playIce();
+            this.floatingTexts.push(new FloatingText(bx+boardW/2, by+boardH/2, '❄ FREEZE!', '#88DDFF', 32, 1.5));
+        }
+    }
+
+    applyGravity() {
+        let fell = false;
+        for (let c = 0; c < COLS; c++) {
+            let writeRow = ROWS - 1;
+            for (let r = ROWS-1; r >= 0; r--) {
+                if (this.grid[c][r] !== null) {
+                    if (r !== writeRow) {
+                        this.grid[c][writeRow] = this.grid[c][r];
+                        this.grid[c][r] = null;
+                        // Keep old drawY for animation
+                        this.grid[c][writeRow].drawY = r * CELL + CELL/2;
+                        fell = true;
+                    }
+                    writeRow--;
+                }
+            }
+            // Fill empty top with new gems
+            for (let r = writeRow; r >= 0; r--) {
+                const g = makeGem(this.rng.nextInt(5));
+                g.drawX = c * CELL + CELL/2;
+                g.drawY = -(writeRow - r + 1) * CELL + CELL/2; // Start above screen
+                this.grid[c][r] = g;
+                fell = true;
+            }
+        }
+        this.syncDrawPositions(false);
+        return fell;
+    }
+
+    receiveGarbage(count) {
+        // Push columns down and add garbage at top
+        let placed = 0;
+        const cols = [];
+        for (let i = 0; i < count; i++) cols.push(this.rng.nextInt(COLS));
+
+        for (const c of cols) {
+            // Shift column down
+            if (this.grid[c][0] !== null) {
+                // Check if bottom would overflow
+                let hasSpace = false;
+                for (let r = ROWS-1; r >= 0; r--) {
+                    if (this.grid[c][r] === null) { hasSpace = true; break; }
+                }
+                if (!hasSpace) {
+                    // Column full - just overwrite top
+                } else {
+                    for (let r = ROWS-1; r > 0; r--) {
+                        if (this.grid[c][r] === null) {
+                            // Find first non-null above
+                            for (let r2 = r-1; r2 >= 0; r2--) {
+                                if (this.grid[c][r2] !== null) {
+                                    this.grid[c][r] = this.grid[c][r2];
+                                    this.grid[c][r2] = null;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // Shift everything down by 1
+            for (let r = ROWS-1; r > 0; r--) {
+                this.grid[c][r] = this.grid[c][r-1];
+            }
+            const g = makeGem(GARBAGE);
+            g.garbageLayers = 1 + (Math.random() < 0.15 ? 1 : 0);
+            g.drawY = -CELL;
+            this.grid[c][0] = g;
+            placed++;
+        }
+
+        this.syncDrawPositions(false);
+        this.hp = Math.max(0, this.hp - count * GARBAGE_DAMAGE);
+        this.shakeTimer = 0.4;
+        this.shakeIntensity = 4 + count;
+    }
+
+    isOverflowed() {
+        let fullCols = 0;
+        for (let c = 0; c < COLS; c++) {
+            if (this.grid[c][0] !== null && this.grid[c][1] !== null) fullCols++;
+        }
+        // Check if top 2 rows are completely full with garbage
+        let garbageTop = 0;
+        for (let c = 0; c < COLS; c++) {
+            if (this.grid[c][0] && this.grid[c][0].color === GARBAGE) garbageTop++;
+        }
+        return garbageTop >= COLS;
+    }
+
+    activateFever(bx, by) {
+        if (this.energy >= FEVER_MAX && !this.feverActive && this.feverCooldown <= 0) {
+            this.feverActive = true;
+            this.feverTimer = FEVER_DURATION;
+            this.energy = 0;
+            audio.playFever();
+            this.floatingTexts.push(new FloatingText(bx+boardW/2, by+boardH/2, '⚡ FEVER! ⚡', '#FFD700', 36, 2.0));
+            this.shakeTimer = 0.3; this.shakeIntensity = 5;
+            return true;
+        }
+        return false;
+    }
+
+    // Main update - handles state machine with proper timing
+    update(dt, bx, by) {
+        // Frozen
+        if (this.frozen) {
+            this.frozenTimer -= dt;
+            if (this.frozenTimer <= 0) { this.frozen = false; this.frozenTimer = 0; }
+        }
+        // Fever
+        if (this.feverActive) {
+            this.feverTimer -= dt;
+            if (this.feverTimer <= 0) { this.feverActive = false; this.feverCooldown = FEVER_COOLDOWN; }
+        }
+        if (this.feverCooldown > 0) this.feverCooldown -= dt;
+        // Shake
+        if (this.shakeTimer > 0) this.shakeTimer -= dt;
+
+        // Animate gem positions (smooth movement)
+        let animating = false;
+        for (let c = 0; c < COLS; c++) {
+            for (let r = 0; r < ROWS; r++) {
+                const g = this.grid[c][r];
+                if (!g) continue;
+                const dx = g.targetX - g.drawX, dy = g.targetY - g.drawY;
+                if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+                    const speed = 14; // Higher = faster convergence
+                    g.drawX += dx * Math.min(1, dt * speed);
+                    g.drawY += dy * Math.min(1, dt * speed);
+                    animating = true;
+                } else {
+                    g.drawX = g.targetX;
+                    g.drawY = g.targetY;
+                }
+                // Flash decay
+                if (g.flash > 0) g.flash = Math.max(0, g.flash - dt * 3);
+            }
+        }
+
+        // State machine
+        if (this.stateTimer > 0) this.stateTimer -= dt;
+
+        switch (this.state) {
+            case 'swapping':
+                if (this.stateTimer <= 0) {
+                    // Swap animation done, check matches
+                    this.processCurrentMatches(bx, by);
+                    // state is now 'matching_flash'
+                }
+                break;
+
+            case 'swap_back':
+                if (this.stateTimer <= 0) {
+                    this.syncDrawPositions(false);
+                    this.state = 'idle';
+                }
+                break;
+
+            case 'matching_flash':
+                if (this.stateTimer <= 0) {
+                    // Flash done, break gems
+                    this.breakMatched(bx, by);
+                    this.state = 'breaking';
+                    this.stateTimer = ANIM.BREAK;
+                }
+                break;
+
+            case 'breaking':
+                if (this.stateTimer <= 0) {
+                    // Apply gravity
+                    this.applyGravity();
+                    this.state = 'falling';
+                    this.stateTimer = ANIM.FALL_PER_CELL * ROWS;
+                }
+                break;
+
+            case 'falling':
+                if (this.stateTimer <= 0 && !animating) {
+                    // Gems settled, pause before next chain check
+                    this.state = 'chain_pause';
+                    this.stateTimer = ANIM.CHAIN_PAUSE;
+                }
+                break;
+
+            case 'chain_pause':
+                if (this.stateTimer <= 0) {
+                    // Check for more matches (chain!)
+                    const hasMore = this.processCurrentMatches(bx, by);
+                    if (!hasMore) {
+                        // Chain ended
+                        this.chainLevel = 0;
+                        this.comboCount = 0;
+                        this.state = 'idle';
+                        // Check for valid moves
+                        if (!this.hasValidMoves()) this.shuffleBoard();
+                    }
+                    // If hasMore, state is now 'matching_flash' again
+                }
+                break;
+        }
+
+        // Particles
+        this.particles = this.particles.filter(p => { p.update(dt); return p.life > 0; });
+        this.floatingTexts = this.floatingTexts.filter(t => { t.update(dt); return t.life > 0; });
+        this.flyingGarbage = this.flyingGarbage.filter(f => { f.update(dt); return !f.done; });
+    }
+
+    draw(ctx, x, y) {
+        const sx = this.shakeTimer > 0 ? (Math.random()-0.5)*this.shakeIntensity*2 : 0;
+        const sy = this.shakeTimer > 0 ? (Math.random()-0.5)*this.shakeIntensity*2 : 0;
+        const bx = x+sx, by = y+sy;
+
+        // Board bg
+        ctx.fillStyle = 'rgba(15,15,30,0.85)';
+        ctx.strokeStyle = this.feverActive ? '#FFD700' : (this.frozen ? '#66BBFF' : '#2A2A40');
+        ctx.lineWidth = this.feverActive ? 3 : 2;
+        ctx.fillRect(bx-2, by-2, boardW+4, boardH+4);
+        ctx.strokeRect(bx-2, by-2, boardW+4, boardH+4);
+
+        // Fever glow
+        if (this.feverActive) {
+            ctx.shadowColor = '#FFD700';
+            ctx.shadowBlur = 12 + Math.sin(Date.now()/80)*6;
+            ctx.strokeRect(bx-4, by-4, boardW+8, boardH+8);
+            ctx.shadowBlur = 0;
+        }
+
+        // Grid
+        ctx.strokeStyle = 'rgba(50,50,80,0.25)';
+        ctx.lineWidth = 1;
+        for (let c = 0; c <= COLS; c++) { ctx.beginPath(); ctx.moveTo(bx+c*CELL,by); ctx.lineTo(bx+c*CELL,by+boardH); ctx.stroke(); }
+        for (let r = 0; r <= ROWS; r++) { ctx.beginPath(); ctx.moveTo(bx,by+r*CELL); ctx.lineTo(bx+boardW,by+r*CELL); ctx.stroke(); }
+
+        // Gems
+        for (let c = 0; c < COLS; c++) {
+            for (let r = 0; r < ROWS; r++) {
+                const g = this.grid[c][r];
+                if (!g) continue;
+                const gx = bx + g.drawX, gy = by + g.drawY;
+                if (gy < by - CELL || gy > by + boardH + CELL) continue; // Clip
+
+                const s = CELL * 0.38;
+                const breathe = 0.92 + Math.sin(Date.now()/800 + c*0.7 + r*0.5) * 0.08;
+
+                if (g.color === GARBAGE) {
+                    // Garbage block
+                    const gs = CELL * 0.4;
+                    ctx.fillStyle = g.garbageLayers > 1 ? '#444' : '#666';
+                    ctx.strokeStyle = '#888'; ctx.lineWidth = 2;
+                    ctx.fillRect(gx-gs, gy-gs, gs*2, gs*2);
+                    ctx.strokeRect(gx-gs, gy-gs, gs*2, gs*2);
+                    ctx.strokeStyle = '#AAA'; ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(gx-gs*0.4, gy-gs*0.4); ctx.lineTo(gx+gs*0.4, gy+gs*0.4);
+                    ctx.moveTo(gx+gs*0.4, gy-gs*0.4); ctx.lineTo(gx-gs*0.4, gy+gs*0.4);
+                    ctx.stroke();
+                    if (g.garbageLayers > 1) {
+                        ctx.font='9px sans-serif'; ctx.fillStyle='#CCC'; ctx.textAlign='center';
+                        ctx.fillText('×'+g.garbageLayers, gx, gy+gs+10);
+                    }
+                } else {
+                    const color = GEM_COLORS[g.color];
+                    const glow = GEM_GLOW[g.color];
+
+                    // Flash effect (matching)
+                    if (g.flash > 0) {
+                        ctx.globalAlpha = g.flash * 0.6;
+                        ctx.fillStyle = '#FFF';
+                        ctx.beginPath(); ctx.arc(gx, gy, s*1.4, 0, Math.PI*2); ctx.fill();
+                        ctx.globalAlpha = 1;
+                    }
+
+                    // Outer glow
+                    const glowR = s * 1.3 * breathe;
+                    const grad = ctx.createRadialGradient(gx, gy, s*0.2, gx, gy, glowR);
+                    grad.addColorStop(0, color);
+                    grad.addColorStop(0.6, color + '88');
+                    grad.addColorStop(1, color + '00');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath(); ctx.arc(gx, gy, glowR, 0, Math.PI*2); ctx.fill();
+
+                    // Gem body (hexagon)
+                    ctx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        const a = (Math.PI*2/6)*i - Math.PI/6;
+                        const px = gx + Math.cos(a)*s*breathe;
+                        const py = gy + Math.sin(a)*s*breathe;
+                        if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+                    }
+                    ctx.closePath();
+                    ctx.fillStyle = color;
+                    ctx.fill();
+                    ctx.strokeStyle = glow;
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    // Inner highlight
+                    ctx.beginPath();
+                    ctx.arc(gx-s*0.15, gy-s*0.2, s*0.22, 0, Math.PI*2);
+                    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                    ctx.fill();
+
+                    // Special indicators
+                    if (g.special !== SPECIAL_NONE) {
+                        ctx.font = `${Math.floor(CELL*0.3)}px sans-serif`;
+                        ctx.textAlign = 'center';
+                        const icons = {[SPECIAL_BOMB]:'💥',[SPECIAL_RAINBOW]:'🌈',[SPECIAL_FIRE]:'🔥',[SPECIAL_ICE]:'❄️'};
+                        ctx.fillText(icons[g.special]||'?', gx, gy+CELL*0.1);
+                        // Pulsing ring for special gems
+                        ctx.strokeStyle = '#FFF';
+                        ctx.lineWidth = 1;
+                        ctx.globalAlpha = 0.4 + Math.sin(Date.now()/200)*0.3;
+                        ctx.beginPath(); ctx.arc(gx, gy, s*1.1, 0, Math.PI*2); ctx.stroke();
+                        ctx.globalAlpha = 1;
+                    }
+                }
+
+                // Selection highlight
+                if (this.selectedCell && this.selectedCell.c === c && this.selectedCell.r === r) {
+                    const pulse = 1 + Math.sin(Date.now()/150) * 0.15;
+                    ctx.strokeStyle = '#FFF';
+                    ctx.lineWidth = 3;
+                    ctx.globalAlpha = 0.8;
+                    ctx.beginPath();
+                    ctx.arc(gx, gy, s * 1.2 * pulse, 0, Math.PI*2);
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                }
+            }
+        }
+
+        // Frozen overlay
+        if (this.frozen) {
+            ctx.fillStyle = 'rgba(80,160,255,0.12)';
+            ctx.fillRect(bx, by, boardW, boardH);
+            ctx.font = `bold ${Math.floor(CELL*0.7)}px sans-serif`;
+            ctx.fillStyle = 'rgba(100,200,255,0.7)';
+            ctx.textAlign = 'center';
+            ctx.fillText('❄ FROZEN', bx+boardW/2, by+boardH/2);
+            ctx.font = `${Math.floor(CELL*0.4)}px sans-serif`;
+            ctx.fillText(this.frozenTimer.toFixed(1)+'s', bx+boardW/2, by+boardH/2+CELL*0.5);
+        }
+
+        // Fever label
+        if (this.feverActive) {
+            const pulse = 1+Math.sin(Date.now()/80)*0.12;
+            ctx.save(); ctx.translate(bx+boardW/2, by-18); ctx.scale(pulse,pulse);
+            ctx.font = `bold ${Math.floor(CELL*0.5)}px sans-serif`;
+            ctx.fillStyle = '#FFD700'; ctx.textAlign = 'center';
+            ctx.fillText('⚡ FEVER ⚡', 0, 0);
+            ctx.restore();
+        }
+
+        // Energy bar
+        const barW = 10, barH = boardH * 0.75;
+        const barX = this.isPlayer ? bx-16 : bx+boardW+6;
+        const barY = by + (boardH-barH)/2;
+        ctx.fillStyle = '#1A1A2A';
+        ctx.fillRect(barX, barY, barW, barH);
+        const fillH = (this.energy/FEVER_MAX) * barH;
+        if (fillH > 0) {
+            const gr = ctx.createLinearGradient(barX, barY+barH-fillH, barX, barY+barH);
+            gr.addColorStop(0, '#FFD700'); gr.addColorStop(1, '#FF6600');
+            ctx.fillStyle = gr;
+            ctx.fillRect(barX, barY+barH-fillH, barW, fillH);
+        }
+        ctx.strokeStyle = '#444'; ctx.lineWidth = 1;
+        ctx.strokeRect(barX, barY, barW, barH);
+        if (this.energy >= FEVER_MAX) {
+            // Ready to activate!
+            ctx.strokeStyle = '#FFD700';
+            ctx.lineWidth = 2 + Math.sin(Date.now()/100);
+            ctx.strokeRect(barX-1, barY-1, barW+2, barH+2);
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillStyle = '#FFD700';
+            ctx.textAlign = 'center';
+            ctx.fillText('F键', barX+barW/2, barY-5);
+        }
+
+        // Ice count
+        const iceLeft = ICE_MAX_USES - this.iceUsed;
+        if (iceLeft > 0) {
+            ctx.font = '11px sans-serif'; ctx.fillStyle = '#88CCFF';
+            ctx.textAlign = this.isPlayer ? 'left' : 'right';
+            ctx.fillText('❄×'+iceLeft, this.isPlayer ? bx : bx+boardW, by+boardH+15);
+        }
+
+        // Effects
+        for (const p of this.particles) p.draw(ctx);
+        for (const t of this.floatingTexts) t.draw(ctx);
+        for (const f of this.flyingGarbage) f.draw(ctx);
+    }
+}
+
+// --- AI ---
+class AI {
+    constructor(board, difficulty) {
+        this.board = board;
+        this.difficulty = difficulty;
+        this.thinkTimer = 1.0; // Start with delay
+    }
+
+    getDelay() {
+        return [0.9+Math.random()*0.8, 0.5+Math.random()*0.4, 0.25+Math.random()*0.3][this.difficulty];
+    }
+
+    findBestMove() {
+        const b = this.board;
+        const moves = [];
+        for (let c = 0; c < COLS; c++) {
+            for (let r = 0; r < ROWS; r++) {
+                const g = b.grid[c][r];
+                if (!g || g.color < 0) continue;
+                for (const [dc,dr] of [[1,0],[0,1]]) {
+                    const nc=c+dc, nr=r+dr;
+                    if (nc>=COLS||nr>=ROWS) continue;
+                    const g2 = b.grid[nc][nr];
+                    if (!g2 || g2.color < 0) continue;
+                    b.swap(c,r,nc,nr);
+                    const m = b.findMatchGroups();
+                    let score = 0;
+                    for (const g of m) score += g.length * g.length; // Prefer bigger matches
+                    if (score > 0) {
+                        // Bonus for special gems
+                        const hasSpecial = (g.special!==SPECIAL_NONE)||(g2.special!==SPECIAL_NONE);
+                        if (hasSpecial) score += 10;
+                        moves.push({c1:c,r1:r,c2:nc,r2:nr,score});
+                    }
+                    b.swap(c,r,nc,nr);
+                }
+            }
+        }
+        if (moves.length === 0) return null;
+        moves.sort((a,b) => b.score - a.score);
+        if (this.difficulty === 0) return moves[Math.floor(Math.random()*moves.length)];
+        if (this.difficulty === 1) return moves[Math.floor(Math.random()*Math.min(3,moves.length))];
+        // Hard: use special gem preference
+        const specials = moves.filter(m => {
+            const g1=this.board.grid[m.c1][m.r1], g2=this.board.grid[m.c2][m.r2];
+            return (g1&&g1.special)||(g2&&g2.special);
+        });
+        if (specials.length > 0 && Math.random() < 0.7) return specials[0];
+        return moves[0];
+    }
+
+    update(dt, bx, by) {
+        if (this.board.frozen || this.board.state !== 'idle') return;
+        this.thinkTimer -= dt;
+        if (this.thinkTimer > 0) return;
+
+        // Hard AI: activate fever
+        if (this.difficulty === 2 && this.board.energy >= FEVER_MAX) {
+            this.board.activateFever(bx, by);
+        }
+        // Hard AI: use ice when HP < 50%
+        // (Ice triggers automatically through matching)
+
+        const move = this.findBestMove();
+        if (move) {
+            this.board.startSwap(move.c1, move.r1, move.c2, move.r2);
+            this.thinkTimer = this.getDelay();
+        } else {
+            this.board.shuffleBoard();
+            this.thinkTimer = 0.5;
+        }
+    }
+}
+
+// --- Game ---
+class Game {
+    constructor() {
+        this.state = 'menu';
+        this.mode = 'ai'; this.aiDifficulty = 1;
+        this.timer = MATCH_TIME;
+        this.countdownTimer = 0; this.countdownNum = 3;
+        this.board1 = null; this.board2 = null; this.ai = null;
+        this.winner = 0;
+        this.dragStart = null;
+        this.mouseX = 0; this.mouseY = 0;
+        this.lastTime = 0;
+        this.setupInput();
+    }
+
+    startGame(mode, difficulty) {
+        this.mode = mode; this.aiDifficulty = difficulty;
+        const seed = Date.now();
+        this.board1 = new Board(true, new SeededRandom(seed));
+        this.board2 = new Board(false, new SeededRandom(seed));
+        this.board1.opponent = this.board2;
+        this.board2.opponent = this.board1;
+        this.ai = mode === 'ai' ? new AI(this.board2, difficulty) : null;
+        this.timer = MATCH_TIME;
+        this.winner = 0;
+        this.state = 'countdown';
+        this.countdownTimer = 0; this.countdownNum = 3;
+    }
+
+    setupInput() {
+        const getPos = (e) => {
+            const r = canvas.getBoundingClientRect();
+            return {
+                x: (e.clientX||(e.touches&&e.touches[0]?e.touches[0].clientX:0)) - r.left,
+                y: (e.clientY||(e.touches&&e.touches[0]?e.touches[0].clientY:0)) - r.top
+            };
+        };
+        const getCell = (px, py, bx, by) => {
+            const c = Math.floor((px-bx)/CELL), r = Math.floor((py-by)/CELL);
+            return (c>=0&&c<COLS&&r>=0&&r<ROWS) ? {c,r} : null;
+        };
+
+        const handleDown = (e) => {
+            e.preventDefault();
+            audio.resume();
+            const {x,y} = getPos(e);
+            this.mouseX = x; this.mouseY = y;
+
+            if (this.state === 'menu') { this.handleMenuClick(x,y); return; }
+            if (this.state === 'result') { this.handleResultClick(x,y); return; }
+            if (this.state === 'paused') { this.handlePauseClick(x,y); return; }
+            if (this.state !== 'playing') return;
+
+            // P1 board
+            const cell1 = getCell(x, y, board1X, board1Y);
+            if (cell1 && !this.board1.frozen && this.board1.state === 'idle') {
+                const g = this.board1.grid[cell1.c][cell1.r];
+                if (g && g.color >= 0) {
+                    if (this.board1.selectedCell) {
+                        const sc = this.board1.selectedCell;
+                        const dist = Math.abs(cell1.c-sc.c) + Math.abs(cell1.r-sc.r);
+                        if (dist === 1) {
+                            this.board1.startSwap(sc.c, sc.r, cell1.c, cell1.r);
+                            this.board1.selectedCell = null;
+                        } else {
+                            this.board1.selectedCell = cell1;
+                            audio.playSelect();
+                        }
+                    } else {
+                        this.board1.selectedCell = cell1;
+                        this.dragStart = {x, y, cell: cell1, board: this.board1};
+                        audio.playSelect();
+                    }
+                }
+            }
+
+            // P2 board (local mode)
+            if (this.mode === 'local') {
+                const cell2 = getCell(x, y, board2X, board2Y);
+                if (cell2 && !this.board2.frozen && this.board2.state === 'idle') {
+                    const g = this.board2.grid[cell2.c][cell2.r];
+                    if (g && g.color >= 0) {
+                        if (this.board2.selectedCell) {
+                            const sc = this.board2.selectedCell;
+                            const dist = Math.abs(cell2.c-sc.c)+Math.abs(cell2.r-sc.r);
+                            if (dist === 1) {
+                                this.board2.startSwap(sc.c, sc.r, cell2.c, cell2.r);
+                                this.board2.selectedCell = null;
+                            } else {
+                                this.board2.selectedCell = cell2;
+                                audio.playSelect();
+                            }
+                        } else {
+                            this.board2.selectedCell = cell2;
+                            this.dragStart = {x, y, cell: cell2, board: this.board2};
+                            audio.playSelect();
+                        }
+                    }
+                }
+            }
+        };
+
+        const handleMove = (e) => {
+            e.preventDefault();
+            const {x,y} = getPos(e);
+            this.mouseX = x; this.mouseY = y;
+            if (this.dragStart && this.state === 'playing') {
+                const dx = x-this.dragStart.x, dy = y-this.dragStart.y;
+                if (Math.sqrt(dx*dx+dy*dy) > CELL*0.35) {
+                    let dc=0, dr=0;
+                    if (Math.abs(dx)>Math.abs(dy)) dc = dx>0?1:-1;
+                    else dr = dy>0?1:-1;
+                    const sc = this.dragStart.cell, board = this.dragStart.board;
+                    if (!board.frozen && board.state === 'idle') {
+                        const nc = sc.c+dc, nr = sc.r+dr;
+                        if (nc>=0&&nc<COLS&&nr>=0&&nr<ROWS) {
+                            board.startSwap(sc.c, sc.r, nc, nr);
+                        }
+                    }
+                    board.selectedCell = null;
+                    this.dragStart = null;
+                }
+            }
+        };
+
+        canvas.addEventListener('mousedown', handleDown);
+        canvas.addEventListener('mousemove', handleMove);
+        canvas.addEventListener('mouseup', () => { this.dragStart = null; });
+        canvas.addEventListener('touchstart', handleDown, {passive:false});
+        canvas.addEventListener('touchmove', handleMove, {passive:false});
+        canvas.addEventListener('touchend', () => { this.dragStart = null; });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (this.state === 'playing') this.state = 'paused';
+                else if (this.state === 'paused') this.state = 'playing';
+            }
+            if ((e.key === 'f' || e.key === 'F') && this.state === 'playing') {
+                this.board1.activateFever(board1X, board1Y);
+            }
+        });
+    }
+
+    handleMenuClick(x, y) {
+        const cx = W/2, btnW = 280, btnH = 52, gap = 14;
+        const startY = H * 0.40;
+        const actions = [
+            () => this.startGame('ai', 0),
+            () => this.startGame('ai', 1),
+            () => this.startGame('ai', 2),
+            () => this.startGame('local', 0),
+        ];
+        for (let i = 0; i < actions.length; i++) {
+            const by = startY + i*(btnH+gap);
+            if (x>=cx-btnW/2 && x<=cx+btnW/2 && y>=by && y<=by+btnH) {
+                actions[i](); return;
+            }
+        }
+    }
+
+    handleResultClick(x, y) {
+        const cx=W/2, btnW=220, btnH=48;
+        const panelH = 360, py = (H-panelH)/2 - 20;
+        const by = py + panelH - 70;
+        if (x>=cx-btnW/2 && x<=cx+btnW/2 && y>=by && y<=by+btnH) this.state = 'menu';
+    }
+
+    handlePauseClick(x, y) {
+        const cx=W/2, btnW=220, btnH=48, gap=15, sy=H*0.4;
+        if (x>=cx-btnW/2 && x<=cx+btnW/2) {
+            if (y>=sy && y<=sy+btnH) this.state = 'playing';
+            if (y>=sy+btnH+gap && y<=sy+2*btnH+gap) this.state = 'menu';
+        }
+    }
+
+    update(dt) {
+        if (this.state === 'countdown') {
+            this.countdownTimer += dt;
+            if (this.countdownTimer >= 1) {
+                this.countdownTimer = 0;
+                this.countdownNum--;
+                if (this.countdownNum > 0) audio.playCountdown();
+                else { audio.playGo(); this.state = 'playing'; }
+            }
+            return;
+        }
+        if (this.state !== 'playing') return;
+
+        // Timer
+        this.timer -= dt;
+        if (this.timer <= 0) {
+            this.timer = 0;
+            this.winner = this.board1.hp > this.board2.hp ? 1 :
+                         (this.board2.hp > this.board1.hp ? 2 :
+                         (this.board1.score > this.board2.score ? 1 : 2));
+            this.endGame(); return;
+        }
+
+        // Update boards
+        this.board1.update(dt, board1X, board1Y);
+        this.board2.update(dt, board2X, board2Y);
+
+        // AI
+        if (this.ai) this.ai.update(dt, board2X, board2Y);
+
+        // Win checks
+        if (this.board1.hp <= 0 || this.board1.isOverflowed()) { this.winner = 2; this.endGame(); }
+        else if (this.board2.hp <= 0 || this.board2.isOverflowed()) { this.winner = 1; this.endGame(); }
+    }
+
+    endGame() {
+        this.state = 'result';
+        if (this.winner === 1) audio.playWin(); else audio.playLose();
+    }
+
+    draw() {
+        ctx.fillStyle = BG_COLOR;
+        ctx.fillRect(0, 0, W, H);
+
+        if (this.state === 'menu') { this.drawMenu(); return; }
+
+        // Draw boards and center for all game states
+        if (this.board1 && this.board2) {
+            this.board1.draw(ctx, board1X, board1Y);
+            this.board2.draw(ctx, board2X, board2Y);
+
+            // Labels
+            ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillStyle = '#4361EE';
+            ctx.fillText('P1 玩家', board1X+boardW/2, board1Y-25);
+            ctx.fillStyle = '#E63946';
+            ctx.fillText(this.mode==='ai' ? ['AI 新手','AI 普通','AI 高手'][this.aiDifficulty] : 'P2 玩家',
+                board2X+boardW/2, board2Y-25);
+
+            this.drawCenter();
+        }
+
+        if (this.state === 'countdown') this.drawCountdown();
+        else if (this.state === 'paused') this.drawPause();
+        else if (this.state === 'result') this.drawResult();
+    }
+
+    drawMenu() {
+        // Title
+        ctx.font = `bold ${Math.floor(W*0.055)}px 'Segoe UI', sans-serif`;
+        ctx.fillStyle = '#FFD700'; ctx.textAlign = 'center';
+        ctx.fillText('碎星对决', W/2, H*0.13);
+        ctx.font = `${Math.floor(W*0.022)}px 'Segoe UI', sans-serif`;
+        ctx.fillStyle = '#888';
+        ctx.fillText('STAR CRUSH DUEL', W/2, H*0.19);
+        ctx.font = `${Math.floor(W*0.014)}px 'Segoe UI', sans-serif`;
+        ctx.fillStyle = '#555';
+        ctx.fillText('三消的消除快感 × 对战的心理博弈', W/2, H*0.25);
+
+        // Decorative gems
+        const gs = Math.floor(W*0.022);
+        for (let i = 0; i < 5; i++) {
+            const gx = W/2 + (i-2)*gs*2.8;
+            const gy = H*0.31;
+            const b = 0.9+Math.sin(Date.now()/600+i*1.2)*0.1;
+            ctx.beginPath();
+            for (let s=0;s<6;s++){const a=(Math.PI*2/6)*s-Math.PI/6;const px=gx+Math.cos(a)*gs*b;const py=gy+Math.sin(a)*gs*b;if(s===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);}
+            ctx.closePath();
+            ctx.fillStyle = GEM_COLORS[i]; ctx.fill();
+            ctx.strokeStyle = GEM_GLOW[i]; ctx.lineWidth = 1; ctx.stroke();
+            // Glow
+            const gr = ctx.createRadialGradient(gx,gy,gs*0.2,gx,gy,gs*1.3);
+            gr.addColorStop(0,GEM_COLORS[i]+'44'); gr.addColorStop(1,GEM_COLORS[i]+'00');
+            ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(gx,gy,gs*1.3,0,Math.PI*2); ctx.fill();
+        }
+
+        // Buttons
+        const cx=W/2, btnW=280, btnH=52, gap=14, startY=H*0.40;
+        const btns = [
+            {label:'⚔️  AI对战 · 新手', color:'#2DC653'},
+            {label:'⚔️  AI对战 · 普通', color:'#4361EE'},
+            {label:'⚔️  AI对战 · 高手', color:'#E63946'},
+            {label:'👥  本地双人对战', color:'#9B5DE5'},
+        ];
+        for (let i = 0; i < btns.length; i++) {
+            const by = startY + i*(btnH+gap);
+            const hover = this.mouseX>=cx-btnW/2 && this.mouseX<=cx+btnW/2 && this.mouseY>=by && this.mouseY<=by+btnH;
+            // Rounded rect
+            const r = 10;
+            ctx.beginPath();
+            ctx.moveTo(cx-btnW/2+r,by); ctx.lineTo(cx+btnW/2-r,by);
+            ctx.arcTo(cx+btnW/2,by,cx+btnW/2,by+r,r);
+            ctx.lineTo(cx+btnW/2,by+btnH-r);
+            ctx.arcTo(cx+btnW/2,by+btnH,cx+btnW/2-r,by+btnH,r);
+            ctx.lineTo(cx-btnW/2+r,by+btnH);
+            ctx.arcTo(cx-btnW/2,by+btnH,cx-btnW/2,by+btnH-r,r);
+            ctx.lineTo(cx-btnW/2,by+r);
+            ctx.arcTo(cx-btnW/2,by,cx-btnW/2+r,by,r);
+            ctx.closePath();
+            ctx.fillStyle = hover ? btns[i].color : 'rgba(30,30,50,0.9)';
+            ctx.fill();
+            ctx.strokeStyle = btns[i].color; ctx.lineWidth = 2; ctx.stroke();
+            ctx.font = 'bold 17px sans-serif';
+            ctx.fillStyle = hover ? '#FFF' : btns[i].color;
+            ctx.textAlign = 'center';
+            ctx.fillText(btns[i].label, cx, by+btnH/2+6);
+        }
+
+        // Instructions
+        const instrY = startY + btns.length*(btnH+gap) + 25;
+        ctx.font = '12px sans-serif'; ctx.fillStyle = '#444'; ctx.textAlign = 'center';
+        ctx.fillText('点击宝石再点相邻宝石交换 / 拖拽交换 / F键激活超级模式 / ESC暂停', W/2, instrY);
+    }
+
+    drawCenter() {
+        const cx = centerX + centerW/2;
+        ctx.fillStyle = 'rgba(10,10,25,0.92)';
+        ctx.fillRect(centerX, board1Y-2, centerW, boardH+4);
+        ctx.strokeStyle = '#FFD70066'; ctx.lineWidth = 1;
+        ctx.strokeRect(centerX, board1Y-2, centerW, boardH+4);
+
+        // VS
+        ctx.font = `bold ${Math.floor(centerW*0.38)}px sans-serif`;
+        ctx.fillStyle = '#FFD700'; ctx.textAlign = 'center';
+        ctx.fillText('VS', cx, board1Y+boardH*0.12);
+
+        // Timer
+        const mins = Math.floor(this.timer/60), secs = Math.floor(this.timer%60);
+        ctx.font = `bold ${Math.floor(centerW*0.26)}px monospace`;
+        if (this.timer <= 30) {
+            ctx.fillStyle = Math.floor(Date.now()/400)%2===0 ? '#E63946' : '#FF8888';
+        } else { ctx.fillStyle = '#EEE'; }
+        ctx.fillText(`${mins}:${secs.toString().padStart(2,'0')}`, cx, board1Y+boardH*0.24);
+
+        // HP bars
+        const barW = centerW*0.72, barH = 18;
+        const drawHP = (label, hp, y, color) => {
+            ctx.font = '11px sans-serif'; ctx.fillStyle = color; ctx.fillText(label, cx, y-5);
+            ctx.fillStyle = '#222'; ctx.fillRect(cx-barW/2, y, barW, barH);
+            const pct = hp/INITIAL_HP;
+            ctx.fillStyle = pct > 0.3 ? color : '#E63946';
+            ctx.fillRect(cx-barW/2, y, barW*pct, barH);
+            ctx.strokeStyle = '#555'; ctx.lineWidth = 1; ctx.strokeRect(cx-barW/2, y, barW, barH);
+            ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = '#FFF';
+            ctx.fillText(hp+'', cx, y+barH-4);
+        };
+        drawHP('P1', this.board1.hp, board1Y+boardH*0.32, '#4361EE');
+        drawHP('P2', this.board2.hp, board1Y+boardH*0.46, '#E63946');
+
+        // Scores
+        ctx.font = '11px sans-serif'; ctx.fillStyle = '#888';
+        const sy = board1Y+boardH*0.62;
+        ctx.fillText('得分', cx, sy);
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillStyle = '#4361EE';
+        ctx.fillText(this.board1.score+'', cx, sy+20);
+        ctx.fillStyle = '#E63946';
+        ctx.fillText(this.board2.score+'', cx, sy+38);
+
+        // Chain
+        ctx.font = '11px sans-serif'; ctx.fillStyle = '#888';
+        ctx.fillText('最高连锁', cx, board1Y+boardH*0.82);
+        ctx.font = 'bold 15px sans-serif'; ctx.fillStyle = '#FFD700';
+        ctx.fillText(`${this.board1.maxChain} | ${this.board2.maxChain}`, cx, board1Y+boardH*0.82+18);
+
+        // Garbage count
+        ctx.font = '11px sans-serif'; ctx.fillStyle = '#888';
+        ctx.fillText('垃圾块', cx, board1Y+boardH*0.92);
+        ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = '#AAA';
+        ctx.fillText(`${this.board1.totalGarbageSent} | ${this.board2.totalGarbageSent}`, cx, board1Y+boardH*0.92+16);
+    }
+
+    drawCountdown() {
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(0, 0, W, H);
+        const text = this.countdownNum > 0 ? this.countdownNum+'' : 'GO!';
+        const scale = 1 + this.countdownTimer*0.4;
+        const alpha = 1 - this.countdownTimer*0.6;
+        ctx.save(); ctx.translate(W/2,H/2); ctx.scale(scale,scale);
+        ctx.globalAlpha = Math.max(0, alpha);
+        ctx.font = `bold ${Math.floor(W*0.12)}px sans-serif`;
+        ctx.fillStyle = this.countdownNum > 0 ? '#FFD700' : '#2DC653';
+        ctx.textAlign = 'center';
+        ctx.fillText(text, 0, 15);
+        ctx.restore(); ctx.globalAlpha = 1;
+    }
+
+    drawPause() {
+        ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        ctx.fillRect(0, 0, W, H);
+        ctx.font = `bold ${Math.floor(W*0.04)}px sans-serif`;
+        ctx.fillStyle = '#FFF'; ctx.textAlign = 'center';
+        ctx.fillText('暂停', W/2, H*0.3);
+        const cx=W/2, btnW=220, btnH=48, gap=15, sy=H*0.4;
+        [{label:'▶ 继续游戏',color:'#2DC653'},{label:'✕ 返回菜单',color:'#E63946'}].forEach((b,i) => {
+            const by = sy+i*(btnH+gap);
+            ctx.fillStyle = 'rgba(30,30,50,0.9)'; ctx.strokeStyle = b.color; ctx.lineWidth = 2;
+            ctx.fillRect(cx-btnW/2,by,btnW,btnH); ctx.strokeRect(cx-btnW/2,by,btnW,btnH);
+            ctx.font = 'bold 17px sans-serif'; ctx.fillStyle = b.color; ctx.textAlign = 'center';
+            ctx.fillText(b.label, cx, by+btnH/2+6);
+        });
+    }
+
+    drawResult() {
+        ctx.fillStyle = 'rgba(5,5,15,0.9)';
+        ctx.fillRect(0, 0, W, H);
+
+        const panelW = Math.min(440, W*0.72), panelH = 360;
+        const px = (W-panelW)/2, py = (H-panelH)/2 - 20;
+        ctx.fillStyle = 'rgba(18,18,35,0.98)';
+        ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 2;
+        ctx.fillRect(px,py,panelW,panelH);
+        ctx.strokeRect(px,py,panelW,panelH);
+
+        ctx.font = `bold ${Math.floor(Math.min(W*0.04,34))}px sans-serif`;
+        ctx.textAlign = 'center';
+        if (this.winner===1) { ctx.fillStyle='#4361EE'; ctx.fillText('🏆 玩家1 胜利!', W/2, py+50); }
+        else { ctx.fillStyle='#E63946'; ctx.fillText(`🏆 ${this.mode==='ai'?'AI':'玩家2'} 胜利!`, W/2, py+50); }
+
+        const sy = py+85;
+        const stats = [['','P1','P2'],
+            ['血量', this.board1.hp+'', this.board2.hp+''],
+            ['得分', this.board1.score+'', this.board2.score+''],
+            ['最高连锁', this.board1.maxChain+'', this.board2.maxChain+''],
+            ['垃圾块投送', this.board1.totalGarbageSent+'', this.board2.totalGarbageSent+''],
+            ['总伤害', this.board1.totalDamage+'', this.board2.totalDamage+'']];
+        stats.forEach((row,i) => {
+            const y = sy+i*28;
+            ctx.font = i===0?'bold 13px sans-serif':'13px sans-serif';
+            ctx.fillStyle = i===0?'#FFD700':'#AAA'; ctx.textAlign='right';
+            ctx.fillText(row[0], W/2-15, y);
+            ctx.textAlign='center';
+            ctx.fillStyle='#4361EE'; ctx.fillText(row[1], W/2+55, y);
+            ctx.fillStyle='#E63946'; ctx.fillText(row[2], W/2+125, y);
+        });
+
+        const cx=W/2, btnW=220, btnH=48, by=py+panelH-70;
+        ctx.fillStyle='rgba(30,30,50,0.9)'; ctx.strokeStyle='#FFD700'; ctx.lineWidth=2;
+        ctx.fillRect(cx-btnW/2,by,btnW,btnH); ctx.strokeRect(cx-btnW/2,by,btnW,btnH);
+        ctx.font='bold 18px sans-serif'; ctx.fillStyle='#FFD700'; ctx.textAlign='center';
+        ctx.fillText('🔄 再来一局', cx, by+btnH/2+6);
+    }
+
+    loop() {
+        const now = performance.now();
+        const dt = Math.min(0.05, (now-this.lastTime)/1000);
+        this.lastTime = now;
+        this.update(dt);
+        this.draw();
+    }
+
+    start() {
+        resize();
+        window.addEventListener('resize', resize);
+        this.lastTime = performance.now();
+        setInterval(() => this.loop(), 16);
+    }
+}
+
+const game = new Game();
+game.start();
+</script>
+</body>
+</html>

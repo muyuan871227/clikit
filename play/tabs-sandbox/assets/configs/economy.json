@@ -1,0 +1,29 @@
+{
+  "currencies": [
+    {"name": "gold", "cap": 99999, "starting": 0}
+  ],
+  "earn_sources": [
+    {"source": "level_budget", "currency": "gold", "base_amount": 250, "per_level_inc": 30, "description": "每关开始发放=250+N*30,一次性"},
+    {"source": "first_clear_bonus", "currency": "gold", "base_amount": 50, "description": "首次通关奖励,用于解锁新兵种"},
+    {"source": "sandbox_unlimited", "currency": "gold", "base_amount": 9999, "description": "沙盒模式无限金币"}
+  ],
+  "spend_sinks": [
+    {"item": "deploy_pikeman", "currency": "gold", "cost_formula": "20", "description": "布置矛兵"},
+    {"item": "deploy_archer", "currency": "gold", "cost_formula": "30"},
+    {"item": "deploy_shield", "currency": "gold", "cost_formula": "40"},
+    {"item": "deploy_cavalry", "currency": "gold", "cost_formula": "60"},
+    {"item": "deploy_mage", "currency": "gold", "cost_formula": "80"},
+    {"item": "deploy_giant", "currency": "gold", "cost_formula": "150"},
+    {"item": "unlock_archer", "currency": "gold", "cost_formula": "0", "description": "第2关解锁自动免费"},
+    {"item": "unlock_shield", "currency": "gold", "cost_formula": "0", "description": "第3关解锁自动免费"},
+    {"item": "unlock_cavalry", "currency": "gold", "cost_formula": "150", "description": "第5关后首次用需付费"},
+    {"item": "unlock_mage", "currency": "gold", "cost_formula": "300"},
+    {"item": "unlock_giant", "currency": "gold", "cost_formula": "500"}
+  ],
+  "refund_policy": {
+    "plan_phase_full_refund": true,
+    "battle_phase_refund": 0,
+    "description": "规划期拖出战场=全额退款;战斗开始后不退"
+  },
+  "_comment": "TABS Lite 经济=每关金币预算池 + 解锁兵种sink"
+}

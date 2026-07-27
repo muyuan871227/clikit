@@ -1,0 +1,38 @@
+{
+  "zh": {
+    "any_score": "我画了{score}%的圆，你能画多圆？",
+    "new_record": "新纪录{score}%！你能超过我吗？",
+    "vs_win": "我{my}% vs 你{their}%，我的圆更圆！",
+    "daily_rank": "今日画圈排名前{rank}%！"
+  },
+  "en": {
+    "any_score": "I drew a circle with {score}% accuracy. Can you do better?",
+    "new_record": "New record: {score}%! Can you beat me?",
+    "vs_win": "I got {my}% vs your {their}%, my circle is more perfect!",
+    "daily_rank": "Ranked in the top {rank}% of circle drawers today!"
+  },
+  "ja": {
+    "any_score": "{score}%の円を描きました。あなたは何パーセントの円を描けますか？",
+    "new_record": "新記録{score}%！私を超えられますか？",
+    "vs_win": "私{my}% vs あなた{their}%、私の円の方が丸い！",
+    "daily_rank": "今日の円描きランキング上位{rank}%！"
+  },
+  "ko": {
+    "any_score": "저는 {score}% 정확도로 원을 그렸어요. 당신은 얼마나 잘 그릴 수 있나요?",
+    "new_record": "신기록 {score}%! 저를 이길 수 있나요?",
+    "vs_win": "내 점수 {my}% vs 당신 점수 {their}%, 내 원이 더 완벽해요!",
+    "daily_rank": "오늘 원 그리기 순위 상위 {rank}%!"
+  },
+  "es": {
+    "any_score": "He dibujado un círculo con un {score}% de precisión. ¿Puedes hacerlo mejor?",
+    "new_record": "¡Nuevo récord: {score}%! ¿Puedes superarme?",
+    "vs_win": "Yo: {my}% vs Tú: {their}%, ¡mi círculo es más perfecto!",
+    "daily_rank": "¡En el top {rank}% de los dibujantes de círculos de hoy!"
+  },
+  "fr": {
+    "any_score": "J'ai dessiné un cercle avec une précision de {score}%. Pouvez-vous faire mieux ?",
+    "new_record": "Nouveau record : {score} % ! Pouvez-vous me battre ?",
+    "vs_win": "J'ai fait {my} % contre {their} %, mon cercle est plus parfait !",
+    "daily_rank": "Classé dans le top {rank} % des dessinateurs de cercles aujourd'hui !"
+  }
+}

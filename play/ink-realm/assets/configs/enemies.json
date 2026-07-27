@@ -1,0 +1,241 @@
+{
+  "enemies": [
+    {
+      "id": "ink_bug",
+      "name": "墨虫",
+      "region": "forest",
+      "type": "normal",
+      "hp": 40,
+      "atk": 10,
+      "speed": 0.6,
+      "weakness": "none",
+      "behavior": "chase",
+      "ink_drop": 5
+    },
+    {
+      "id": "ink_crow",
+      "name": "墨鸦",
+      "region": "forest",
+      "type": "normal",
+      "hp": 50,
+      "atk": 12,
+      "speed": 1.0,
+      "weakness": "none",
+      "behavior": "flee",
+      "ink_drop": 7
+    },
+    {
+      "id": "ink_wolf",
+      "name": "墨狼",
+      "region": "forest",
+      "type": "normal",
+      "hp": 70,
+      "atk": 15,
+      "speed": 0.8,
+      "weakness": "none",
+      "behavior": "chase",
+      "ink_drop": 10
+    },
+    {
+      "id": "lava_lizard",
+      "name": "熔岩蜥",
+      "region": "volcano",
+      "type": "normal",
+      "hp": 60,
+      "atk": 18,
+      "speed": 0.5,
+      "weakness": "ice",
+      "behavior": "patrol",
+      "ink_drop": 8
+    },
+    {
+      "id": "fire_bat",
+      "name": "火蝠",
+      "region": "volcano",
+      "type": "normal",
+      "hp": 45,
+      "atk": 15,
+      "speed": 1.2,
+      "weakness": "none",
+      "behavior": "swarm",
+      "ink_drop": 6
+    },
+    {
+      "id": "rock_golem",
+      "name": "岩傀儡",
+      "region": "volcano",
+      "type": "normal",
+      "hp": 90,
+      "atk": 20,
+      "speed": 0.3,
+      "weakness": "ice",
+      "behavior": "stationary",
+      "ink_drop": 12
+    },
+    {
+      "id": "ice_butterfly",
+      "name": "冰晶蝶",
+      "region": "ice",
+      "type": "normal",
+      "hp": 35,
+      "atk": 8,
+      "speed": 1.5,
+      "weakness": "fire",
+      "behavior": "flee",
+      "ink_drop": 4
+    },
+    {
+      "id": "frost_fox",
+      "name": "霜狐",
+      "region": "ice",
+      "type": "normal",
+      "hp": 55,
+      "atk": 13,
+      "speed": 0.9,
+      "weakness": "fire",
+      "behavior": "hunt",
+      "ink_drop": 7
+    },
+    {
+      "id": "snowman",
+      "name": "雪人",
+      "region": "ice",
+      "type": "normal",
+      "hp": 80,
+      "atk": 17,
+      "speed": 0.4,
+      "weakness": "fire",
+      "behavior": "chase",
+      "ink_drop": 11
+    },
+    {
+      "id": "thunder_bee",
+      "name": "雷蜂",
+      "region": "thunder",
+      "type": "normal",
+      "hp": 40,
+      "atk": 16,
+      "speed": 1.1,
+      "weakness": "ground_trap",
+      "behavior": "swarm",
+      "ink_drop": 5
+    },
+    {
+      "id": "electric_rat",
+      "name": "电鼠",
+      "region": "thunder",
+      "type": "normal",
+      "hp": 50,
+      "atk": 14,
+      "speed": 1.3,
+      "weakness": "ground_trap",
+      "behavior": "scurry",
+      "ink_drop": 6
+    },
+    {
+      "id": "wind_eagle",
+      "name": "风鹰",
+      "region": "thunder",
+      "type": "normal",
+      "hp": 65,
+      "atk": 19,
+      "speed": 1.0,
+      "weakness": "ground_trap",
+      "behavior": "patrol",
+      "ink_drop": 9
+    },
+    {
+      "id": "vine_monster",
+      "name": "藤蔓怪",
+      "region": "garden",
+      "type": "normal",
+      "hp": 75,
+      "atk": 16,
+      "speed": 0.4,
+      "weakness": "life",
+      "behavior": "entangle",
+      "ink_drop": 10
+    },
+    {
+      "id": "poison_mushroom",
+      "name": "毒蘑菇",
+      "region": "garden",
+      "type": "normal",
+      "hp": 45,
+      "atk": 17,
+      "speed": 0.2,
+      "weakness": "life",
+      "behavior": "stationary",
+      "ink_drop": 7
+    },
+    {
+      "id": "deadwood_puppet",
+      "name": "枯木偶",
+      "region": "garden",
+      "type": "normal",
+      "hp": 60,
+      "atk": 15,
+      "speed": 0.7,
+      "weakness": "life",
+      "behavior": "ambush",
+      "ink_drop": 8
+    }
+  ],
+  "bosses": [
+    {
+      "id": "ink_snake",
+      "name": "墨蛇",
+      "region": "forest",
+      "hp": 200,
+      "atk": 20,
+      "phases": 2,
+      "weakness": "none",
+      "reward": "fire_ink",
+      "ink_drop": 50
+    },
+    {
+      "id": "lava_giant",
+      "name": "熔岩巨人",
+      "region": "volcano",
+      "hp": 250,
+      "atk": 25,
+      "phases": 2,
+      "weakness": "ice",
+      "reward": "lava_core",
+      "ink_drop": 60
+    },
+    {
+      "id": "ice_phoenix",
+      "name": "冰晶凤凰",
+      "region": "ice",
+      "hp": 220,
+      "atk": 22,
+      "phases": 3,
+      "weakness": "fire",
+      "reward": "ice_feather",
+      "ink_drop": 55
+    },
+    {
+      "id": "thunder_beast",
+      "name": "雷兽",
+      "region": "thunder",
+      "hp": 230,
+      "atk": 23,
+      "phases": 2,
+      "weakness": "ground_trap",
+      "reward": "thunder_claw",
+      "ink_drop": 58
+    },
+    {
+      "id": "deadwood_giant",
+      "name": "枯木巨人",
+      "region": "garden",
+      "hp": 240,
+      "atk": 24,
+      "phases": 3,
+      "weakness": "life",
+      "reward": "ancient_seed",
+      "ink_drop": 62
+    }
+  ]
+}

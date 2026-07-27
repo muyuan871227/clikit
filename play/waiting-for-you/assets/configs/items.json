@@ -1,0 +1,11 @@
+{
+  "items": [
+    {"id": "slipper", "name": "拖鞋", "scent_initial": 100, "scent_decay_per_day": 5, "memory_trigger": "hand_petting", "interaction": "sniff_and_carry", "day_available": 1, "day_destroyed": 12, "destroyed_desc": "拖鞋被你叼碎了，但你还是把碎片放到门口"},
+    {"id": "sweater", "name": "旧毛衣", "scent_initial": 80, "scent_decay_per_day": 3, "memory_trigger": "park_running", "interaction": "curl_up_on", "day_available": 7, "day_destroyed": null},
+    {"id": "pillow", "name": "枕头", "scent_initial": 60, "scent_decay_per_day": 4, "memory_trigger": "sleeping_together", "interaction": "sniff", "day_available": 1, "day_destroyed": null},
+    {"id": "photo_frame", "name": "照片", "scent_initial": 0, "memory_trigger": "first_day_home", "interaction": "look_at", "day_available": 5, "day_destroyed": null},
+    {"id": "tennis_ball", "name": "网球", "scent_initial": 40, "scent_decay_per_day": 2, "memory_trigger": "playing_fetch", "interaction": "carry_and_drop_at_door", "day_available": 1, "day_destroyed": null},
+    {"id": "food_bowl", "name": "狗碗", "scent_initial": 20, "scent_decay_per_day": 1, "memory_trigger": null, "interaction": "eat", "day_available": 1, "day_destroyed": null},
+    {"id": "leash", "name": "牵绳", "scent_initial": 50, "scent_decay_per_day": 3, "memory_trigger": "walking_together", "interaction": "sniff_and_whimper", "day_available": 1, "day_destroyed": null}
+  ]
+}

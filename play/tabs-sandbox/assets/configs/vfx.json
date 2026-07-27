@@ -1,0 +1,22 @@
+{
+  "hit_spark": {"count": 8, "color": "#FFFFFF", "speed": 120, "lifetime_ms": 300, "size": 3, "spread_rad": 6.28, "gravity": 0},
+  "hit_chunks": {"count": 10, "color": "#C73A1A", "speed": 180, "lifetime_ms": 500, "size": 4, "spread_rad": 6.28, "gravity": 200},
+  "shockwave": {"count": 1, "color": "#FFE877", "speed": 0, "lifetime_ms": 300, "size": 60, "type": "ring"},
+  "fire_burst": {"count": 15, "color": "#FF6B4A", "speed": 200, "lifetime_ms": 600, "size": 4, "spread_rad": 6.28, "gravity": -100, "type": "fire"},
+  "spark_steel": {"count": 6, "color": "#DDDDDD", "speed": 150, "lifetime_ms": 250, "size": 2, "spread_rad": 3.14},
+  "death_dust": {"count": 10, "color": "#AA8866", "speed": 80, "lifetime_ms": 800, "size": 4, "spread_rad": 6.28, "gravity": 50},
+  "death_dust_big": {"count": 18, "color": "#AA8866", "speed": 140, "lifetime_ms": 1000, "size": 5, "spread_rad": 6.28, "gravity": 80},
+  "death_crash": {"count": 25, "color": "#887766", "speed": 200, "lifetime_ms": 1200, "size": 6, "spread_rad": 6.28, "gravity": 150},
+  "spawn_dust": {"count": 4, "color": "#DDD8C0", "speed": 50, "lifetime_ms": 250, "size": 2.5, "spread_rad": 6.28, "gravity": -20},
+  "spawn_stomp": {"count": 12, "color": "#AA8866", "speed": 100, "lifetime_ms": 600, "size": 5, "spread_rad": 3.14, "gravity": -40},
+  "spawn_sparkle": {"count": 15, "color": "#FFE877", "speed": 80, "lifetime_ms": 700, "size": 3, "spread_rad": 6.28, "gravity": -30},
+  "confetti": {"count": 60, "color": "rainbow", "speed": 250, "lifetime_ms": 2000, "size": 4, "spread_rad": 6.28, "gravity": 200},
+  "smoke": {"count": 15, "color": "#666666", "speed": 40, "lifetime_ms": 1500, "size": 8, "spread_rad": 1.5, "gravity": -50},
+  "dust_puff": {"count": 3, "color": "#AA8866", "speed": 40, "lifetime_ms": 300, "size": 2, "spread_rad": 2.0, "gravity": 20},
+  "ground_crack": {"count": 5, "color": "#887766", "speed": 60, "lifetime_ms": 400, "size": 3, "spread_rad": 3.14, "gravity": 30},
+  "cast_aura": {"count": 8, "color": "#9B59B6", "speed": 30, "lifetime_ms": 500, "size": 3, "spread_rad": 6.28, "gravity": -50},
+  "club_trail": {"count": 3, "color": "#AA8866", "speed": 20, "lifetime_ms": 200, "size": 2, "spread_rad": 1.0},
+  "charge_banner": {"count": 20, "color": "#FFD700", "speed": 150, "lifetime_ms": 800, "size": 4, "spread_rad": 6.28},
+  "kill_explosion": {"count": 20, "color": "#FF6B4A", "speed": 250, "lifetime_ms": 700, "size": 5, "spread_rad": 6.28, "gravity": 100},
+  "deploy_dust": {"count": 6, "color": "#CCCCCC", "speed": 60, "lifetime_ms": 400, "size": 3, "spread_rad": 6.28, "gravity": -20}
+}

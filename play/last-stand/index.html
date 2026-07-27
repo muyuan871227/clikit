@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>末日幸存者 LAST STAND</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Main Menu Overlay -->
+    <div id="mainMenu" class="overlay">
+        <div class="menu-content">
+            <h1 class="game-title">末日幸存者</h1>
+            <p class="game-subtitle">LAST STAND</p>
+            <button id="btnStart" class="menu-btn">开始游戏</button>
+            <button id="btnUpgrades" class="menu-btn">强化树</button>
+            <p class="controls-hint">WASD / 方向键 移动 | 武器自动攻击</p>
+            <p class="controls-hint">触屏: 左侧虚拟摇杆移动</p>
+        </div>
+    </div>
+
+    <!-- Upgrade Card Selection Overlay -->
+    <div id="upgradeScreen" class="overlay" style="display:none">
+        <div class="upgrade-content">
+            <h2 class="upgrade-title">选择升级</h2>
+            <div id="cardContainer" class="card-container"></div>
+            <button id="btnReroll" class="reroll-btn">重新抽取 (剩余: <span id="rerollCount">1</span>)</button>
+        </div>
+    </div>
+
+    <!-- Game Over Overlay -->
+    <div id="gameOver" class="overlay" style="display:none">
+        <div class="gameover-content">
+            <h2 class="gameover-title" id="resultTitle">游戏结束</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label">存活时间</span>
+                    <span class="stat-value" id="statTime">00:00</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">击杀数</span>
+                    <span class="stat-value" id="statKills">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">最高感染链</span>
+                    <span class="stat-value" id="statChain">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">获得金币</span>
+                    <span class="stat-value" id="statGold">0</span>
+                </div>
+            </div>
+            <button id="btnRetry" class="menu-btn">再来一局</button>
+            <button id="btnBackMenu" class="menu-btn secondary">返回菜单</button>
+        </div>
+    </div>
+
+    <!-- Upgrade Tree Overlay -->
+    <div id="upgradeTree" class="overlay" style="display:none">
+        <div class="tree-content">
+            <h2 class="upgrade-title">强化树</h2>
+            <div id="treeGrid" class="tree-grid"></div>
+            <div class="tree-footer">
+                <span id="goldDisplay">金币: 0</span>
+                <button id="btnBackFromTree" class="menu-btn secondary">返回</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/engine.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

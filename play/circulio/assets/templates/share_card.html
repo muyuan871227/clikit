@@ -1,0 +1,111 @@
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>你能画多圆？</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #fff;
+        }
+
+        .card {
+            width: 1080px;
+            height: 1080px;
+            background-color: #fff;
+            position: relative; /* 允许绝对定位 */
+        }
+
+        .circle-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 700px; /* 调整圆的大小 */
+            height: 700px; /* 调整圆的大小 */
+        }
+
+        .score {
+            position: absolute;
+            bottom: 50px;
+            right: 50px;
+            font-size: 200px; /* 调整字体大小 */
+            font-weight: bold;
+            /* color: {score_color}; */ /* 由JS动态设置 */
+        }
+
+        .footer-text {
+            position: absolute;
+            bottom: 50px;
+            left: 50px;
+            transform: translateX(-50%);
+            font-size: 60px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="circle-container">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <path d="{circle_path}" fill="none" stroke="#000" stroke-width="3"/>
+            </svg>
+        </div>
+        <div class="score" id="score">{score}%</div>
+        <div class="footer-text">你能画多圆？</div>
+    </div>
+
+    <script>
+        // JavaScript占位符，用于动态设置分数颜色
+        const scoreElement = document.getElementById('score');
+        const scoreColor = "{score_color}";
+        scoreElement.style.color = scoreColor;
+
+        // 示例：动态修改分数（仅用于测试，实际应从外部传入）
+        // setTimeout(() => {
+        //     scoreElement.textContent = "95%";
+        //     scoreElement.style.color = "green";
+        // }, 2000);
+    </script>
+
+</body>
+</html>
+```
+
+关键改进和解释：
+
+* **完整的 HTML 结构:** 包含 `<!DOCTYPE html>`, `<html>`, `<head>`, `<body>` 标签，是一个完整的HTML文档。
+* **内联 CSS:**  所有样式都包含在 `<style>` 标签中，方便分享。
+* **正方形尺寸:** `width: 1080px;` 和 `height: 1080px;` 确保卡片是正方形，适合 Instagram。
+* **白色背景:** `background-color: #fff;` 设置白色背景。
+* **中央大圆 SVG 占位符:** 使用 `{circle_path}` 作为 SVG 路径的占位符。  注意 `viewBox` 属性，方便路径缩放。
+* **右下角大字分数占位符:** 使用 `{score}%` 作为分数占位符，字体大小和颜色可调。使用了ID `score` 方便JS操作。
+* **分数颜色占位符:** 使用 `{score_color}` 作为颜色占位符，并在 JavaScript 中使用它。
+* **底部文本:**  "你能画多圆？"  居中显示在底部。
+* **极简设计:** 仅包含要求的元素，没有多余的装饰。
+* **JavaScript 占位符:**  使用 `id="score"` 来获取分数元素，然后在 JavaScript 中设置 `scoreColor` 的值。  添加了注释，表明这部分需要动态设置。  还添加了一个可选的`setTimeout` 示例，展示如何动态改变分数（用于测试）。
+* **SVG `viewBox`:**  使用了 `viewBox="0 0 100 100"`，这意味着 SVG 内容会被缩放到整个容器中，方便使用相对坐标定义路径。
+* **CSS `position: absolute`:**  `position: absolute` 允许将元素相对于其最近的定位祖先进行定位。 `position: relative` 设置 card 为其内部 absolute 元素的定位祖先。
+* **CSS `transform: translate(-50%, -50%)`:**  `transform: translate(-50%, -50%)` 用于将元素居中。
+
+如何使用：
+
+1. **替换占位符:**  将 `{circle_path}` 替换为实际的 SVG 路径数据。  例如： `M 50 10 A 40 40 0 0 1 50 90 A 40 40 0 0 1 50 10 Z` (这是一个简单的圆形路径).
+2. **设置分数和颜色:**  在 JavaScript 代码中，将 `{score}` 替换为实际的分数，将 `{score_color}` 替换为实际的颜色值（例如 "red", "green", "#FF0000"）。  如果分数和颜色是从服务器获取的，请使用 AJAX 或其他方法获取数据并更新相应的元素。
+
+这个例子提供了一个结构化的、可定制的分享卡片，可以轻松地用真实的数据进行填充。
+

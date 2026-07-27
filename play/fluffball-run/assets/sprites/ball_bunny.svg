@@ -1,0 +1,15 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 耳朵 -->
+  <rect x="18" y="4" width="10" height="20" rx="5" fill="#FFD6E0" />
+  <rect x="36" y="4" width="10" height="20" rx="5" fill="#FFD6E0" />
+  <rect x="21" y="8" width="4" height="10" rx="2" fill="#FFB7C5" />
+  <rect x="39" y="8" width="4" height="10" rx="2" fill="#FFB7C5" />
+  <!-- 身体 -->
+  <circle cx="32" cy="36" r="24" fill="#FFD6E0" />
+  <!-- 面部 -->
+  <circle cx="24" cy="38" r="2.5" fill="#333" />
+  <circle cx="40" cy="38" r="2.5" fill="#333" />
+  <path d="M32 40l-1.5 2h3z" fill="#FF8BA7" /> <!-- 鼻子 -->
+  <circle cx="16" cy="44" r="3.5" fill="#FFB7C5" fill-opacity="0.5" />
+  <circle cx="48" cy="44" r="3.5" fill="#FFB7C5" fill-opacity="0.5" />
+</svg>

@@ -1,0 +1,32 @@
+[
+  {
+    "animation": "idle",
+    "easing": "linear",
+    "duration_ms": 3000,
+    "scale": 1.01
+  },
+  {
+    "animation": "hit",
+    "easing": "easeOutQuad",
+    "duration_ms": 150,
+    "scale": 0.9
+  },
+  {
+    "animation": "boost",
+    "easing": "easeOutElastic",
+    "duration_ms": 500,
+    "scale": 1.2
+  },
+  {
+    "animation": "death",
+    "easing": "easeOutCubic",
+    "duration_ms": 2000,
+    "scale": 0.5
+  },
+  {
+    "animation": "ui_transition",
+    "easing": "easeInOutSine",
+    "duration_ms": 750,
+    "scale": 1.1
+  }
+]

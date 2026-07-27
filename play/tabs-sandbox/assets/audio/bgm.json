@@ -1,0 +1,109 @@
+[
+  {
+    "name": "bgm_menu",
+    "description": "主菜单 - 平静/期待",
+    "mood": "期待",
+    "structure": [
+      {
+        "instrument": "Synth",
+        "tone": {
+          "oscillator": {
+            "type": "triangle"
+          },
+          "envelope": {
+            "attack": 0.1,
+            "decay": 0.3,
+            "sustain": 0.7,
+            "release": 1.0
+          }
+        },
+        "sequence": [
+          {
+            "time": "0:0:0",
+            "note": "C4",
+            "duration": "2n",
+            "velocity": 0.6
+          },
+          {
+            "time": "0:2:0",
+            "note": "E4",
+            "duration": "2n",
+            "velocity": 0.6
+          },
+          {
+            "time": "1:0:0",
+            "note": "G4",
+            "duration": "2n",
+            "velocity": 0.6
+          },
+          {
+            "time": "1:2:0",
+            "note": "C5",
+            "duration": "2n",
+            "velocity": 0.6
+          },
+          {
+            "time": "2:0:0",
+            "note": "G4",
+            "duration": "2n",
+            "velocity": 0.6
+          },
+          {
+            "time": "2:2:0",
+            "note": "E4",
+            "duration": "2n",
+            "velocity": 0.6
+          },
+          {
+            "time": "3:0:0",
+            "note": "C4",
+            "duration": "2n",
+            "velocity": 0.6
+          },
+          {
+            "time": "3:2:0",
+            "note": "G3",
+            "duration": "2n",
+            "velocity": 0.6
+          }
+        ],
+        "options": {
+          "loop": true,
+          "volume": -12
+        }
+      },
+      {
+        "instrument": "BassSynth",
+        "tone": {
+          "oscillator": {
+            "type": "sine"
+          },
+          "envelope": {
+            "attack": 0.01,
+            "decay": 0.1,
+            "sustain": 0.8,
+            "release": 0.5
+          }
+        },
+        "sequence": [
+          {
+            "time": "0:0:0",
+            "note": "C3",
+            "duration": "1m",
+            "velocity": 0.8
+          },
+          {
+            "time": "2:0:0",
+            "note": "G2",
+            "duration": "1m",
+            "velocity": 0.8
+          }
+        ],
+        "options": {
+          "loop": true,
+          "volume": -6
+        }
+      }
+    ]
+  }
+]

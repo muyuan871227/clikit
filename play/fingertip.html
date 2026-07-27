@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>弹指间 FINGERTIP</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #050510;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+canvas {
+  display: block;
+  width: 100%; height: 100%;
+}
+</style>
+</head>
+<body>
+<canvas id="gc"></canvas>
+<script>
+// ============================================================
+// 《弹指间》FINGERTIP - Phase 1 Prototype
+// ============================================================
+
+const canvas = document.getElementById('gc');
+const ctx = canvas.getContext('2d');
+
+// --- Constants ---
+const DESIGN_W = 414;
+const DESIGN_H = 896;
+const BG_COLOR = '#050510';
+const BALL_RADIUS = 15;
+const BALL_INITIAL_SPEED = 600;
+const BALL_MAX_SPEED = 1200;
+const BALL_SPEED_INC = 30;
+const BALL_SPEED_INC_EVERY = 5;
+const LINE_DURATION = 2.0;
+const LINE_FEVER_DURATION = 4.0;
+const LINE_MAX_COUNT = 2;
+const LINE_MIN_LEN = 20;
+const LINE_WIDTH = 6;
+const TARGET_RADIUS = 25;
+const TARGET_SMALL_RADIUS = 17.5;
+const MAX_MISSES = 3;
+const TRAIL_DURATION = 0.8;
+const FEVER_COMBO = 10;
+const FEVER_HITBOX_BOOST = 1.15;
+const FEVER_DURATION = 15;
+const ANTI_MISTOUCH = 0.1;
+const WAVE_DELAY = 0.3;
+
+const TARGET_COLORS = [
+  '#FF6B6B', // coral red
+  '#4ECDC4', // teal blue
+  '#2ECC71', // emerald green
+  '#F1C40F', // gold
+  '#9B59B6', // violet
+];
+
+const COMBO_TIERS = [
+  { min: 1, max: 4, mult: 1.0, color: '#ffffff', label: '' },
+  { min: 5, max: 9, mult: 1.5, color: '#FF8C00', label: '' },
+  { min: 10, max: 19, mult: 2.0, color: '#FFD700', label: 'FEVER' },
+  { min: 20, max: 29, mult: 3.0, color: '#FFD700', label: 'SUPER' },
+  { min: 30, max: 9999, mult: 5.0, color: '#FF00FF', label: 'LEGENDARY' },
+];
+
+// Difficulty table: [scoreThreshold, ballSpeed, minTargets, maxTargets, targetTimeout, moveChance, smallChance]
+const DIFFICULTY = [
+  { score: 0,   speed: 600,  minT: 1, maxT: 2, timeout: 4.0, moveChance: 0,    smallChance: 0 },
+  { score: 50,  speed: 700,  minT: 2, maxT: 3, timeout: 3.5, moveChance: 0.10, smallChance: 0 },
+  { score: 150, speed: 800,  minT: 2, maxT: 4, timeout: 3.0, moveChance: 0.20, smallChance: 0.10 },
+  { score: 300, speed: 950,  minT: 3, maxT: 5, timeout: 2.5, moveChance: 0.30, smallChance: 0.15 },
+  { score: 500, speed: 1100, minT: 4, maxT: 6, timeout: 2.0, moveChance: 0.40, smallChance: 0.20 },
+];
+
+// Special target types
+const SPECIAL_TARGETS = {
+  GOLD:    { color: '#FFD700', scoreBase: 30, chance: 0.10, minScore: 50 },
+  BOMB:    { color: '#FF3333', scoreBase: 15, chance: 0.08, minScore: 150 },
+  MAGIC:   { color: '#FF00FF', scoreBase: 20, chance: 0.05, minScore: 100 },
+  LIGHTNING:{ color: '#FFFF00', scoreBase: 10, chance: 0.05, minScore: 80 },
+};
+
+// --- State ---
+let scale = 1;
+let offsetX = 0, offsetY = 0;
+let gameW, gameH;
+let state = 'title'; // title | playing | gameover
+let score = 0;
+let highScore = parseInt(localStorage.getItem('fingertip_high') || '0');
+let combo = 0;
+let misses = 0;
+let hitCount = 0;
+let ball = null;
+let lines = [];
+let targets = [];
+let particles = [];
+let floatingTexts = [];
+let trail = [];
+let trajectoryPoints = [];
+let waveTimer = 0;
+let drawStart = null;
+let drawStartTime = 0;
+let drawCurrent = null;
+let isDrawing = false;
+let feverActive = false;
+let feverTimer = 0;
+let titleAlpha = 0;
+let titleBallX = -50;
+let gameOverAlpha = 0;
+let screenShake = 0;
+let lastTime = 0;
+let comboTextScale = 1;
+let scorePopScale = 1;
+
+// Audio context
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function playTone(freq, duration, type = 'sine', volume = 0.15) {
+  ensureAudio();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration);
+}
+
+function playHitSound() {
+  const baseFreq = 800 + Math.min(combo, 20) * 40;
+  playTone(baseFreq, 0.12, 'sine', 0.12);
+  playTone(baseFreq * 1.5, 0.08, 'sine', 0.06);
+}
+
+function playMissSound() {
+  playTone(150, 0.3, 'triangle', 0.15);
+  playTone(100, 0.4, 'sine', 0.1);
+}
+
+function playFeverSound() {
+  playTone(400, 0.1, 'sawtooth', 0.08);
+  setTimeout(() => playTone(600, 0.1, 'sawtooth', 0.08), 50);
+  setTimeout(() => playTone(800, 0.15, 'sawtooth', 0.1), 100);
+  setTimeout(() => playTone(1200, 0.2, 'sine', 0.12), 150);
+}
+
+function playLegendarySound() {
+  [400, 500, 600, 800, 1000, 1200].forEach((f, i) => {
+    setTimeout(() => playTone(f, 0.2, 'sine', 0.1), i * 60);
+  });
+}
+
+function playLineSound() {
+  playTone(2000, 0.05, 'sine', 0.03);
+}
+
+function playGameOverSound() {
+  [600, 500, 400, 300, 200].forEach((f, i) => {
+    setTimeout(() => playTone(f, 0.3, 'sine', 0.08), i * 120);
+  });
+}
+
+function playOneShotSound() {
+  [1000, 1200, 1400].forEach((f, i) => {
+    setTimeout(() => playTone(f, 0.1, 'sine', 0.1), i * 50);
+  });
+}
+
+// --- Resize ---
+function resize() {
+  canvas.width = window.innerWidth * devicePixelRatio;
+  canvas.height = window.innerHeight * devicePixelRatio;
+  const aspect = DESIGN_W / DESIGN_H;
+  const winAspect = window.innerWidth / window.innerHeight;
+  if (winAspect < aspect) {
+    gameW = window.innerWidth;
+    gameH = gameW / aspect;
+    offsetX = 0;
+    offsetY = (window.innerHeight - gameH) / 2;
+  } else {
+    gameH = window.innerHeight;
+    gameW = gameH * aspect;
+    offsetX = (window.innerWidth - gameW) / 2;
+    offsetY = 0;
+  }
+  scale = gameW / DESIGN_W;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// --- Utility ---
+function toGame(clientX, clientY) {
+  return {
+    x: (clientX - offsetX) / scale,
+    y: (clientY - offsetY) / scale
+  };
+}
+
+function rand(a, b) { return a + Math.random() * (b - a); }
+function randInt(a, b) { return Math.floor(rand(a, b + 1)); }
+function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function getDifficulty() {
+  let d = DIFFICULTY[0];
+  for (const entry of DIFFICULTY) {
+    if (score >= entry.score) d = entry;
+  }
+  return d;
+}
+
+function getComboTier() {
+  for (const t of COMBO_TIERS) {
+    if (combo >= t.min && combo <= t.max) return t;
+  }
+  return COMBO_TIERS[COMBO_TIERS.length - 1];
+}
+
+function getComboMultiplier() {
+  return getComboTier().mult;
+}
+
+// --- Vector helpers ---
+function vecNormalize(x, y) {
+  const len = Math.hypot(x, y);
+  if (len === 0) return { x: 0, y: 0 };
+  return { x: x / len, y: y / len };
+}
+
+function vecReflect(vx, vy, nx, ny) {
+  const dot = vx * nx + vy * ny;
+  return { x: vx - 2 * dot * nx, y: vy - 2 * dot * ny };
+}
+
+function pointToSegmentDist(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return dist(px, py, ax, ay);
+  let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
+  t = clamp(t, 0, 1);
+  return dist(px, py, ax + t * dx, ay + t * dy);
+}
+
+// --- Init game ---
+function initGame() {
+  score = 0;
+  combo = 0;
+  misses = 0;
+  hitCount = 0;
+  lines = [];
+  targets = [];
+  particles = [];
+  floatingTexts = [];
+  trail = [];
+  trajectoryPoints = [];
+  waveTimer = 0.5;
+  feverActive = false;
+  feverTimer = 0;
+  screenShake = 0;
+  comboTextScale = 1;
+  scorePopScale = 1;
+  maxComboReached = 0;
+
+  const speed = BALL_INITIAL_SPEED;
+  const angle = rand(-Math.PI * 0.8, -Math.PI * 0.2);
+  ball = {
+    x: DESIGN_W / 2,
+    y: DESIGN_H * 0.7,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
+    radius: BALL_RADIUS,
+    speed: speed,
+    glowColor: '#6666FF',
+  };
+}
+
+// --- Spawn targets ---
+function spawnWave() {
+  const d = getDifficulty();
+  const count = randInt(d.minT, d.maxT);
+  const margin = 40;
+  const yMin = DESIGN_H * 0.15;
+  const yMax = DESIGN_H * 0.65;
+
+  for (let i = 0; i < count; i++) {
+    let x, y, attempts = 0;
+    do {
+      x = rand(margin, DESIGN_W - margin);
+      y = rand(yMin, yMax);
+      attempts++;
+    } while (attempts < 20 && targets.some(t => dist(t.x, t.y, x, y) < 70));
+
+    let type = 'normal';
+    let radius = TARGET_RADIUS;
+    let color = TARGET_COLORS[randInt(0, 4)];
+    let scoreBase = 10;
+    let moving = false;
+    let moveVx = 0, moveVy = 0;
+
+    // Check for special targets
+    const r = Math.random();
+    if (score >= SPECIAL_TARGETS.GOLD.minScore && r < SPECIAL_TARGETS.GOLD.chance) {
+      type = 'gold';
+      color = SPECIAL_TARGETS.GOLD.color;
+      scoreBase = SPECIAL_TARGETS.GOLD.scoreBase;
+    } else if (score >= SPECIAL_TARGETS.BOMB.minScore && r < SPECIAL_TARGETS.BOMB.chance + SPECIAL_TARGETS.GOLD.chance) {
+      type = 'bomb';
+      color = SPECIAL_TARGETS.BOMB.color;
+      scoreBase = SPECIAL_TARGETS.BOMB.scoreBase;
+    } else if (score >= SPECIAL_TARGETS.MAGIC.minScore && r < 0.25) {
+      type = 'magic';
+      color = SPECIAL_TARGETS.MAGIC.color;
+      scoreBase = SPECIAL_TARGETS.MAGIC.scoreBase;
+    } else if (score >= SPECIAL_TARGETS.LIGHTNING.minScore && r < 0.08) {
+      type = 'lightning';
+      color = SPECIAL_TARGETS.LIGHTNING.color;
+      scoreBase = SPECIAL_TARGETS.LIGHTNING.scoreBase;
+    }
+
+    // Moving targets
+    if (Math.random() < d.moveChance) {
+      moving = true;
+      const mSpeed = rand(80, 160);
+      const mAngle = Math.random() < 0.5 ? 0 : Math.PI / 2;
+      moveVx = Math.cos(mAngle) * mSpeed;
+      moveVy = Math.sin(mAngle) * mSpeed;
+    }
+
+    // Small targets
+    if (Math.random() < d.smallChance) {
+      radius = TARGET_SMALL_RADIUS;
+    }
+
+    targets.push({
+      x, y, radius, color, type, scoreBase,
+      timer: d.timeout,
+      maxTimer: d.timeout,
+      moving, moveVx, moveVy,
+      pulse: Math.random() * Math.PI * 2,
+      hitByLine: null,
+    });
+  }
+}
+
+// --- Particles ---
+function spawnParticles(x, y, color, count = 80) {
+  for (let i = 0; i < count; i++) {
+    const angle = rand(0, Math.PI * 2);
+    const speed = rand(100, 500);
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: rand(0.3, 0.8),
+      maxLife: rand(0.3, 0.8),
+      radius: rand(2, 6),
+      color,
+    });
+  }
+}
+
+function addFloatingText(x, y, text, color, size = 24) {
+  floatingTexts.push({
+    x, y, text, color, size,
+    life: 1.0,
+    vy: -80,
+  });
+}
+
+// --- Ball-line collision ---
+function checkBallLineCollision(dt) {
+  for (const line of lines) {
+    if (line.dead) continue;
+    const { ax, ay, bx, by } = line;
+    const d = pointToSegmentDist(ball.x, ball.y, ax, ay, bx, by);
+    const effectiveRadius = ball.radius + LINE_WIDTH / 2;
+
+    if (d < effectiveRadius) {
+      // Calculate line normal
+      const dx = bx - ax, dy = by - ay;
+      let nx = -dy, ny = dx;
+      const len = Math.hypot(nx, ny);
+      nx /= len; ny /= len;
+
+      // Ensure normal points away from ball's incoming direction
+      const dot = ball.vx * nx + ball.vy * ny;
+      if (dot > 0) { nx = -nx; ny = -ny; }
+
+      // Reflect with ±3° deviation
+      const ref = vecReflect(ball.vx, ball.vy, nx, ny);
+      const deviation = rand(-3, 3) * Math.PI / 180;
+      const cos = Math.cos(deviation), sin = Math.sin(deviation);
+      ball.vx = ref.x * cos - ref.y * sin;
+      ball.vy = ref.x * sin + ref.y * cos;
+
+      // Push ball out of line
+      ball.x += nx * (effectiveRadius - d + 1);
+      ball.y += ny * (effectiveRadius - d + 1);
+
+      // Track which line caused reflections for ONE SHOT
+      ball.lastLine = line;
+      ball.lineHits = (ball.lastLine === line) ? (ball.lineHits || 0) : 0;
+
+      playTone(1500, 0.03, 'sine', 0.05);
+      break;
+    }
+  }
+}
+
+// --- Ball-target collision ---
+function checkBallTargetCollision() {
+  const hitTargets = [];
+  const hitboxMult = feverActive ? FEVER_HITBOX_BOOST : 1.0;
+
+  for (let i = targets.length - 1; i >= 0; i--) {
+    const t = targets[i];
+    const d = dist(ball.x, ball.y, t.x, t.y);
+    if (d < ball.radius + t.radius * hitboxMult) {
+      hitTargets.push(t);
+      targets.splice(i, 1);
+    }
+  }
+
+  if (hitTargets.length === 0) return;
+
+  for (const t of hitTargets) {
+    combo++;
+    hitCount++;
+    comboTextScale = 1.5;
+
+    // Score calculation
+    let baseScore = t.scoreBase;
+    if (t.type === 'magic') baseScore *= 2;
+    const mult = getComboMultiplier();
+    const gained = Math.round(baseScore * mult);
+    score += gained;
+    scorePopScale = 1.3;
+
+    // Speed increase
+    if (hitCount % BALL_SPEED_INC_EVERY === 0) {
+      ball.speed = Math.min(ball.speed + BALL_SPEED_INC, BALL_MAX_SPEED);
+      const currentSpeed = Math.hypot(ball.vx, ball.vy);
+      const ratio = ball.speed / currentSpeed;
+      ball.vx *= ratio;
+      ball.vy *= ratio;
+    }
+
+    // Visual feedback
+    spawnParticles(t.x, t.y, t.color, t.type === 'bomb' ? 150 : 80);
+    addFloatingText(t.x, t.y - 20, `+${gained}`, t.color, 20);
+    playHitSound();
+
+    // Special target effects
+    if (t.type === 'bomb') {
+      // Clear nearby targets
+      for (let j = targets.length - 1; j >= 0; j--) {
+        if (dist(t.x, t.y, targets[j].x, targets[j].y) < 150) {
+          const cleared = targets[j];
+          spawnParticles(cleared.x, cleared.y, cleared.color, 40);
+          score += Math.round(15 * mult);
+          combo++;
+          targets.splice(j, 1);
+        }
+      }
+      addFloatingText(t.x, t.y - 50, 'BOOM!', '#FF3333', 32);
+    }
+
+    if (t.type === 'lightning') {
+      combo *= 2;
+      addFloatingText(t.x, t.y - 50, 'COMBO x2!', '#FFFF00', 28);
+    }
+
+    if (t.type === 'magic') {
+      addFloatingText(t.x, t.y - 50, 'MAGIC!', '#FF00FF', 28);
+    }
+
+    if (t.type === 'gold') {
+      addFloatingText(t.x, t.y - 50, 'GOLD!', '#FFD700', 28);
+    }
+
+    // FEVER check
+    if (combo === FEVER_COMBO && !feverActive) {
+      feverActive = true;
+      feverTimer = FEVER_DURATION;
+      playFeverSound();
+      addFloatingText(DESIGN_W / 2, DESIGN_H / 2, 'FEVER!', '#FFD700', 48);
+      screenShake = 0.3;
+    }
+
+    // LEGENDARY check
+    if (combo === 30) {
+      playLegendarySound();
+      addFloatingText(DESIGN_W / 2, DESIGN_H / 2 - 40, 'LEGENDARY!', '#FF00FF', 56);
+      screenShake = 0.5;
+    }
+  }
+
+  // ONE SHOT check - multiple hits from same line reflection sequence
+  if (hitTargets.length >= 3) {
+    const bonus = hitTargets.length >= 5 ? 50 : 20;
+    score += Math.round(bonus * getComboMultiplier());
+    combo += 2;
+    addFloatingText(DESIGN_W / 2, DESIGN_H * 0.4, `ONE SHOT x${hitTargets.length}!`, '#00FFFF', 36);
+    playOneShotSound();
+  }
+}
+
+// --- Update ---
+function update(dt) {
+  if (state === 'title') {
+    titleAlpha = Math.min(titleAlpha + dt * 2, 1);
+    titleBallX += dt * 300;
+    if (titleBallX > DESIGN_W + 50) titleBallX = -50;
+    return;
+  }
+
+  if (state === 'gameover') {
+    gameOverAlpha = Math.min(gameOverAlpha + dt * 2, 1);
+    return;
+  }
+
+  // state === 'playing'
+
+  // Screen shake decay
+  screenShake = Math.max(0, screenShake - dt);
+
+  // FEVER timer
+  if (feverActive) {
+    feverTimer -= dt;
+    if (feverTimer <= 0) {
+      feverActive = false;
+    }
+  }
+
+  // Combo text scale decay
+  comboTextScale = lerp(comboTextScale, 1, dt * 8);
+  scorePopScale = lerp(scorePopScale, 1, dt * 8);
+
+  // Update ball
+  ball.x += ball.vx * dt;
+  ball.y += ball.vy * dt;
+
+  // Wall bounce
+  if (ball.x - ball.radius < 0) { ball.x = ball.radius; ball.vx = Math.abs(ball.vx); }
+  if (ball.x + ball.radius > DESIGN_W) { ball.x = DESIGN_W - ball.radius; ball.vx = -Math.abs(ball.vx); }
+  if (ball.y - ball.radius < 0) { ball.y = ball.radius; ball.vy = Math.abs(ball.vy); }
+  if (ball.y + ball.radius > DESIGN_H) { ball.y = DESIGN_H - ball.radius; ball.vy = -Math.abs(ball.vy); }
+
+  // Trail
+  trail.push({ x: ball.x, y: ball.y, time: TRAIL_DURATION, color: feverActive ? '#FFD700' : ball.glowColor });
+  trajectoryPoints.push({ x: ball.x, y: ball.y });
+
+  // Update trail
+  for (let i = trail.length - 1; i >= 0; i--) {
+    trail[i].time -= dt;
+    if (trail[i].time <= 0) trail.splice(i, 1);
+  }
+
+  // Ball-line collision
+  checkBallLineCollision(dt);
+
+  // Ball-target collision
+  checkBallTargetCollision();
+
+  // Update lines
+  for (let i = lines.length - 1; i >= 0; i--) {
+    lines[i].timer -= dt;
+    if (lines[i].timer <= 0) {
+      lines[i].dead = true;
+      lines.splice(i, 1);
+    }
+  }
+
+  // Update targets
+  for (let i = targets.length - 1; i >= 0; i--) {
+    const t = targets[i];
+    t.timer -= dt;
+    t.pulse += dt * 4;
+
+    // Moving targets
+    if (t.moving) {
+      t.x += t.moveVx * dt;
+      t.y += t.moveVy * dt;
+      if (t.x < 40 || t.x > DESIGN_W - 40) t.moveVx *= -1;
+      if (t.y < DESIGN_H * 0.15 || t.y > DESIGN_H * 0.65) t.moveVy *= -1;
+      t.x = clamp(t.x, 40, DESIGN_W - 40);
+      t.y = clamp(t.y, DESIGN_H * 0.15, DESIGN_H * 0.65);
+    }
+
+    if (t.timer <= 0) {
+      // Target timed out = miss
+      targets.splice(i, 1);
+      misses++;
+      combo = 0;
+      if (feverActive) { feverActive = false; }
+      screenShake = 0.15;
+      playMissSound();
+      addFloatingText(t.x, t.y, 'MISS', '#FF4444', 24);
+
+      if (misses >= MAX_MISSES) {
+        endGame();
+        return;
+      }
+    }
+  }
+
+  // Wave spawning
+  if (targets.length === 0) {
+    waveTimer -= dt;
+    if (waveTimer <= 0) {
+      spawnWave();
+      waveTimer = WAVE_DELAY;
+    }
+  }
+
+  // Update particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 400 * dt; // gravity
+    p.life -= dt;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+
+  // Update floating texts
+  for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    const ft = floatingTexts[i];
+    ft.y += ft.vy * dt;
+    ft.life -= dt * 1.5;
+    if (ft.life <= 0) floatingTexts.splice(i, 1);
+  }
+}
+
+// --- End game ---
+function endGame() {
+  state = 'gameover';
+  gameOverAlpha = 0;
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem('fingertip_high', highScore.toString());
+  }
+  playGameOverSound();
+}
+
+// --- Draw ---
+function draw() {
+  ctx.save();
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+
+  // Clear
+  ctx.fillStyle = BG_COLOR;
+  ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+  // Transform to game coordinates
+  ctx.save();
+  const shakeX = screenShake > 0 ? rand(-4, 4) * (screenShake / 0.3) : 0;
+  const shakeY = screenShake > 0 ? rand(-4, 4) * (screenShake / 0.3) : 0;
+  ctx.translate(offsetX + shakeX, offsetY + shakeY);
+  ctx.scale(scale, scale);
+
+  // Clip to game area
+  ctx.beginPath();
+  ctx.rect(0, 0, DESIGN_W, DESIGN_H);
+  ctx.clip();
+
+  // Background
+  ctx.fillStyle = BG_COLOR;
+  ctx.fillRect(0, 0, DESIGN_W, DESIGN_H);
+
+  // FEVER background tint
+  if (feverActive && state === 'playing') {
+    const pulse = Math.sin(Date.now() / 200) * 0.03 + 0.05;
+    ctx.fillStyle = `rgba(255, 150, 0, ${pulse})`;
+    ctx.fillRect(0, 0, DESIGN_W, DESIGN_H);
+  }
+
+  if (state === 'title') {
+    drawTitle();
+  } else if (state === 'playing') {
+    drawGame();
+  } else if (state === 'gameover') {
+    drawGameOver();
+  }
+
+  ctx.restore();
+  ctx.restore();
+}
+
+function drawTitle() {
+  // Animated ball trail
+  ctx.save();
+  const bY = DESIGN_H * 0.4;
+  for (let i = 0; i < 8; i++) {
+    const tx = titleBallX - i * 30;
+    const alpha = (1 - i / 8) * 0.5 * titleAlpha;
+    ctx.beginPath();
+    ctx.arc(tx, bY, 12, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(100, 100, 255, ${alpha})`;
+    ctx.fill();
+  }
+  ctx.shadowColor = '#6666FF';
+  ctx.shadowBlur = 30;
+  ctx.beginPath();
+  ctx.arc(titleBallX, bY, 12, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(255, 255, 255, ${titleAlpha})`;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.restore();
+
+  // Title text
+  ctx.globalAlpha = titleAlpha;
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 52px -apple-system, "Helvetica Neue", Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = '#6666FF';
+  ctx.shadowBlur = 20;
+  ctx.fillText('弹指间', DESIGN_W / 2, DESIGN_H * 0.48);
+  ctx.shadowBlur = 0;
+
+  ctx.font = '24px -apple-system, "Helvetica Neue", Arial, sans-serif';
+  ctx.fillStyle = '#8888cc';
+  ctx.fillText('FINGERTIP', DESIGN_W / 2, DESIGN_H * 0.54);
+
+  ctx.font = '16px -apple-system, "Helvetica Neue", Arial, sans-serif';
+  ctx.fillStyle = '#666688';
+  ctx.fillText('一划，定乾坤', DESIGN_W / 2, DESIGN_H * 0.59);
+
+  // Start hint - pulsing
+  const pulse = Math.sin(Date.now() / 500) * 0.3 + 0.7;
+  ctx.globalAlpha = titleAlpha * pulse;
+  ctx.font = '20px -apple-system, "Helvetica Neue", Arial, sans-serif';
+  ctx.fillStyle = '#aaaacc';
+  ctx.fillText('点击开始', DESIGN_W / 2, DESIGN_H * 0.72);
+
+  // High score
+  if (highScore > 0) {
+    ctx.globalAlpha = titleAlpha * 0.6;
+    ctx.font = '16px -apple-system, "Helvetica Neue", Arial, sans-serif';
+    ctx.fillStyle = '#FFD700';
+    ctx.fillText(`最高分: ${highScore}`, DESIGN_W / 2, DESIGN_H * 0.78);
+  }
+
+  ctx.globalAlpha = 1;
+}
+
+function drawGame() {
+  // Draw trail
+  for (const t of trail) {
+    const alpha = (t.time / TRAIL_DURATION) * 0.6;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, 4 + (1 - t.time / TRAIL_DURATION) * 3, 0, Math.PI * 2);
+    ctx.fillStyle = t.color;
+    ctx.globalAlpha = alpha;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Draw lines
+  for (const line of lines) {
+    const alpha = clamp(line.timer / (line.maxTimer * 0.5), 0, 1);
+    ctx.save();
+    ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+    ctx.lineWidth = LINE_WIDTH;
+    ctx.lineCap = 'round';
+    ctx.shadowColor = `rgba(255, 255, 255, ${alpha * 0.8})`;
+    ctx.shadowBlur = 15;
+    ctx.beginPath();
+    ctx.moveTo(line.ax, line.ay);
+    ctx.lineTo(line.bx, line.by);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  // Draw line being drawn
+  if (isDrawing && drawStart && drawCurrent) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = LINE_WIDTH;
+    ctx.lineCap = 'round';
+    ctx.setLineDash([8, 8]);
+    ctx.beginPath();
+    ctx.moveTo(drawStart.x, drawStart.y);
+    ctx.lineTo(drawCurrent.x, drawCurrent.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // Draw targets
+  for (const t of targets) {
+    const timerRatio = t.timer / t.maxTimer;
+    const pulseR = t.radius + Math.sin(t.pulse) * 3;
+
+    // Outer glow
+    ctx.save();
+    ctx.shadowColor = t.color;
+    ctx.shadowBlur = 20;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, pulseR, 0, Math.PI * 2);
+    ctx.fillStyle = t.color;
+    ctx.globalAlpha = 0.3 * timerRatio;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
+    // Core
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, pulseR * 0.7, 0, Math.PI * 2);
+    ctx.fillStyle = t.color;
+    ctx.globalAlpha = timerRatio;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Timer ring
+    ctx.save();
+    ctx.strokeStyle = t.color;
+    ctx.lineWidth = 3;
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, pulseR + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * timerRatio);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    // Special target indicators
+    if (t.type === 'bomb') {
+      ctx.font = '16px sans-serif';
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('💣', t.x, t.y);
+    } else if (t.type === 'gold') {
+      ctx.font = '16px sans-serif';
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⭐', t.x, t.y);
+    } else if (t.type === 'lightning') {
+      ctx.font = '16px sans-serif';
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⚡', t.x, t.y);
+    }
+  }
+
+  // Draw ball
+  ctx.save();
+  const glowColor = feverActive ? '#FFD700' : '#6666FF';
+  ctx.shadowColor = glowColor;
+  ctx.shadowBlur = feverActive ? 40 : 25;
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+  const ballGrad = ctx.createRadialGradient(ball.x, ball.y, 0, ball.x, ball.y, ball.radius);
+  ballGrad.addColorStop(0, '#ffffff');
+  ballGrad.addColorStop(0.7, feverActive ? '#FFD700' : '#ccccff');
+  ballGrad.addColorStop(1, feverActive ? '#FF8800' : '#6666FF');
+  ctx.fillStyle = ballGrad;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.restore();
+
+  // Draw particles
+  for (const p of particles) {
+    const alpha = p.life / p.maxLife;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius * alpha, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = alpha;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Draw floating texts
+  for (const ft of floatingTexts) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, ft.life);
+    ctx.font = `bold ${ft.size}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+    ctx.fillStyle = ft.color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = ft.color;
+    ctx.shadowBlur = 10;
+    ctx.fillText(ft.text, ft.x, ft.y);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  // --- HUD ---
+  drawHUD();
+}
+
+function drawHUD() {
+  // Hearts (top-left)
+  const heartY = 45;
+  for (let i = 0; i < MAX_MISSES; i++) {
+    ctx.font = '22px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = i < (MAX_MISSES - misses) ? '#FF4444' : '#333333';
+    ctx.fillText('❤', 15 + i * 30, heartY);
+  }
+
+  // Score (top-center)
+  ctx.save();
+  const scoreSize = 36 * scorePopScale;
+  ctx.font = `bold ${scoreSize}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = '#ffffff';
+  ctx.shadowBlur = 8;
+  ctx.fillText(score.toString(), DESIGN_W / 2, heartY);
+  ctx.shadowBlur = 0;
+  ctx.restore();
+
+  // Combo (top-right)
+  if (combo >= 5) {
+    const tier = getComboTier();
+    const comboSize = 18 * comboTextScale;
+    ctx.save();
+    ctx.font = `bold ${comboSize}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+    ctx.fillStyle = tier.color;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = tier.color;
+    ctx.shadowBlur = combo >= 10 ? 15 : 5;
+    ctx.fillText(`COMBO x${combo}`, DESIGN_W - 15, heartY);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
+    // FEVER/LEGENDARY label
+    if (tier.label) {
+      ctx.save();
+      const labelPulse = Math.sin(Date.now() / 150) * 0.2 + 0.8;
+      ctx.globalAlpha = labelPulse;
+      ctx.font = `bold 14px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+      ctx.fillStyle = tier.color;
+      ctx.textAlign = 'right';
+      ctx.shadowColor = tier.color;
+      ctx.shadowBlur = 10;
+      ctx.fillText(tier.label, DESIGN_W - 15, heartY + 22);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+  }
+
+  // FEVER timer bar
+  if (feverActive) {
+    const barW = DESIGN_W - 30;
+    const barH = 4;
+    const barY = 70;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(15, barY, barW, barH);
+    ctx.fillStyle = '#FFD700';
+    ctx.fillRect(15, barY, barW * (feverTimer / FEVER_DURATION), barH);
+  }
+}
+
+function drawGameOver() {
+  // Draw trajectory art
+  drawTrajectoryArt();
+
+  // Overlay
+  ctx.fillStyle = `rgba(5, 5, 16, ${0.6 * gameOverAlpha})`;
+  ctx.fillRect(0, 0, DESIGN_W, DESIGN_H);
+
+  ctx.globalAlpha = gameOverAlpha;
+
+  // Score
+  ctx.font = 'bold 64px -apple-system, "Helvetica Neue", Arial, sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = '#6666FF';
+  ctx.shadowBlur = 20;
+  ctx.fillText(score.toString(), DESIGN_W / 2, DESIGN_H * 0.35);
+  ctx.shadowBlur = 0;
+
+  // Label
+  ctx.font = '18px -apple-system, "Helvetica Neue", Arial, sans-serif';
+  ctx.fillStyle = '#8888aa';
+  ctx.fillText('得分', DESIGN_W / 2, DESIGN_H * 0.29);
+
+  // High score
+  ctx.font = '20px -apple-system, "Helvetica Neue", Arial, sans-serif';
+  ctx.fillStyle = '#FFD700';
+  ctx.fillText(`最高分: ${highScore}`, DESIGN_W / 2, DESIGN_H * 0.42);
+
+  // New record indicator
+  if (score === highScore && score > 0) {
+    const pulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
+    ctx.globalAlpha = gameOverAlpha * pulse;
+    ctx.font = 'bold 22px -apple-system, "Helvetica Neue", Arial, sans-serif';
+    ctx.fillStyle = '#FFD700';
+    ctx.fillText('NEW RECORD!', DESIGN_W / 2, DESIGN_H * 0.47);
+    ctx.globalAlpha = gameOverAlpha;
+  }
+
+  // Combo info
+  ctx.font = '16px -apple-system, "Helvetica Neue", Arial, sans-serif';
+  ctx.fillStyle = '#666688';
+  ctx.fillText(`最高连击: ${maxComboReached}  |  命中: ${hitCount}`, DESIGN_W / 2, DESIGN_H * 0.52);
+
+  // Play again button
+  const btnW = 220, btnH = 60;
+  const btnX = DESIGN_W / 2 - btnW / 2;
+  const btnY = DESIGN_H * 0.62;
+
+  // Button glow
+  ctx.shadowColor = '#FF4444';
+  ctx.shadowBlur = 20;
+  ctx.fillStyle = '#FF4444';
+  ctx.beginPath();
+  ctx.roundRect(btnX, btnY, btnW, btnH, 30);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  ctx.font = 'bold 24px -apple-system, "Helvetica Neue", Arial, sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('再来一局', DESIGN_W / 2, btnY + btnH / 2);
+
+  // Store button rect for click detection
+  gameOverBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+
+  // Hashtag
+  ctx.font = '14px -apple-system, "Helvetica Neue", Arial, sans-serif';
+  ctx.fillStyle = '#444466';
+  ctx.textAlign = 'right';
+  ctx.fillText('#弹指间 FINGERTIP', DESIGN_W - 20, DESIGN_H - 30);
+
+  ctx.globalAlpha = 1;
+}
+
+function drawTrajectoryArt() {
+  if (trajectoryPoints.length < 2) return;
+
+  ctx.save();
+  ctx.globalAlpha = gameOverAlpha * 0.6;
+
+  const total = trajectoryPoints.length;
+  for (let i = 1; i < total; i += 2) {
+    const t = i / total;
+    const p0 = trajectoryPoints[i - 1];
+    const p1 = trajectoryPoints[i];
+
+    // Color gradient: blue → purple → pink → gold
+    let r, g, b;
+    if (t < 0.33) {
+      const lt = t / 0.33;
+      r = lerp(30, 150, lt);
+      g = lerp(30, 50, lt);
+      b = lerp(200, 200, lt);
+    } else if (t < 0.66) {
+      const lt = (t - 0.33) / 0.33;
+      r = lerp(150, 255, lt);
+      g = lerp(50, 100, lt);
+      b = lerp(200, 150, lt);
+    } else {
+      const lt = (t - 0.66) / 0.34;
+      r = lerp(255, 255, lt);
+      g = lerp(100, 200, lt);
+      b = lerp(150, 50, lt);
+    }
+
+    ctx.strokeStyle = `rgb(${r|0}, ${g|0}, ${b|0})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+let gameOverBtn = null;
+let maxComboReached = 0;
+
+// --- Input ---
+function getEventPos(e) {
+  if (e.touches) {
+    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+  return { x: e.clientX, y: e.clientY };
+}
+
+function onPointerDown(e) {
+  e.preventDefault();
+  ensureAudio();
+  const pos = getEventPos(e);
+  const gp = toGame(pos.x, pos.y);
+
+  if (state === 'title') {
+    state = 'playing';
+    initGame();
+    return;
+  }
+
+  if (state === 'gameover') {
+    if (gameOverAlpha > 0.8) {
+      state = 'playing';
+      initGame();
+    }
+    return;
+  }
+
+  // Playing - start drawing line
+  isDrawing = true;
+  drawStart = gp;
+  drawStartTime = performance.now() / 1000;
+  drawCurrent = gp;
+}
+
+function onPointerMove(e) {
+  e.preventDefault();
+  if (!isDrawing || state !== 'playing') return;
+  const pos = getEventPos(e);
+  drawCurrent = toGame(pos.x, pos.y);
+}
+
+function onPointerUp(e) {
+  e.preventDefault();
+  if (!isDrawing || state !== 'playing') return;
+  isDrawing = false;
+
+  if (!drawStart || !drawCurrent) return;
+
+  const elapsed = performance.now() / 1000 - drawStartTime;
+  if (elapsed < ANTI_MISTOUCH) return;
+
+  const len = dist(drawStart.x, drawStart.y, drawCurrent.x, drawCurrent.y);
+  if (len < LINE_MIN_LEN) return;
+
+  // Clamp max length
+  const maxLen = DESIGN_W * 0.8;
+  let ax = drawStart.x, ay = drawStart.y;
+  let bx = drawCurrent.x, by = drawCurrent.y;
+  if (len > maxLen) {
+    const ratio = maxLen / len;
+    bx = ax + (bx - ax) * ratio;
+    by = ay + (by - ay) * ratio;
+  }
+
+  const duration = feverActive ? LINE_FEVER_DURATION : LINE_DURATION;
+
+  // Remove oldest if at max
+  if (lines.length >= LINE_MAX_COUNT) {
+    lines.shift();
+  }
+
+  lines.push({
+    ax, ay, bx, by,
+    timer: duration,
+    maxTimer: duration,
+    dead: false,
+  });
+
+  playLineSound();
+  drawStart = null;
+  drawCurrent = null;
+}
+
+// Event listeners
+canvas.addEventListener('mousedown', onPointerDown);
+canvas.addEventListener('mousemove', onPointerMove);
+canvas.addEventListener('mouseup', onPointerUp);
+canvas.addEventListener('touchstart', onPointerDown, { passive: false });
+canvas.addEventListener('touchmove', onPointerMove, { passive: false });
+canvas.addEventListener('touchend', onPointerUp, { passive: false });
+
+// --- Game Loop ---
+function gameLoop(time) {
+  const dt = Math.min((time - lastTime) / 1000, 0.05);
+  lastTime = time;
+
+  // Track max combo
+  if (combo > maxComboReached) maxComboReached = combo;
+
+  update(dt);
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+lastTime = performance.now();
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

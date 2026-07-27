@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>就你了解我 · KNOW ME BEST</title>
+  <meta name="theme-color" content="#FFF8F0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- HUD（游戏中常驻） -->
+  <div class="hud" id="hud" style="display:none;">
+    <span class="hud-heart">💕</span>
+    <div class="hud-bar">
+      <div class="hud-bar-fill" id="hud-harmony-bar"></div>
+    </div>
+    <span class="hud-text" id="hud-harmony-text">0%</span>
+  </div>
+
+  <!-- 1. 欢迎页 -->
+  <div class="screen" id="welcome">
+    <div class="welcome-illustration">
+      <div class="silhouette silhouette-1"></div>
+      <div class="silhouette silhouette-2"></div>
+    </div>
+    <h1 class="welcome-title">就你了解我</h1>
+    <p class="welcome-subtitle">KNOW ME BEST</p>
+    <p class="welcome-desc">你给自己出题，她来猜<br>越藏越深，默契越高</p>
+    <button class="btn btn-primary" onclick="onStart()">开始游戏</button>
+  </div>
+
+  <!-- 2. 设置页 -->
+  <div class="screen" id="setup">
+    <h2 class="setup-title">你们是谁？</h2>
+    <div class="setup-form">
+      <div>
+        <label class="setup-label">玩家 1 的昵称</label>
+        <input class="setup-input" id="player1-name" type="text" placeholder="输入昵称" maxlength="8">
+      </div>
+      <div>
+        <label class="setup-label">玩家 2 的昵称</label>
+        <input class="setup-input" id="player2-name" type="text" placeholder="输入昵称" maxlength="8">
+      </div>
+      <div>
+        <label class="setup-label">你们认识多久了？</label>
+        <select class="setup-select" id="friendship-level">
+          <option value="1">刚认识不久（3个月内）</option>
+          <option value="2" selected>认识半年以上</option>
+          <option value="3">老朋友（1年以上）</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="onSetupComplete()" style="align-self:center; margin-top:8px;">准备好了！</button>
+    </div>
+  </div>
+
+  <!-- 3. 轮次介绍 -->
+  <div class="screen" id="round-intro">
+    <div class="round-intro-content">
+      <div class="round-intro-num" id="round-intro-title">第 1 轮</div>
+      <div class="round-intro-theme" id="round-intro-desc">偏好与秘密</div>
+      <div class="round-intro-who" id="round-intro-creator"></div>
+      <button class="btn btn-primary" onclick="onRoundIntroNext()">开始</button>
+    </div>
+  </div>
+
+  <!-- 4. 出题界面 -->
+  <div class="screen" id="create">
+    <div class="create-container">
+      <div class="create-info" id="create-round-info"></div>
+      <div class="create-creator-label" id="create-creator"></div>
+
+      <div class="create-template" id="create-template"></div>
+
+      <div class="create-field">
+        <label>你的真实答案（只有你知道）</label>
+        <input class="answer-input" id="create-answer" type="text" placeholder="填写你的真实想法" maxlength="30">
+      </div>
+      <div class="create-hint">系统会自动生成迷惑选项，你只需要填真实答案</div>
+
+      <div style="text-align:center; margin-top:8px;">
+        <label class="setup-label">藏题深度（越深系数越高）</label>
+      </div>
+      <div class="depth-selector">
+        <button class="depth-star active" onclick="setDepthStar(1)">⭐</button>
+        <button class="depth-star" onclick="setDepthStar(2)">⭐</button>
+        <button class="depth-star" onclick="setDepthStar(3)">⭐</button>
+      </div>
+      <div class="depth-label" id="depth-label">她应该知道（×1.0）</div>
+
+      <div class="timer-bar-container">
+        <div class="timer-bar" id="create-timer-bar" style="width:100%"></div>
+      </div>
+      <div class="timer-text" id="create-timer-text">20秒</div>
+
+      <div style="text-align:center;">
+        <button class="btn btn-primary" onclick="onCreateSubmit()">确认出题</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. 传递界面 -->
+  <div class="screen" id="pass">
+    <div class="pass-container">
+      <div class="pass-icon">🙈</div>
+      <div class="pass-main-text" id="pass-text">把手机给她！</div>
+      <div class="pass-hint-text" id="pass-hint">出题方请闭上眼睛</div>
+      <button class="btn btn-gold" onclick="onPassReady()">我准备好了</button>
+    </div>
+  </div>
+
+  <!-- 6. 答题界面 -->
+  <div class="screen" id="answer">
+    <div class="answer-container">
+      <div class="create-info" id="answer-round-info"></div>
+      <div class="create-creator-label" id="answer-guesser"></div>
+      <div class="answer-template" id="answer-template"></div>
+      <div class="answer-depth" id="answer-depth">⭐</div>
+
+      <div class="timer-bar-container">
+        <div class="timer-bar" id="answer-timer-bar" style="width:100%"></div>
+      </div>
+      <div class="timer-text" id="answer-timer-text">10秒</div>
+
+      <div class="answer-options" id="answer-options"></div>
+    </div>
+  </div>
+
+  <!-- 7. 揭晓界面 -->
+  <div class="screen" id="reveal">
+    <div class="reveal-container">
+      <div class="reveal-template-text" id="reveal-template"></div>
+      <div class="reveal-options-list" id="reveal-options"></div>
+      <div class="reveal-result" id="reveal-result"></div>
+      <div class="reveal-score" id="reveal-score"></div>
+      <div class="reveal-bonus" id="reveal-bonus"></div>
+      <button class="btn btn-primary" onclick="onRevealNext()">下一题</button>
+    </div>
+  </div>
+
+  <!-- 8. 第3轮共同记忆输入 -->
+  <div class="screen" id="shared">
+    <div class="shared-container">
+      <div class="create-info" id="shared-round-info"></div>
+      <div class="shared-template" id="shared-template"></div>
+      <div class="shared-player" id="shared-player-label"></div>
+      <div class="shared-phase-text" id="shared-phase"></div>
+      <input class="shared-input" id="shared-answer" type="text" placeholder="输入你的答案" maxlength="30">
+      <button class="btn btn-primary" onclick="onSharedSubmit()">确认</button>
+    </div>
+  </div>
+
+  <!-- 第3轮传递 -->
+  <div class="screen" id="pass-shared">
+    <div class="pass-container">
+      <div class="pass-icon">🙈</div>
+      <div class="pass-main-text" id="pass-shared-text">把手机给她！</div>
+      <div class="pass-hint-text">请不要偷看对方的答案</div>
+      <button class="btn btn-gold" onclick="onPassSharedReady()">我准备好了</button>
+    </div>
+  </div>
+
+  <!-- 第3轮揭晓 -->
+  <div class="screen" id="shared-reveal">
+    <div class="shared-reveal-container">
+      <div class="reveal-template-text" id="shared-reveal-template"></div>
+      <div class="shared-reveal-answers">
+        <div class="shared-answer-card" id="shared-reveal-answer1"></div>
+        <div class="shared-answer-card" id="shared-reveal-answer2"></div>
+      </div>
+      <div class="shared-result" id="shared-reveal-result"></div>
+      <button class="btn btn-primary" onclick="onSharedRevealNext()">下一题</button>
+    </div>
+  </div>
+
+  <!-- 9. 轮次结算 -->
+  <div class="screen" id="round-summary">
+    <div class="summary-container">
+      <div class="summary-round-title" id="summary-round"></div>
+      <div class="summary-stat" id="summary-correct"></div>
+      <div class="summary-harmony" id="summary-harmony"></div>
+      <div class="summary-scores">
+        <div class="summary-score-item" id="summary-score1"></div>
+        <div class="summary-score-item" id="summary-score2"></div>
+      </div>
+      <button class="btn btn-primary" id="summary-next-btn">下一轮</button>
+    </div>
+  </div>
+
+  <!-- 10. 最终结算 -->
+  <div class="screen" id="final">
+    <div class="final-container">
+      <div class="final-harmony-label">我们的默契值</div>
+      <div class="final-harmony-num" id="final-harmony">0%</div>
+      <div class="final-comment" id="final-harmony-text"></div>
+
+      <div class="final-scores">
+        <div class="final-score-item" id="final-score1"></div>
+        <div class="final-score-item" id="final-score2"></div>
+      </div>
+      <div class="final-winner" id="final-winner"></div>
+      <div class="final-flash-count" id="final-flash"></div>
+
+      <div class="final-highlight">
+        <div class="final-highlight-title">本局最惊喜时刻</div>
+        <div class="final-highlight-question" id="final-highlight-q"></div>
+        <div class="final-highlight-answer" id="final-highlight-a"></div>
+      </div>
+
+      <div class="final-actions">
+        <button class="btn btn-gold" onclick="onShare()">生成分享卡</button>
+        <button class="btn btn-primary" onclick="onPlayAgain()">再来一局</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS -->
+  <script src="js/questions.js"></script>
+  <script src="js/timer.js"></script>
+  <script src="js/effects.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/share.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+{
+  "enabled_case": "case_1_tutorial",
+  "steps": [
+    {
+      "id": "t1_welcome",
+      "trigger": "case_start",
+      "text_key": "tut.1.welcome",
+      "highlight": "hud_role_indicator",
+      "wait_for": "click_next"
+    },
+    {
+      "id": "t2_move",
+      "trigger": "after_welcome",
+      "text_key": "tut.2.move",
+      "highlight": "map_area",
+      "wait_for": "player_enters_any_room"
+    },
+    {
+      "id": "t3_search",
+      "trigger": "room_entered",
+      "text_key": "tut.3.search",
+      "highlight": "evidence_slot_0",
+      "wait_for": "first_search_complete"
+    },
+    {
+      "id": "t4_evidence_book",
+      "trigger": "first_clue_found",
+      "text_key": "tut.4.book",
+      "highlight": "hud_evidence_book",
+      "wait_for": "open_evidence_book"
+    },
+    {
+      "id": "t5_trial",
+      "trigger": "investigate_ends",
+      "text_key": "tut.5.trial",
+      "highlight": "trial_panel",
+      "wait_for": "trial_starts"
+    },
+    {
+      "id": "t6_present",
+      "trigger": "trial_start",
+      "text_key": "tut.6.present",
+      "highlight": "accuse_button",
+      "wait_for": "evidence_presented_once"
+    },
+    {
+      "id": "t7_lens",
+      "trigger": "lens_found",
+      "text_key": "tut.7.lens",
+      "highlight": "lens_icon",
+      "wait_for": "lens_used_once"
+    },
+    {
+      "id": "t8_vote",
+      "trigger": "voting_phase",
+      "text_key": "tut.8.vote",
+      "highlight": "vote_panel",
+      "wait_for": "vote_cast"
+    }
+  ],
+  "skip_for_next_cases": true
+}

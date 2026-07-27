@@ -1,0 +1,36 @@
+{
+  "zh": {
+    "start": "开始跑！",
+    "retry": "再来一关",
+    "share": "分享毛球",
+    "pet": "摸一摸🐾",
+    "skins": "我的毛球",
+    "rating_0": "好冷啊🥶",
+    "rating_30": "还行吧😊",
+    "rating_60": "好蓬松！🥰",
+    "rating_80": "超级蓬松！！✨",
+    "rating_95": "完美毛球！！！🌟",
+    "fluffiness": "毛绒度",
+    "combo": "蓬松连击！",
+    "shield": "毛绒护盾！",
+    "frozen": "冻住了...",
+    "daily": "每日挑战"
+  },
+  "en": {
+    "start": "Run!",
+    "retry": "Try Again",
+    "share": "Share Fluffball",
+    "pet": "Pet Me🐾",
+    "skins": "My Fluffballs",
+    "rating_0": "So Cold🥶",
+    "rating_30": "Not Bad😊",
+    "rating_60": "So Fluffy!🥰",
+    "rating_80": "Super Fluffy!!✨",
+    "rating_95": "Perfect Fluffball!!!🌟",
+    "fluffiness": "Fluffiness",
+    "combo": "Fluffy Combo!",
+    "shield": "Fluffy Shield!",
+    "frozen": "Frozen...",
+    "daily": "Daily Challenge"
+  }
+}

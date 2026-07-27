@@ -1,0 +1,38 @@
+{
+  "background": {
+    "gradient": [
+      "#90EE90",
+      "#ADD8E6",
+      "#F0E68C"
+    ]
+  },
+  "primary": {
+    "main": "#4682B4",
+    "light": "#B0C4DE",
+    "dark": "#2E648B"
+  },
+  "secondary": {
+    "main": "#808080",
+    "light": "#D3D3D3",
+    "dark": "#696969"
+  },
+  "accent": {
+    "main": "#FFD700",
+    "light": "#FFFACD"
+  },
+  "danger": {
+    "main": "#DC143C",
+    "light": "#F08080",
+    "dark": "#B22222"
+  },
+  "success": {
+    "main": "#32CD32",
+    "light": "#90EE90"
+  },
+  "ui": {
+    "panel_bg": "rgba(0, 0, 0, 0.5)",
+    "text": "#FFFFFF",
+    "text_secondary": "#AAAAAA",
+    "neutral_mid": "#888"
+  }
+}

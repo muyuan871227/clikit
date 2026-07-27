@@ -1,0 +1,186 @@
+这是一个完整的HTML文件，包含了内联CSS，专为1080x1080分辨率设计。它采用了暖粉到奶油白的渐变，并利用CSS绘制了可爱的毛线团装饰。
+
+你可以将代码中的 `{score}`、`{rating}` 和 `{fluffball}`（图像占位）替换为实际数值。
+
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>毛球快跑分享卡片</title>
+    <style>
+        /* 基础重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+
+        /* 卡片主体 */
+        .card {
+            width: 1080px;
+            height: 1080px;
+            background: linear-gradient(135deg, #FFBDD6 0%, #FFF8F0 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            color: #7A5C5C;
+        }
+
+        /* 装饰毛线团 - 通用样式 */
+        .yarn-ball {
+            position: absolute;
+            border-radius: 50%;
+            background: #FFDDEB;
+            box-shadow: inset -5px -5px 15px rgba(0,0,0,0.05);
+            z-index: 1;
+        }
+        .yarn-ball::after {
+            content: "";
+            position: absolute;
+            top: 10%; left: 10%; width: 80%; height: 80%;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.3) 10px, rgba(255,255,255,0.3) 12px);
+        }
+
+        /* 放置毛线团 */
+        .yarn-1 { width: 120px; height: 120px; top: 80px; left: 100px; transform: rotate(-15deg); background: #FFD1E3; }
+        .yarn-2 { width: 80px; height: 80px; top: 220px; right: 120px; transform: rotate(20deg); background: #FFF0F5; }
+        .yarn-3 { width: 150px; height: 150px; bottom: 150px; left: -30px; transform: rotate(45deg); background: #FFC9DF; opacity: 0.8; }
+        .yarn-4 { width: 60px; height: 60px; bottom: 300px; right: 80px; background: #FFE4E1; }
+
+        /* 中央内容区 */
+        .main-content {
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.4);
+            padding: 60px;
+            border-radius: 80px;
+            backdrop-filter: blur(10px);
+            border: 4px solid #FFFFFF;
+            box-shadow: 0 20px 50px rgba(255, 189, 214, 0.3);
+        }
+
+        /* 毛球占位圆圈 */
+        .fluffball-placeholder {
+            width: 400px;
+            height: 400px;
+            background: #FFFFFF;
+            border-radius: 50%;
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            border: 10px solid #FFEDF4;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 模拟毛球绒毛效果 */
+        .fluffball-placeholder::before {
+            content: "fluffball";
+            color: #FFBDD6;
+            font-size: 40px;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        /* 分数显示 */
+        .score-container {
+            text-align: center;
+        }
+
+        .score-big {
+            font-size: 220px;
+            font-weight: 900;
+            line-height: 0.9;
+            color: #FF7EB3;
+            text-shadow: 4px 4px 0px #FFFFFF;
+            margin-bottom: 10px;
+        }
+
+        .rating-text {
+            font-size: 64px;
+            font-weight: bold;
+            color: #A67C7C;
+            letter-spacing: 4px;
+        }
+
+        /* 底部信息区 */
+        .footer {
+            margin-top: 60px;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .slogan {
+            font-size: 42px;
+            color: #8E7171;
+            margin-bottom: 25px;
+            letter-spacing: 2px;
+        }
+
+        .game-tag {
+            background: #FF7EB3;
+            color: white;
+            padding: 15px 50px;
+            border-radius: 100px;
+            font-size: 36px;
+            font-weight: bold;
+            display: inline-block;
+            box-shadow: 0 8px 20px rgba(255, 126, 179, 0.4);
+        }
+
+        /* 装饰用的小圆点 */
+        .dot {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <!-- CSS装饰元素 -->
+        <div class="yarn-ball yarn-1"></div>
+        <div class="yarn-ball yarn-2"></div>
+        <div class="yarn-ball yarn-3"></div>
+        <div class="yarn-ball yarn-4"></div>
+        
+        <div class="dot" style="width: 20px; height: 20px; top: 15%; left: 30%;"></div>
+        <div class="dot" style="width: 15px; height: 15px; bottom: 20%; right: 25%;"></div>
+        <div class="dot" style="width: 25px; height: 25px; top: 40%; right: 10%;"></div>
+
+        <!-- 主体内容 -->
+        <div class="main-content">
+            <!-- 这里可以放置毛球图片 -->
+            <div class="fluffball-placeholder">
+                <!-- <img src="fluffball.png" style="width: 100%; height: 100%; object-fit: cover;"> -->
+            </div>
+
+            <div class="score-container">
+                <div class="score-big">{score}%</div>
+                <div class="rating-text">{rating}</div>
+            </div>
+        </div>
+
+        <!-- 底部文案 -->
+        <div class="footer">
+            <div class="slogan">你的毛球能比我蓬松吗？</div>
+            <div class="game-tag">毛球快跑</div>
+        </div>
+    </div>
+
+</body>
+</html>
+```

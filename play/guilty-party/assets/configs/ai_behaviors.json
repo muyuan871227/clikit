@@ -1,0 +1,82 @@
+{
+  "behaviors": {
+    "killer_forger": {
+      "description": "凶手AI:优先潜入空房间伪造证据,回合末扳低对自己最高嫌疑度玩家的指向",
+      "decision_weights": {
+        "move_to_incriminating_evidence": 0.3,
+        "move_to_empty_room_to_frame": 0.45,
+        "move_to_pickup_lens": 0.15,
+        "wander_to_create_alibi": 0.1
+      },
+      "trial_strategy": {
+        "accuse_highest_trust_detective": 0.4,
+        "defend_self_with_fake_testimony": 0.3,
+        "deflect_to_random_detective": 0.3
+      },
+      "use_destroy_threshold_pct": 70,
+      "use_false_testimony_threshold_round": 3,
+      "lie_on_lens_if_caught": true
+    },
+    "detective_rational": {
+      "description": "理性侦探:均匀搜查+交叉证据",
+      "decision_weights": {
+        "search_unchecked_room": 0.55,
+        "move_to_pickup_lens": 0.2,
+        "follow_suspicion_target": 0.15,
+        "return_to_scene": 0.1
+      },
+      "trial_strategy": {
+        "present_strongest_real_evidence": 0.55,
+        "question_most_suspicious": 0.3,
+        "defend_accused_ally": 0.15
+      },
+      "vote_threshold_pct": 60,
+      "abstain_when_uncertain": true
+    },
+    "detective_emotional": {
+      "description": "感性侦探:容易被口供影响",
+      "decision_weights": {
+        "search_unchecked_room": 0.35,
+        "follow_suspicion_target": 0.4,
+        "move_to_pickup_lens": 0.1,
+        "social_wander": 0.15
+      },
+      "trial_strategy": {
+        "present_strongest_real_evidence": 0.3,
+        "accuse_based_on_vibes": 0.4,
+        "defend_ally_strongly": 0.3
+      },
+      "vote_threshold_pct": 50,
+      "abstain_when_uncertain": false
+    },
+    "detective_paranoid": {
+      "description": "多疑侦探:倾向怀疑最不活跃的玩家",
+      "decision_weights": {
+        "search_unchecked_room": 0.4,
+        "watch_others": 0.25,
+        "move_to_pickup_lens": 0.25,
+        "return_to_scene": 0.1
+      },
+      "trial_strategy": {
+        "present_strongest_real_evidence": 0.4,
+        "accuse_quiet_player": 0.45,
+        "defend_no_one": 0.15
+      },
+      "vote_threshold_pct": 40,
+      "abstain_when_uncertain": false
+    }
+  },
+  "difficulty_scaling": {
+    "case_1": {"case_name": "教学案", "killer_frame_skill": 0.3, "suspect_reveal_mult": 2.0, "clue_density_mult": 1.2},
+    "case_2": {"case_name": "新手案", "killer_frame_skill": 0.45, "suspect_reveal_mult": 1.5, "clue_density_mult": 1.1},
+    "case_3": {"case_name": "标准案", "killer_frame_skill": 0.6, "suspect_reveal_mult": 1.2, "clue_density_mult": 1.0},
+    "case_4": {"case_name": "中难案", "killer_frame_skill": 0.7, "suspect_reveal_mult": 1.0, "clue_density_mult": 0.95},
+    "case_5": {"case_name": "进阶案", "killer_frame_skill": 0.8, "suspect_reveal_mult": 0.8, "clue_density_mult": 0.9},
+    "case_6": {"case_name": "专家案", "killer_frame_skill": 0.9, "suspect_reveal_mult": 0.7, "clue_density_mult": 0.85},
+    "case_7": {"case_name": "大师案", "killer_frame_skill": 1.0, "suspect_reveal_mult": 0.5, "clue_density_mult": 0.8}
+  },
+  "personality_assignment": {
+    "fixed_distribution": ["detective_rational", "detective_emotional", "detective_paranoid", "detective_rational", "detective_emotional"],
+    "_comment": "5 AI detectives; killer personality overlays one of them"
+  }
+}

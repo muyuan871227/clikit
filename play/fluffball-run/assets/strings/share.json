@@ -1,0 +1,16 @@
+{
+  "zh": {
+    "perfect": "完美毛球{score}%！一根毛都没掉🌟",
+    "good": "我的毛球蓬松度{score}%！好想rua🥰",
+    "bald": "毛球被剃光了😭它好冷...",
+    "challenge": "你的毛球能比我蓬松吗？我{score}%！",
+    "rare_skin": "解锁了{skin}！好可爱！"
+  },
+  "en": {
+    "perfect": "Perfect Fluffball {score}%! Not a single hair lost🌟",
+    "good": "My fluffball is {score}% fluffy! Wanna pet it?🥰",
+    "bald": "My fluffball got shaved😭 So cold...",
+    "challenge": "Can your fluffball beat my {score}%?",
+    "rare_skin": "Unlocked {skin}! So cute!"
+  }
+}

@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>弹射合合 - Merge Launch</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%;
+  background: #0D0D1A;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+canvas {
+  display: block;
+  margin: 0 auto;
+}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+// ═══════════════════════════════════════
+// 弹射合合 - Merge Launch
+// ═══════════════════════════════════════
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+// --- Constants ---
+const W = 540, H = 960;
+const SAFETY_Y = H * 0.2;
+const LAUNCH_Y = H - 100;
+const LAUNCH_X = W / 2;
+const LAUNCH_SPEED = 800;
+const FRICTION = 0.985;
+const WALL_BOUNCE = 0.85;
+const BALL_BASE_RADIUS = 20;
+const BALL_RADIUS_STEP = 3;
+const MERGE_PULSE_FORCE = 100;
+const CHAIN_WINDOW = 0.5;
+const SPAWN_PROBS = [[2, 0.6], [4, 0.9], [8, 1.0]];
+const COLORS = {
+  2: '#FF6B6B', 4: '#FFA07A', 8: '#FFD93D', 16: '#6BCB77',
+  32: '#4FC3F7', 64: '#5C6BC0', 128: '#AB47BC', 256: '#EC407A',
+  512: '#FFD700', 1024: '#FF6B6B', 2048: '#FFA07A', 4096: '#FFD93D',
+  8192: '#6BCB77'
+};
+
+function getBallColor(value) {
+  if (COLORS[value]) return COLORS[value];
+  const keys = Object.keys(COLORS).map(Number);
+  return COLORS[keys[value % keys.length]] || '#FFFFFF';
+}
+
+function getBallRadius(value) {
+  const level = Math.log2(value) - 1;
+  return BALL_BASE_RADIUS + level * BALL_RADIUS_STEP;
+}
+
+function randomBallValue() {
+  const r = Math.random();
+  for (const [val, threshold] of SPAWN_PROBS) {
+    if (r < threshold) return val;
+  }
+  return 2;
+}
+
+// --- Game State ---
+let state = 'menu'; // menu, playing, gameover
+let balls = [];
+let currentBall = null;
+let nextBallValue = 2;
+let score = 0;
+let highScore = parseInt(localStorage.getItem('mergelaunch_high') || '0');
+let maxBallValue = 2;
+let aiming = false;
+let aimAngle = -Math.PI / 2;
+let aimStart = null;
+let particles = [];
+let popups = [];
+let shakeTimer = 0;
+let shakeIntensity = 0;
+let chainCount = 0;
+let lastMergeTime = 0;
+let safetyWarning = 0;
+let safetyOverTime = 0;
+let canContinue = true;
+let gravityPulseTimer = 0;
+let flashTimer = 0;
+let incredibleTimer = 0;
+let allSettled = true;
+let dt = 1 / 60;
+let lastTime = 0;
+let waitingForSettle = false;
+
+// --- Audio ---
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+}
+
+function playTone(freq, duration, type = 'sine', volume = 0.15) {
+  ensureAudio();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration);
+}
+
+function playLaunch() { playTone(200, 0.15, 'triangle', 0.1); }
+function playBounce() { playTone(80, 0.08, 'sine', 0.06); }
+function playCollide() { playTone(150, 0.06, 'sine', 0.05); }
+
+function playMerge(value) {
+  const level = Math.log2(value);
+  const baseFreq = 260;
+  const notes = [1, 9/8, 5/4, 4/3, 3/2, 5/3, 15/8, 2];
+  const idx = (level - 1) % notes.length;
+  playTone(baseFreq * notes[idx], 0.3, 'sine', 0.2);
+}
+
+function playChain(count) {
+  for (let i = 0; i < count; i++) {
+    setTimeout(() => playTone(400 + i * 100, 0.15, 'sine', 0.15), i * 80);
+  }
+}
+
+function playGameOver() {
+  [400, 350, 300, 250].forEach((f, i) =>
+    setTimeout(() => playTone(f, 0.3, 'sine', 0.12), i * 120));
+}
+
+// --- Canvas Scaling ---
+let scale = 1;
+let offsetX = 0, offsetY = 0;
+
+function resize() {
+  const ww = window.innerWidth, wh = window.innerHeight;
+  scale = Math.min(ww / W, wh / H);
+  canvas.width = W * scale;
+  canvas.height = H * scale;
+  offsetX = (ww - canvas.width) / 2;
+  canvas.style.marginLeft = offsetX + 'px';
+}
+window.addEventListener('resize', resize);
+resize();
+
+function canvasToGame(cx, cy) {
+  return { x: cx / scale, y: cy / scale };
+}
+
+// --- Ball class ---
+class Ball {
+  constructor(x, y, value, vx = 0, vy = 0) {
+    this.x = x;
+    this.y = y;
+    this.vx = vx;
+    this.vy = vy;
+    this.value = value;
+    this.radius = getBallRadius(value);
+    this.color = getBallColor(value);
+    this.alive = true;
+    this.mergeAnim = 0;
+    this.settled = false;
+    this.aboveSafetyTime = 0;
+  }
+
+  get speed() { return Math.sqrt(this.vx * this.vx + this.vy * this.vy); }
+
+  update(dt) {
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.vx *= FRICTION;
+    this.vy *= FRICTION;
+
+    // Gravity pulse
+    if (gravityPulseTimer > 0) {
+      const cx = W / 2, cy = H / 2;
+      const dx = cx - this.x, dy = cy - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 1) {
+        this.vx += (dx / dist) * 50 * dt;
+        this.vy += (dy / dist) * 50 * dt;
+      }
+    }
+
+    // Wall collisions
+    if (this.x - this.radius < 0) {
+      this.x = this.radius;
+      this.vx = Math.abs(this.vx) * WALL_BOUNCE;
+      playBounce();
+    }
+    if (this.x + this.radius > W) {
+      this.x = W - this.radius;
+      this.vx = -Math.abs(this.vx) * WALL_BOUNCE;
+      playBounce();
+    }
+    if (this.y + this.radius > H - 60) {
+      this.y = H - 60 - this.radius;
+      this.vy = -Math.abs(this.vy) * WALL_BOUNCE;
+      playBounce();
+    }
+    if (this.y - this.radius < 0) {
+      this.y = this.radius;
+      this.vy = Math.abs(this.vy) * WALL_BOUNCE;
+      playBounce();
+    }
+
+    // Settle check
+    this.settled = this.speed < 5;
+    if (this.settled) { this.vx = 0; this.vy = 0; }
+
+    // Merge animation decay
+    if (this.mergeAnim > 0) this.mergeAnim -= dt * 4;
+
+    // Safety line check
+    if (this.y - this.radius < SAFETY_Y) {
+      this.aboveSafetyTime += dt;
+    } else {
+      this.aboveSafetyTime = 0;
+    }
+  }
+
+  draw(ctx) {
+    const animScale = 1 + this.mergeAnim * 0.3;
+    const r = this.radius * animScale;
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+
+    // Glow for high value
+    if (this.value >= 256) {
+      const glow = ctx.createRadialGradient(0, 0, r * 0.5, 0, 0, r * 1.5);
+      glow.addColorStop(0, this.color + '40');
+      glow.addColorStop(1, 'transparent');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Ball body
+    const grad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r);
+    grad.addColorStop(0, '#FFFFFF');
+    grad.addColorStop(0.3, this.color);
+    grad.addColorStop(1, this.color + 'AA');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath();
+    ctx.ellipse(0, r * 0.3, r * 0.8, r * 0.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Number
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = `bold ${Math.max(10, r * 0.8)}px -apple-system, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+    ctx.shadowBlur = 2;
+    ctx.fillText(this.value, 0, 0);
+    ctx.shadowBlur = 0;
+
+    ctx.restore();
+  }
+}
+
+// --- Particle system ---
+class Particle {
+  constructor(x, y, color) {
+    this.x = x; this.y = y;
+    this.vx = (Math.random() - 0.5) * 300;
+    this.vy = (Math.random() - 0.5) * 300;
+    this.life = 1;
+    this.maxLife = 0.5 + Math.random() * 0.5;
+    this.color = color;
+    this.size = 2 + Math.random() * 4;
+  }
+  update(dt) {
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.life -= dt / this.maxLife;
+    this.vx *= 0.96;
+    this.vy *= 0.96;
+  }
+  draw(ctx) {
+    ctx.globalAlpha = Math.max(0, this.life);
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function spawnParticles(x, y, color, count = 12) {
+  for (let i = 0; i < count; i++) {
+    particles.push(new Particle(x, y, color));
+  }
+}
+
+// --- Popup text ---
+class Popup {
+  constructor(x, y, text, color = '#FFFFFF', size = 24) {
+    this.x = x; this.y = y;
+    this.text = text; this.color = color; this.size = size;
+    this.life = 1;
+    this.vy = -60;
+  }
+  update(dt) {
+    this.y += this.vy * dt;
+    this.life -= dt * 1.2;
+  }
+  draw(ctx) {
+    ctx.globalAlpha = Math.max(0, this.life);
+    ctx.fillStyle = this.color;
+    ctx.font = `bold ${this.size}px -apple-system, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.text, this.x, this.y);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// --- Physics: Ball-Ball collision ---
+function resolveCollisions() {
+  for (let i = 0; i < balls.length; i++) {
+    for (let j = i + 1; j < balls.length; j++) {
+      const a = balls[i], b = balls[j];
+      if (!a.alive || !b.alive) continue;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const minDist = a.radius + b.radius;
+      if (dist < minDist && dist > 0) {
+        const nx = dx / dist, ny = dy / dist;
+        // Separate balls
+        const overlap = minDist - dist;
+        a.x -= nx * overlap * 0.5;
+        a.y -= ny * overlap * 0.5;
+        b.x += nx * overlap * 0.5;
+        b.y += ny * overlap * 0.5;
+
+        if (a.value === b.value) {
+          // Merge!
+          mergeBalls(a, b);
+        } else {
+          // Elastic collision
+          const dvx = a.vx - b.vx, dvy = a.vy - b.vy;
+          const dvDotN = dvx * nx + dvy * ny;
+          if (dvDotN > 0) {
+            a.vx -= dvDotN * nx * 0.8;
+            a.vy -= dvDotN * ny * 0.8;
+            b.vx += dvDotN * nx * 0.8;
+            b.vy += dvDotN * ny * 0.8;
+            if (dvDotN > 20) playCollide();
+          }
+        }
+      }
+    }
+  }
+}
+
+function mergeBalls(a, b) {
+  const newValue = a.value * 2;
+  const mx = (a.x + b.x) / 2;
+  const my = (a.y + b.y) / 2;
+  const mvx = (a.vx + b.vx) / 2;
+  const mvy = (a.vy + b.vy) / 2;
+
+  a.alive = false;
+  b.alive = false;
+
+  const newBall = new Ball(mx, my, newValue, mvx, mvy);
+  newBall.mergeAnim = 1;
+
+  // Pulse force outward
+  const angle = Math.random() * Math.PI * 2;
+  newBall.vx += Math.cos(angle) * MERGE_PULSE_FORCE;
+  newBall.vy += Math.sin(angle) * MERGE_PULSE_FORCE;
+
+  balls.push(newBall);
+
+  // Score
+  const now = performance.now() / 1000;
+  if (now - lastMergeTime < CHAIN_WINDOW) {
+    chainCount++;
+  } else {
+    chainCount = 1;
+  }
+  lastMergeTime = now;
+
+  const chainMultiplier = Math.pow(2, chainCount - 1);
+  const points = newValue * chainMultiplier;
+  score += points;
+
+  // Effects
+  spawnParticles(mx, my, newBall.color, 8 + chainCount * 4);
+  playMerge(newValue);
+  popups.push(new Popup(mx, my - 20, '+' + points, newBall.color, 20 + chainCount * 4));
+
+  if (newValue > maxBallValue) {
+    maxBallValue = newValue;
+    popups.push(new Popup(W / 2, H / 2, 'NEW: ' + newValue + '!', '#FFD700', 36));
+    shakeTimer = 0.3;
+    shakeIntensity = 4;
+  }
+
+  // Chain bonuses
+  if (chainCount === 2) {
+    // Shockwave
+    shakeTimer = 0.15;
+    shakeIntensity = 2;
+    playChain(2);
+    popups.push(new Popup(mx, my - 50, '2x CHAIN!', '#FFD93D', 28));
+    for (const ball of balls) {
+      if (!ball.alive || ball === newBall) continue;
+      const ddx = ball.x - mx, ddy = ball.y - my;
+      const dd = Math.sqrt(ddx * ddx + ddy * ddy);
+      if (dd < 100 && dd > 0) {
+        ball.vx += (ddx / dd) * 200;
+        ball.vy += (ddy / dd) * 200;
+      }
+    }
+  } else if (chainCount === 3) {
+    // Gravity pulse
+    gravityPulseTimer = 0.5;
+    shakeTimer = 0.3;
+    shakeIntensity = 3;
+    playChain(3);
+    popups.push(new Popup(W / 2, H / 2 - 40, '3x CHAIN!', '#FF6B6B', 32));
+  } else if (chainCount >= 4) {
+    // Full screen flash + INCREDIBLE
+    flashTimer = 0.3;
+    incredibleTimer = 1.5;
+    shakeTimer = 0.4;
+    shakeIntensity = 5;
+    playChain(chainCount);
+    popups.push(new Popup(W / 2, H / 2, 'INCREDIBLE!', '#FFD700', 40));
+  }
+}
+
+// --- Game Logic ---
+function spawnCurrentBall() {
+  currentBall = { value: nextBallValue, radius: getBallRadius(nextBallValue), color: getBallColor(nextBallValue) };
+  nextBallValue = randomBallValue();
+}
+
+function launchBall() {
+  if (!currentBall) return;
+  const vx = Math.cos(aimAngle) * LAUNCH_SPEED;
+  const vy = Math.sin(aimAngle) * LAUNCH_SPEED;
+  const b = new Ball(LAUNCH_X, LAUNCH_Y, currentBall.value, vx, vy);
+  balls.push(b);
+  waitingForSettle = true;
+  currentBall = null;
+  playLaunch();
+}
+
+function checkSettled() {
+  return balls.every(b => b.settled);
+}
+
+function checkGameOver() {
+  for (const b of balls) {
+    if (b.aboveSafetyTime >= 2) return true;
+  }
+  return false;
+}
+
+function getSafetyLevel() {
+  let maxOverTime = 0;
+  for (const b of balls) {
+    if (b.y - b.radius < SAFETY_Y + 30) {
+      maxOverTime = Math.max(maxOverTime, b.aboveSafetyTime);
+    }
+  }
+  return maxOverTime;
+}
+
+function doContinue() {
+  // Remove 3 smallest balls
+  const sorted = balls.filter(b => b.alive).sort((a, b) => a.value - b.value);
+  let removed = 0;
+  for (const b of sorted) {
+    if (removed >= 3) break;
+    b.alive = false;
+    spawnParticles(b.x, b.y, '#FFFFFF', 8);
+    removed++;
+  }
+  balls = balls.filter(b => b.alive);
+  canContinue = false;
+  safetyOverTime = 0;
+  for (const b of balls) b.aboveSafetyTime = 0;
+}
+
+function startGame() {
+  balls = [];
+  score = 0;
+  maxBallValue = 2;
+  chainCount = 0;
+  lastMergeTime = 0;
+  safetyWarning = 0;
+  safetyOverTime = 0;
+  canContinue = true;
+  gravityPulseTimer = 0;
+  flashTimer = 0;
+  incredibleTimer = 0;
+  particles = [];
+  popups = [];
+  waitingForSettle = false;
+  nextBallValue = randomBallValue();
+  spawnCurrentBall();
+  state = 'playing';
+  ensureAudio();
+}
+
+// --- Input ---
+let pointerDown = false;
+let pointerX = 0, pointerY = 0;
+
+function getPointerPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const touch = e.touches ? e.touches[0] || e.changedTouches[0] : e;
+  return canvasToGame(touch.clientX - rect.left, touch.clientY - rect.top);
+}
+
+canvas.addEventListener('mousedown', handleDown);
+canvas.addEventListener('mousemove', handleMove);
+canvas.addEventListener('mouseup', handleUp);
+canvas.addEventListener('touchstart', handleDown, { passive: false });
+canvas.addEventListener('touchmove', handleMove, { passive: false });
+canvas.addEventListener('touchend', handleUp, { passive: false });
+
+function handleDown(e) {
+  e.preventDefault();
+  const pos = getPointerPos(e);
+  pointerX = pos.x;
+  pointerY = pos.y;
+
+  if (state === 'menu') {
+    // Check start button
+    if (pos.x > W/2 - 100 && pos.x < W/2 + 100 && pos.y > H/2 + 40 && pos.y < H/2 + 100) {
+      startGame();
+    }
+    return;
+  }
+
+  if (state === 'gameover') {
+    // Check replay button
+    if (pos.x > W/2 - 100 && pos.x < W/2 + 100 && pos.y > H/2 + 80 && pos.y < H/2 + 140) {
+      startGame();
+    }
+    // Check continue button
+    if (canContinue && pos.x > W/2 - 100 && pos.x < W/2 + 100 && pos.y > H/2 + 10 && pos.y < H/2 + 70) {
+      doContinue();
+      state = 'playing';
+      waitingForSettle = false;
+      spawnCurrentBall();
+    }
+    return;
+  }
+
+  if (state === 'playing' && currentBall && !waitingForSettle) {
+    aiming = true;
+    aimStart = { x: pos.x, y: pos.y };
+  }
+}
+
+function handleMove(e) {
+  e.preventDefault();
+  const pos = getPointerPos(e);
+  pointerX = pos.x;
+  pointerY = pos.y;
+
+  if (aiming && aimStart) {
+    const dx = pos.x - LAUNCH_X;
+    const dy = pos.y - LAUNCH_Y;
+    if (dy < -10) {
+      aimAngle = Math.atan2(dy, dx);
+      // Clamp angle to upper half
+      if (aimAngle > 0) aimAngle = -0.05;
+      if (aimAngle > -0.05) aimAngle = -0.05;
+      if (aimAngle < -Math.PI + 0.05) aimAngle = -Math.PI + 0.05;
+    }
+  }
+}
+
+function handleUp(e) {
+  e.preventDefault();
+  if (aiming && state === 'playing') {
+    launchBall();
+    aiming = false;
+    aimStart = null;
+  }
+}
+
+// --- Drawing ---
+function drawBackground() {
+  ctx.fillStyle = '#1A1A2E';
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += 40) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+}
+
+function drawSafetyLine() {
+  const danger = getSafetyLevel();
+  const alpha = 0.3 + Math.min(danger, 2) * 0.35;
+  const red = Math.min(1, danger / 1.5);
+  const r = Math.floor(255 * red);
+  const g = Math.floor(100 * (1 - red));
+  ctx.strokeStyle = `rgba(${r}, ${g}, 100, ${alpha})`;
+  ctx.setLineDash([10, 10]);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, SAFETY_Y);
+  ctx.lineTo(W, SAFETY_Y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Danger overlay
+  if (danger > 0.5) {
+    const overlayAlpha = Math.min(0.2, (danger - 0.5) * 0.15);
+    ctx.fillStyle = `rgba(255, 0, 0, ${overlayAlpha})`;
+    ctx.fillRect(0, 0, W, SAFETY_Y + 20);
+  }
+}
+
+function drawAimLine() {
+  if (!aiming || !currentBall) return;
+
+  const dx = Math.cos(aimAngle);
+  const dy = Math.sin(aimAngle);
+  let px = LAUNCH_X, py = LAUNCH_Y;
+  const speed = LAUNCH_SPEED;
+  const stepSize = 3;
+  const steps = 120;
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.setLineDash([6, 6]);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(px, py);
+
+  let bounced = false;
+  for (let i = 0; i < steps; i++) {
+    let nx = px + dx * stepSize * (bounced ? 1 : 1);
+    let ny = py + dy * stepSize * (bounced ? 1 : 1);
+
+    // Simple: first segment and one bounce
+    if (!bounced) {
+      if (nx < currentBall.radius || nx > W - currentBall.radius) {
+        // Wall bounce point
+        ctx.lineTo(px, py);
+        // Reflect
+        const rdx = -dx;
+        for (let j = 0; j < 40; j++) {
+          nx = px + rdx * stepSize * j;
+          ny = py + dy * stepSize * j;
+          ctx.lineTo(nx, ny);
+        }
+        bounced = true;
+        break;
+      }
+      if (ny < currentBall.radius) {
+        ctx.lineTo(px, py);
+        bounced = true;
+        break;
+      }
+      ctx.lineTo(nx, ny);
+      px = nx; py = ny;
+    }
+  }
+  if (!bounced) ctx.lineTo(px, py);
+
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawCurrentBall() {
+  if (!currentBall || waitingForSettle) return;
+
+  // Next ball preview
+  const nextR = getBallRadius(nextBallValue);
+  ctx.globalAlpha = 0.5;
+  ctx.fillStyle = getBallColor(nextBallValue);
+  ctx.beginPath();
+  ctx.arc(LAUNCH_X - 60, LAUNCH_Y + 10, nextR * 0.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = `bold ${nextR * 0.45}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(nextBallValue, LAUNCH_X - 60, LAUNCH_Y + 10);
+  ctx.globalAlpha = 1;
+
+  // Current ball
+  const r = currentBall.radius;
+  const grad = ctx.createRadialGradient(LAUNCH_X - r * 0.3, LAUNCH_Y - r * 0.3, r * 0.1, LAUNCH_X, LAUNCH_Y, r);
+  grad.addColorStop(0, '#FFFFFF');
+  grad.addColorStop(0.3, currentBall.color);
+  grad.addColorStop(1, currentBall.color + 'AA');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(LAUNCH_X, LAUNCH_Y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = `bold ${r * 0.8}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(currentBall.value, LAUNCH_X, LAUNCH_Y);
+
+  // Slingshot visual
+  if (aiming) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(LAUNCH_X - 30, LAUNCH_Y + 30);
+    ctx.lineTo(LAUNCH_X, LAUNCH_Y);
+    ctx.lineTo(LAUNCH_X + 30, LAUNCH_Y + 30);
+    ctx.stroke();
+  }
+}
+
+function drawHUD() {
+  // Top bar
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.fillRect(0, 0, W, 50);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 18px -apple-system, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Score: ' + score.toLocaleString(), 15, 32);
+  ctx.textAlign = 'right';
+  ctx.fillText('Best: ' + highScore.toLocaleString(), W - 15, 32);
+
+  // Max ball indicator
+  ctx.textAlign = 'center';
+  ctx.fillStyle = getBallColor(maxBallValue);
+  ctx.font = 'bold 16px -apple-system, sans-serif';
+  ctx.fillText('MAX ' + maxBallValue, W / 2, 32);
+
+  // Bottom area background
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(0, H - 60, W, 60);
+}
+
+function drawMenu() {
+  ctx.fillStyle = '#1A1A2E';
+  ctx.fillRect(0, 0, W, H);
+
+  // Title
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 48px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('弹射合合', W / 2, H / 2 - 100);
+
+  ctx.font = '20px -apple-system, sans-serif';
+  ctx.fillStyle = '#AAAACC';
+  ctx.fillText('Merge Launch', W / 2, H / 2 - 60);
+
+  // Decorative balls
+  const demoVals = [2, 4, 8, 16, 32];
+  demoVals.forEach((v, i) => {
+    const angle = (i / demoVals.length) * Math.PI * 2 + performance.now() / 3000;
+    const rx = W / 2 + Math.cos(angle) * 100;
+    const ry = H / 2 - 120 + Math.sin(angle) * 40;
+    const r = getBallRadius(v) * 0.7;
+    ctx.fillStyle = getBallColor(v);
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.arc(rx, ry, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+
+  // Start button
+  const bx = W / 2, by = H / 2 + 70;
+  ctx.fillStyle = '#FF6B6B';
+  ctx.beginPath();
+  roundRect(ctx, bx - 100, by - 25, 200, 50, 25);
+  ctx.fill();
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 22px -apple-system, sans-serif';
+  ctx.fillText('START', bx, by + 2);
+
+  // High score
+  if (highScore > 0) {
+    ctx.fillStyle = '#888';
+    ctx.font = '16px -apple-system, sans-serif';
+    ctx.fillText('Best Score: ' + highScore.toLocaleString(), W / 2, H / 2 + 140);
+  }
+
+  // Instructions
+  ctx.fillStyle = '#666';
+  ctx.font = '14px -apple-system, sans-serif';
+  ctx.fillText('Drag to aim, release to launch', W / 2, H - 80);
+  ctx.fillText('Same numbers merge & double!', W / 2, H - 55);
+}
+
+function drawGameOver() {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 40px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('GAME OVER', W / 2, H / 2 - 120);
+
+  ctx.font = '22px -apple-system, sans-serif';
+  ctx.fillStyle = '#FFD93D';
+  ctx.fillText('Score: ' + score.toLocaleString(), W / 2, H / 2 - 60);
+
+  ctx.fillStyle = '#AAAACC';
+  ctx.font = '18px -apple-system, sans-serif';
+  ctx.fillText('Best: ' + highScore.toLocaleString(), W / 2, H / 2 - 30);
+
+  ctx.fillText('Max Ball: ' + maxBallValue, W / 2, H / 2 - 5);
+
+  // Continue button (if available)
+  if (canContinue) {
+    ctx.fillStyle = '#6BCB77';
+    roundRect(ctx, W/2 - 100, H/2 + 15, 200, 50, 25);
+    ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 18px -apple-system, sans-serif';
+    ctx.fillText('CONTINUE (Free)', W / 2, H / 2 + 42);
+  }
+
+  // Replay button
+  const replayY = H / 2 + (canContinue ? 85 : 40);
+  ctx.fillStyle = '#FF6B6B';
+  ctx.beginPath();
+  roundRect(ctx, W/2 - 100, replayY, 200, 50, 25);
+  ctx.fill();
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 20px -apple-system, sans-serif';
+  ctx.fillText('PLAY AGAIN', W / 2, replayY + 27);
+
+  // Adjust gameover button positions for hit detection
+  // We reuse the positions in handleDown
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// --- Main Loop ---
+function update(timestamp) {
+  dt = Math.min((timestamp - lastTime) / 1000, 0.05);
+  lastTime = timestamp;
+
+  if (state === 'playing') {
+    // Update physics
+    for (const b of balls) {
+      if (b.alive) b.update(dt);
+    }
+    resolveCollisions();
+    // Second pass for stability
+    resolveCollisions();
+
+    balls = balls.filter(b => b.alive);
+
+    // Timers
+    if (gravityPulseTimer > 0) gravityPulseTimer -= dt;
+    if (shakeTimer > 0) shakeTimer -= dt;
+    if (flashTimer > 0) flashTimer -= dt;
+    if (incredibleTimer > 0) incredibleTimer -= dt;
+
+    // Check if balls settled after launch
+    if (waitingForSettle && checkSettled()) {
+      waitingForSettle = false;
+      spawnCurrentBall();
+    }
+
+    // Game Over check
+    if (checkGameOver()) {
+      state = 'gameover';
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('mergelaunch_high', highScore.toString());
+      }
+      playGameOver();
+    }
+  }
+
+  // Particles
+  particles.forEach(p => p.update(dt));
+  particles = particles.filter(p => p.life > 0);
+
+  // Popups
+  popups.forEach(p => p.update(dt));
+  popups = popups.filter(p => p.life > 0);
+}
+
+function render() {
+  ctx.save();
+  ctx.scale(scale, scale);
+
+  // Screen shake
+  if (shakeTimer > 0) {
+    const sx = (Math.random() - 0.5) * shakeIntensity * 2;
+    const sy = (Math.random() - 0.5) * shakeIntensity * 2;
+    ctx.translate(sx, sy);
+  }
+
+  if (state === 'menu') {
+    drawMenu();
+  } else if (state === 'playing' || state === 'gameover') {
+    drawBackground();
+    drawSafetyLine();
+
+    // Balls
+    for (const b of balls) {
+      if (b.alive) b.draw(ctx);
+    }
+
+    // Particles
+    for (const p of particles) p.draw(ctx);
+
+    // Popups
+    for (const p of popups) p.draw(ctx);
+
+    drawAimLine();
+    drawCurrentBall();
+    drawHUD();
+
+    // Flash effect
+    if (flashTimer > 0) {
+      ctx.fillStyle = `rgba(255, 215, 0, ${flashTimer * 0.5})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // Incredible text
+    if (incredibleTimer > 0) {
+      ctx.globalAlpha = Math.min(1, incredibleTimer);
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 50px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      const iy = H / 2 - 100 + Math.sin(performance.now() / 200) * 5;
+      ctx.fillText('INCREDIBLE!', W / 2, iy);
+      ctx.globalAlpha = 1;
+    }
+
+    if (state === 'gameover') {
+      drawGameOver();
+    }
+  }
+
+  ctx.restore();
+}
+
+function gameLoop(timestamp) {
+  if (!lastTime) lastTime = timestamp;
+  update(timestamp);
+  render();
+  requestAnimationFrame(gameLoop);
+}
+
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

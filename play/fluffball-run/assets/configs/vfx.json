@@ -1,0 +1,47 @@
+{
+  "fluff_collect": {
+    "color": "inherit_yarn",
+    "count": 8,
+    "lifetime": 400,
+    "type": "spiral_inward",
+    "size": 3
+  },
+  "fluff_shed": {
+    "color": "inherit_ball",
+    "count": 15,
+    "lifetime": 800,
+    "type": "burst_gravity",
+    "gravity": 0.3
+  },
+  "combo_sparkle": {
+    "color": "#FFD93D",
+    "count": 20,
+    "lifetime": 600,
+    "type": "fountain"
+  },
+  "shield_glow": {
+    "color": "#FFBDD6",
+    "count": 10,
+    "lifetime": 1000,
+    "type": "orbit",
+    "radius": 32
+  },
+  "landing_puff": {
+    "color": "#FFFBF5",
+    "count": 6,
+    "lifetime": 300,
+    "type": "ground_spread"
+  },
+  "frozen": {
+    "color": "#90CAF9",
+    "count": 25,
+    "lifetime": 1200,
+    "type": "crystallize"
+  },
+  "perfect_finish": {
+    "color": "#FFD700",
+    "count": 40,
+    "lifetime": 1500,
+    "type": "firework"
+  }
+}

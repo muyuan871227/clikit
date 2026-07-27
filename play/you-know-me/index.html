@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>你懂我吗？YOU KNOW ME?</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <meta name="theme-color" content="#FAFAF5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== WELCOME SCREEN ===== -->
+  <div id="screen-welcome" class="screen active">
+    <div class="welcome-logo">
+      <div class="heart">💘</div>
+      <h1>你懂我吗</h1>
+      <div class="subtitle">YOU KNOW ME?</div>
+    </div>
+    <div class="welcome-tagline">
+      不只是了解对方的答案<br>
+      而是看穿对方出题背后的小心思
+    </div>
+    <div style="padding: 0 20px; margin-top: auto; margin-bottom: 40px;">
+      <button id="btn-start" class="btn btn-primary">开始今日游戏</button>
+      <button id="btn-archive-menu" class="btn btn-secondary">我们的故事书</button>
+      <button id="btn-settings-menu" class="btn btn-ghost">设置</button>
+    </div>
+  </div>
+
+  <!-- ===== SETUP SCREEN ===== -->
+  <div id="screen-setup" class="screen">
+    <div class="setup-title">输入你们的名字</div>
+    <div class="input-group">
+      <label>玩家 A</label>
+      <input id="input-name-a" class="input-field" type="text" placeholder="输入昵称" maxlength="10">
+    </div>
+    <div class="input-group">
+      <label>玩家 B</label>
+      <input id="input-name-b" class="input-field" type="text" placeholder="输入昵称" maxlength="10">
+    </div>
+    <div class="setup-divider">AI 增强（可选）</div>
+    <div class="input-group">
+      <label>Gemini API Key</label>
+      <input id="input-gemini-key" class="input-field" type="password" placeholder="不填也可以正常玩">
+    </div>
+    <div class="gemini-note">填写后可使用 AI 意图灵感、深层引导等功能</div>
+    <div class="no-judgment">🤝 不评价原则：这个游戏里没有对错，只有更了解彼此。</div>
+    <div style="margin-top: auto; padding-bottom: 40px;">
+      <button id="btn-start-game" class="btn btn-primary">开始游戏 →</button>
+    </div>
+  </div>
+
+  <!-- ===== GAME SCREEN ===== -->
+  <div id="screen-game" class="screen">
+    <!-- HUD -->
+    <div class="game-hud">
+      <span id="hud-round" class="round-badge round-1">第1轮 · 表层探测</span>
+      <div class="hud-right">
+        <span id="hud-reverse">↺ ×3</span>
+        <span id="hud-gemini">✨ ×3</span>
+      </div>
+    </div>
+    <div class="heartbeat-container">
+      <div id="heartbeat-meter" class="heartbeat-fill" style="width: 0%"></div>
+    </div>
+    <div id="heartbeat-label" class="heartbeat-label">0/30</div>
+    <div id="hud-question-num" class="question-num">第 1/5 题</div>
+
+    <!-- Timer -->
+    <div class="timer-container">
+      <div id="timer-bar" class="timer-bar" style="width: 100%"></div>
+    </div>
+    <div id="timer-display" class="timer-display">60s</div>
+
+    <!-- Role info -->
+    <div id="current-role-label" style="text-align:center;font-size:15px;font-weight:600;margin:8px 0;color:#C9956C;"></div>
+    <div id="phase-label" style="text-align:center;font-size:13px;color:#888;margin-bottom:12px;"></div>
+
+    <!-- Question Card -->
+    <div id="question-card" class="question-card card-level-1">
+      <span id="gemini-tag" class="gemini-tag" style="display:none">✨ AI 专属题</span>
+      <div id="question-text" class="question-text"></div>
+    </div>
+
+    <!-- QUESTIONING CONTROLS -->
+    <div id="questioning-controls" style="display:block;">
+      <div class="intention-types">
+        <button class="intention-type-btn" data-type="confirm">
+          <span class="emoji">🔍</span>
+          <span class="label">确认</span>
+          <span class="desc">确认了解是否正确</span>
+        </button>
+        <button class="intention-type-btn" data-type="explore">
+          <span class="emoji">🌱</span>
+          <span class="label">探索</span>
+          <span class="desc">了解新的东西</span>
+        </button>
+        <button class="intention-type-btn" data-type="express">
+          <span class="emoji">💝</span>
+          <span class="label">表达</span>
+          <span class="desc">表达某种感受</span>
+        </button>
+        <button class="intention-type-btn" data-type="test">
+          <span class="emoji">⚡</span>
+          <span class="label">测试</span>
+          <span class="desc">看TA是否注意到</span>
+        </button>
+      </div>
+
+      <div class="input-group">
+        <label>写下你的隐藏意图（10-50字）</label>
+        <textarea id="intention-text" class="input-field" placeholder="你问这道题，背后真正想了解的是什么？" maxlength="50"></textarea>
+        <div id="char-count" class="char-count">0/50</div>
+      </div>
+
+      <button id="btn-ai-suggest" class="ai-suggest-btn" style="display:none">✨ AI 意图灵感</button>
+      <div id="suggestion-container" class="suggestion-cards"></div>
+
+      <button id="btn-submit-intention" class="btn btn-primary" disabled>确认提交</button>
+    </div>
+
+    <!-- ANSWERING CONTROLS -->
+    <div id="answering-controls" style="display:none;">
+      <div class="input-group">
+        <label>你的回答</label>
+        <textarea id="answer-text" class="input-field" placeholder="回答这道问题..."></textarea>
+      </div>
+
+      <div style="font-size:14px;font-weight:600;margin:12px 0 8px;color:#888;">猜测对方的意图类型</div>
+      <div class="intention-types">
+        <button class="guess-type-btn" data-type="confirm">
+          <span class="emoji">🔍</span>
+          <span class="label">确认</span>
+        </button>
+        <button class="guess-type-btn" data-type="explore">
+          <span class="emoji">🌱</span>
+          <span class="label">探索</span>
+        </button>
+        <button class="guess-type-btn" data-type="express">
+          <span class="emoji">💝</span>
+          <span class="label">表达</span>
+        </button>
+        <button class="guess-type-btn" data-type="test">
+          <span class="emoji">⚡</span>
+          <span class="label">测试</span>
+        </button>
+      </div>
+
+      <div class="input-group">
+        <label>猜测意图方向（选填，更精确）</label>
+        <input id="guess-direction" class="input-field" type="text" placeholder="你觉得TA问这个是因为...">
+      </div>
+
+      <button id="btn-submit-answer" class="btn btn-primary" disabled>提交回答</button>
+    </div>
+
+    <!-- Reveal placeholder (should not be visible in game screen) -->
+    <div id="reveal-controls" style="display:none;"></div>
+  </div>
+
+  <!-- ===== PRIVACY / PASS SCREEN ===== -->
+  <div id="screen-privacy" class="screen">
+    <div class="privacy-screen">
+      <div class="privacy-icon" id="privacy-icon-text">🔒</div>
+      <div class="privacy-text" id="privacy-main-text">请把手机递给对方</div>
+      <div class="privacy-sub" id="privacy-sub-text"></div>
+      <button id="btn-pass-guesser" class="btn btn-primary btn-small" style="display:none">我准备好了</button>
+      <button id="btn-pass-reveal" class="btn btn-primary btn-small" style="display:none">一起揭晓！</button>
+      <button id="btn-pass-reverse" class="btn btn-primary btn-small" style="display:none">我准备好了</button>
+    </div>
+  </div>
+
+  <!-- ===== REVEAL SCREEN ===== -->
+  <div id="screen-reveal" class="screen">
+    <div class="game-hud">
+      <span id="reveal-hud-round" class="round-badge round-1"></span>
+      <div class="hud-right"></div>
+    </div>
+    <div class="heartbeat-container">
+      <div class="heartbeat-fill" style="width: 0%"></div>
+    </div>
+
+    <div id="reveal-question" style="text-align:center;font-size:16px;color:#888;margin:16px 0;line-height:1.5;"></div>
+
+    <div class="reveal-area">
+      <div id="reveal-left" class="reveal-card">
+        <div style="color:#CCC;font-size:14px;margin-top:60px;">意图卡</div>
+      </div>
+      <div class="reveal-heart-between">♡</div>
+      <div id="reveal-right" class="reveal-card">
+        <div style="color:#CCC;font-size:14px;margin-top:60px;">猜测卡</div>
+      </div>
+    </div>
+
+    <div class="reveal-result">
+      <div id="reveal-result-text" class="reveal-result-text"></div>
+      <div id="reveal-points" class="reveal-points"></div>
+    </div>
+
+    <div class="reverse-area">
+      <button id="btn-reverse" class="btn-reverse" style="display:none">
+        🔄 反转！
+      </button>
+      <div id="btn-reverse-count" class="reverse-count"></div>
+      <button id="btn-skip-reverse" class="btn btn-ghost" style="display:none">继续下一题 →</button>
+      <button id="btn-continue-after-reveal" class="btn btn-primary" style="display:none">继续 →</button>
+    </div>
+  </div>
+
+  <!-- ===== REVERSE QUESTIONING ===== -->
+  <div id="screen-reverse-question" class="screen">
+    <div class="game-hud">
+      <span class="round-badge" style="background:var(--rose-gold)">🔄 反转</span>
+    </div>
+    <div id="reverse-role-label" style="text-align:center;font-size:15px;font-weight:600;margin:16px 0;color:#C9956C;"></div>
+
+    <div class="question-card" style="border-color: var(--rose-gold);">
+      <div id="reverse-question-text" class="question-text"></div>
+    </div>
+
+    <div class="timer-container">
+      <div id="timer-bar" class="timer-bar" style="width: 100%"></div>
+    </div>
+    <div id="timer-display" class="timer-display">30s</div>
+
+    <div class="intention-types">
+      <button class="reverse-type-btn" data-type="confirm"><span class="emoji">🔍</span><span class="label">确认</span></button>
+      <button class="reverse-type-btn" data-type="explore"><span class="emoji">🌱</span><span class="label">探索</span></button>
+      <button class="reverse-type-btn" data-type="express"><span class="emoji">💝</span><span class="label">表达</span></button>
+      <button class="reverse-type-btn" data-type="test"><span class="emoji">⚡</span><span class="label">测试</span></button>
+    </div>
+
+    <div class="input-group">
+      <label>你的隐藏意图（10-50字）</label>
+      <textarea id="reverse-intention-text" class="input-field" placeholder="你面对这道题，真正想了解的是什么？" maxlength="50"></textarea>
+      <div id="reverse-char-count" class="char-count">0/50</div>
+    </div>
+
+    <button id="btn-submit-reverse-intention" class="btn btn-primary" disabled>确认提交</button>
+  </div>
+
+  <!-- ===== REVERSE ANSWERING ===== -->
+  <div id="screen-reverse-answer" class="screen">
+    <div class="game-hud">
+      <span class="round-badge" style="background:var(--rose-gold)">🔄 反转猜测</span>
+    </div>
+    <div id="reverse-answer-role" style="text-align:center;font-size:15px;font-weight:600;margin:16px 0;color:#C9956C;"></div>
+
+    <div class="question-card" style="border-color: var(--rose-gold);">
+      <div id="reverse-answer-question" class="question-text"></div>
+    </div>
+
+    <div class="timer-container">
+      <div class="timer-bar" style="width: 100%"></div>
+    </div>
+    <div class="timer-display">30s</div>
+
+    <div class="input-group">
+      <label>你的回答</label>
+      <textarea id="reverse-answer-text" class="input-field" placeholder="回答这道问题..."></textarea>
+    </div>
+
+    <div style="font-size:14px;font-weight:600;margin:12px 0 8px;color:#888;">猜测对方的意图类型</div>
+    <div class="intention-types">
+      <button class="reverse-guess-btn" data-type="confirm"><span class="emoji">🔍</span><span class="label">确认</span></button>
+      <button class="reverse-guess-btn" data-type="explore"><span class="emoji">🌱</span><span class="label">探索</span></button>
+      <button class="reverse-guess-btn" data-type="express"><span class="emoji">💝</span><span class="label">表达</span></button>
+      <button class="reverse-guess-btn" data-type="test"><span class="emoji">⚡</span><span class="label">测试</span></button>
+    </div>
+
+    <div class="input-group">
+      <label>猜测意图方向（选填）</label>
+      <input id="reverse-guess-direction" class="input-field" type="text" placeholder="你觉得TA问这个是因为...">
+    </div>
+
+    <button id="btn-submit-reverse-answer" class="btn btn-primary" disabled>提交回答</button>
+  </div>
+
+  <!-- ===== TRUTH DIALOGUE OVERLAY ===== -->
+  <div id="dialogue-overlay" class="dialogue-overlay">
+    <div class="dialogue-content">
+      <div class="dialogue-title">真相对话</div>
+      <div class="dialogue-step">
+        <div class="dialogue-step-num">第一步</div>
+        请说出你的真实意图——不是"随便问问"，是真实的。
+      </div>
+      <div class="dialogue-step">
+        <div class="dialogue-step-num">出题方的意图</div>
+        <div id="dialogue-intention-reveal" style="font-style:italic;color:var(--rose-gold);"></div>
+      </div>
+      <div class="dialogue-step">
+        <div class="dialogue-step-num">第二步</div>
+        听完意图，你有什么感受？
+      </div>
+      <div class="dialogue-step">
+        <div class="dialogue-step-num">第三步（可选）</div>
+        这个意图背后，还有什么没说完的吗？
+      </div>
+
+      <button id="btn-gemini-guide" class="ai-suggest-btn" style="display:none;">
+        ✨ AI 深层引导 <span id="gemini-guide-count" style="font-size:11px;margin-left:4px;"></span>
+      </button>
+      <div id="gemini-cards"></div>
+      <button id="btn-mark-valuable" class="btn btn-secondary btn-small" style="display:none;margin:12px auto;">
+        标记「有价值的对话」♡+1
+      </button>
+
+      <button id="btn-dialogue-done" class="btn btn-primary" style="margin-top:20px;">对话结束，继续游戏 →</button>
+    </div>
+  </div>
+
+  <!-- ===== ROUND END SCREEN ===== -->
+  <div id="screen-round-end" class="screen">
+    <div class="round-transition">
+      <div id="next-round-num" class="round-num">第 2 轮</div>
+      <h2 id="next-round-name"></h2>
+      <div id="next-round-desc" class="round-desc"></div>
+      <button id="btn-next-round" class="btn btn-primary btn-small">准备好了 →</button>
+    </div>
+  </div>
+
+  <!-- ===== SETTLEMENT SCREEN ===== -->
+  <div id="screen-settlement" class="screen">
+    <div style="text-align:center;margin-top:20px;">
+      <div style="font-size:14px;color:#BBB;letter-spacing:2px;">本局结束</div>
+      <div style="font-size:22px;font-weight:700;margin-top:8px;">今日默契报告</div>
+    </div>
+    <div id="settlement-content"></div>
+    <div style="margin-top:auto;padding-bottom:30px;">
+      <button id="btn-share-card" class="btn btn-secondary">📸 生成分享卡</button>
+      <button id="btn-view-report" class="btn btn-secondary" style="display:none;">✨ 查看 AI 关系洞察</button>
+      <button id="btn-view-archive" class="btn btn-ghost">查看故事书</button>
+      <button id="btn-play-again" class="btn btn-primary">再来一局</button>
+    </div>
+  </div>
+
+  <!-- ===== REPORT SCREEN ===== -->
+  <div id="screen-report" class="screen">
+    <button id="btn-report-back" class="back-btn">← 返回</button>
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:20px;font-weight:700;">✨ AI 关系洞察</div>
+      <div style="font-size:13px;color:#888;margin-top:4px;">由 Gemini 基于你们的游戏记录生成</div>
+    </div>
+    <div id="report-body"></div>
+  </div>
+
+  <!-- ===== ARCHIVE SCREEN ===== -->
+  <div id="screen-archive" class="screen">
+    <div class="archive-header">
+      <button id="btn-archive-back" class="back-btn">← 返回</button>
+      <h2>我们的故事书</h2>
+    </div>
+    <div class="archive-filters">
+      <button class="filter-btn active" data-filter="all">全部</button>
+      <button class="filter-btn" data-filter="touching">最感动</button>
+      <button class="filter-btn" data-filter="surprising">最惊讶</button>
+      <button class="filter-btn" data-filter="funny">最好笑</button>
+    </div>
+    <div id="archive-list"></div>
+  </div>
+
+  <!-- ===== SETTINGS SCREEN ===== -->
+  <div id="screen-settings" class="screen">
+    <button id="btn-settings-back" class="back-btn">← 返回</button>
+    <div style="font-size:20px;font-weight:700;margin-bottom:24px;">设置</div>
+
+    <div class="settings-section">
+      <h3>音效</h3>
+      <div class="setting-row">
+        <span class="setting-label">游戏音效</span>
+        <button id="toggle-sound" class="toggle on"></button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Gemini AI</h3>
+      <div class="input-group">
+        <label>API Key</label>
+        <input id="settings-gemini-key" class="input-field" type="password" placeholder="输入你的 Gemini API Key">
+      </div>
+      <button id="btn-save-gemini-key" class="btn btn-secondary btn-small">保存</button>
+    </div>
+
+    <div class="settings-section">
+      <h3>数据管理</h3>
+      <button id="btn-clear-data" class="btn btn-ghost" style="color:var(--deep-wine);">清除所有游戏数据</button>
+    </div>
+  </div>
+
+  <!-- Particle container -->
+  <div id="particle-container"></div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 绒毛外缘粒子 -->
+  <circle cx="32" cy="32" r="26" fill="#FFFBF5" />
+  <circle cx="15" cy="25" r="6" fill="#FFFBF5" />
+  <circle cx="50" cy="22" r="7" fill="#FFFBF5" />
+  <circle cx="20" cy="50" r="8" fill="#FFFBF5" />
+  <circle cx="45" cy="48" r="6" fill="#FFFBF5" />
+  <!-- 眼睛 -->
+  <circle cx="24" cy="34" r="2.5" fill="#333" />
+  <circle cx="40" cy="34" r="2.5" fill="#333" />
+  <!-- 腮红 -->
+  <circle cx="18" cy="40" r="4" fill="#FFB7C5" fill-opacity="0.6" />
+  <circle cx="46" cy="40" r="4" fill="#FFB7C5" fill-opacity="0.6" />
+  <!-- 高光粒子 -->
+  <circle cx="32" cy="15" r="2" fill="white" fill-opacity="0.8" />
+</svg>

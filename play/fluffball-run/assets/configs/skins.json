@@ -1,0 +1,184 @@
+{
+  "skins": [
+    {
+      "id": "cotton",
+      "name": "棉花球",
+      "group": "basic",
+      "particle_shape": "circle",
+      "base_color": "#FFFBF5",
+      "elasticity": 1.0,
+      "unlock": "默认"
+    },
+    {
+      "id": "wool",
+      "name": "羊毛球",
+      "group": "basic",
+      "particle_shape": "circle",
+      "base_color": "#E8E4D9",
+      "elasticity": 0.9,
+      "unlock": "累计跑程达500%"
+    },
+    {
+      "id": "rabbit_fur",
+      "name": "兔毛球",
+      "group": "basic",
+      "particle_shape": "circle",
+      "base_color": "#FDFDFD",
+      "elasticity": 1.2,
+      "unlock": "累计跑程达1000%"
+    },
+    {
+      "id": "cat_fur",
+      "name": "猫毛球",
+      "group": "basic",
+      "particle_shape": "circle",
+      "base_color": "#F5E6CA",
+      "elasticity": 1.1,
+      "unlock": "累计跑程达2000%"
+    },
+    {
+      "id": "dog_fur",
+      "name": "狗毛球",
+      "group": "basic",
+      "particle_shape": "circle",
+      "base_color": "#D2B48C",
+      "elasticity": 1.05,
+      "unlock": "连续10关完成度≥70%"
+    },
+    {
+      "id": "sakura_plush",
+      "name": "樱花绒",
+      "group": "seasonal",
+      "particle_shape": "petal",
+      "base_color": "#FFD1DC",
+      "elasticity": 1.1,
+      "unlock": "春季限定活动"
+    },
+    {
+      "id": "summer_ice",
+      "name": "夏日冰绒",
+      "group": "seasonal",
+      "particle_shape": "crystal",
+      "base_color": "#E0F7FA",
+      "elasticity": 0.8,
+      "unlock": "夏季限定活动"
+    },
+    {
+      "id": "autumn_leaf",
+      "name": "秋叶绒",
+      "group": "seasonal",
+      "particle_shape": "leaf",
+      "base_color": "#D2691E",
+      "elasticity": 0.95,
+      "unlock": "秋季限定活动"
+    },
+    {
+      "id": "snow_plush",
+      "name": "雪绒",
+      "group": "seasonal",
+      "particle_shape": "snowflake",
+      "base_color": "#FFFFFF",
+      "elasticity": 1.0,
+      "unlock": "冬季限定活动"
+    },
+    {
+      "id": "new_year_red",
+      "name": "新年红绒",
+      "group": "seasonal",
+      "particle_shape": "square",
+      "base_color": "#FF0000",
+      "elasticity": 1.15,
+      "unlock": "节日登录领取"
+    },
+    {
+      "id": "cloud_plush",
+      "name": "云朵绒",
+      "group": "fantasy",
+      "particle_shape": "circle",
+      "base_color": "#F0F8FF",
+      "elasticity": 1.3,
+      "unlock": "全白色外观成就"
+    },
+    {
+      "id": "star_plush",
+      "name": "星星绒",
+      "group": "fantasy",
+      "particle_shape": "star",
+      "base_color": "#FFFACD",
+      "elasticity": 1.2,
+      "unlock": "连续5关完成度95%+"
+    },
+    {
+      "id": "rainbow_plush",
+      "name": "彩虹绒",
+      "group": "fantasy",
+      "particle_shape": "circle",
+      "base_color": "#FF7F50",
+      "elasticity": 1.1,
+      "unlock": "收集全部12种颜色碎片"
+    },
+    {
+      "id": "moonlight_plush",
+      "name": "月光绒",
+      "group": "fantasy",
+      "particle_shape": "crescent",
+      "base_color": "#B0C4DE",
+      "elasticity": 1.05,
+      "unlock": "夜间模式累计游戏30分钟"
+    },
+    {
+      "id": "aurora_plush",
+      "name": "极光绒",
+      "group": "fantasy",
+      "particle_shape": "wave",
+      "base_color": "#7FFFD4",
+      "elasticity": 1.1,
+      "unlock": "无尽模式到达100关"
+    },
+    {
+      "id": "crystal_plush",
+      "name": "水晶绒",
+      "group": "special",
+      "particle_shape": "diamond",
+      "base_color": "#B0E0E6",
+      "elasticity": 0.7,
+      "unlock": "完美通过20个不同关卡"
+    },
+    {
+      "id": "firefly_plush",
+      "name": "萤火绒",
+      "group": "special",
+      "particle_shape": "glow_circle",
+      "base_color": "#ADFF2F",
+      "elasticity": 1.1,
+      "unlock": "连续3天签到奖励"
+    },
+    {
+      "id": "petal_plush",
+      "name": "花瓣绒",
+      "group": "special",
+      "particle_shape": "petal",
+      "base_color": "#FF69B4",
+      "elasticity": 1.0,
+      "unlock": "地图中收集100枚花瓣"
+    },
+    {
+      "id": "chocolate_plush",
+      "name": "巧克力绒",
+      "group": "special",
+      "particle_shape": "circle",
+      "base_color": "#7B3F00",
+      "elasticity": 0.85,
+      "unlock": "糖果商店解锁"
+    },
+    {
+      "id": "gold_silk",
+      "name": "金丝绒",
+      "group": "special",
+      "particle_shape": "line",
+      "base_color": "#FFD700",
+      "elasticity": 1.25,
+      "unlock": "单局积分进入排行榜前10%"
+    }
+  ]
+}

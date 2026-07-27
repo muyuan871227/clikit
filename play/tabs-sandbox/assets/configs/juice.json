@@ -1,0 +1,116 @@
+{
+  "events": {
+    "hit_light": {
+      "hit_stop_ms": 40,
+      "screen_shake": 2.0,
+      "particle": "hit_spark",
+      "sound": "sfx_hit_light",
+      "knockback_mul": 1.2
+    },
+    "hit_heavy": {
+      "hit_stop_ms": 60,
+      "screen_shake": 3.5,
+      "particle": "hit_chunks",
+      "sound": "sfx_hit_heavy",
+      "knockback_mul": 1.4
+    },
+    "hit_smash": {
+      "hit_stop_ms": 100,
+      "screen_shake": 6,
+      "particle": "shockwave",
+      "sound": "sfx_hit_smash",
+      "knockback_mul": 2.0
+    },
+    "hit_fire": {
+      "hit_stop_ms": 40,
+      "screen_shake": 2,
+      "particle": "fire_burst",
+      "sound": "sfx_hit_fire",
+      "knockback_mul": 0.8
+    },
+    "hit_clang": {
+      "hit_stop_ms": 30,
+      "screen_shake": 1,
+      "particle": "spark_steel",
+      "sound": "sfx_hit_clang",
+      "knockback_mul": 0.5
+    },
+    "flop_death": {
+      "hit_stop_ms": 100,
+      "screen_shake": 3,
+      "particle": "death_dust",
+      "sound": "sfx_death_flop",
+      "ragdoll_launch_velocity": 260,
+      "ragdoll_spin": 12,
+      "slowmo_scale": 0.8,
+      "slowmo_ms": 240
+    },
+    "flop_death_big": {
+      "hit_stop_ms": 120,
+      "screen_shake": 4,
+      "particle": "death_dust_big",
+      "sound": "sfx_death_flop_big",
+      "ragdoll_launch_velocity": 320,
+      "ragdoll_spin": 14,
+      "slowmo_scale": 0.7,
+      "slowmo_ms": 300
+    },
+    "flop_death_giant": {
+      "hit_stop_ms": 250,
+      "screen_shake": 10,
+      "particle": "death_crash",
+      "sound": "sfx_death_giant",
+      "ragdoll_launch_velocity": 140,
+      "ragdoll_spin": 4,
+      "slowmo_scale": 0.4,
+      "slowmo_ms": 600
+    },
+    "deploy_dust": {
+      "hit_stop_ms": 0,
+      "screen_shake": 0,
+      "particle": "spawn_dust",
+      "sound": "sfx_deploy"
+    },
+    "deploy_stomp": {
+      "hit_stop_ms": 0,
+      "screen_shake": 2,
+      "particle": "spawn_stomp",
+      "sound": "sfx_deploy_big"
+    },
+    "deploy_sparkle": {
+      "hit_stop_ms": 0,
+      "screen_shake": 0,
+      "particle": "spawn_sparkle",
+      "sound": "sfx_deploy_magic"
+    },
+    "swing_pike": {"particle": null, "sound": "sfx_swing_pike"},
+    "draw_bow": {"particle": null, "sound": "sfx_draw_bow"},
+    "sword_swing": {"particle": null, "sound": "sfx_sword"},
+    "club_raise": {"particle": "club_trail", "sound": "sfx_club_raise"},
+    "cast_spell": {"particle": "cast_aura", "sound": "sfx_cast"},
+    "shield_bash": {"particle": null, "sound": "sfx_bash"},
+    "dust_trail": {"particle": "dust_puff", "sound": null, "interval_ms": 200},
+    "ground_shake": {"particle": "ground_crack", "sound": null, "screen_shake": 1, "interval_ms": 400},
+    "battle_start": {
+      "hit_stop_ms": 300,
+      "screen_shake": 4,
+      "particle": "charge_banner",
+      "sound": "sfx_horn"
+    },
+    "victory": {
+      "hit_stop_ms": 500,
+      "screen_shake": 0,
+      "particle": "confetti",
+      "sound": "sfx_victory",
+      "slowmo_scale": 0.5,
+      "slowmo_ms": 800
+    },
+    "defeat": {
+      "hit_stop_ms": 400,
+      "screen_shake": 3,
+      "particle": "smoke",
+      "sound": "sfx_defeat"
+    }
+  },
+  "_comment": "TABS Lite · 所有事件→反馈的映射 · 物理死亡动画是核心乐趣,重点在flop_death"
+}

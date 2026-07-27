@@ -1,0 +1,118 @@
+{
+  "session": {
+    "plan_phase_s": 30,
+    "battle_phase_s": 60,
+    "overtime_s": 10,
+    "countdown_s": 3,
+    "first_reward_s": 5,
+    "duration_s": 90,
+    "total_time_target_s": 90,
+    "comeback_pct": 20,
+    "laps": 1
+  },
+  "player": {
+    "start_gold": 250,
+    "gold_per_level": 30,
+    "start_hp": 0,
+    "start_speed": 3,
+    "max_speed": 150,
+    "max_hp": 400,
+    "max_size": 48,
+    "collision_radius": 0,
+    "invincible_ms": 0,
+    "growth": {
+      "exponent": 0.5,
+      "note": "本游戏无单局成长; 设置0.5标识diminishing-return设计,counter+synergy_cap=0.25已封顶"
+    }
+  },
+  "arena": {
+    "width": 960,
+    "height": 540,
+    "ally_zone_x_max": 440,
+    "enemy_zone_x_min": 520,
+    "grid_cell_px": 40,
+    "boundary": "wall",
+    "ground_y": 480,
+    "ground_friction": 0.85
+  },
+  "physics": {
+    "gravity_y": 980,
+    "verlet_iterations": 4,
+    "ragdoll_enabled": true,
+    "ragdoll_bone_count": 5,
+    "max_ragdoll_on_screen": 40,
+    "max_entities": 120,
+    "air_drag": 0.02,
+    "knockback_mass_scale": 60
+  },
+  "combat": {
+    "knockback_base": 120,
+    "knockback_crit": 280,
+    "crit_multiplier": 1.5,
+    "crit_chance": 0.08,
+    "death_flop_duration_ms": 2000,
+    "hit_stun_ms": 100,
+    "friendly_fire_aoe": true
+  },
+  "synergy": {
+    "radius_px": 100,
+    "same_type_bonus_per": 0.075,
+    "same_type_max_bonus": 0.15,
+    "shield_rear_bonus": 0.10,
+    "max_stack_layers": 2,
+    "max_total_bonus": 0.25
+  },
+  "counter": {
+    "pike_vs_cavalry": 1.50,
+    "archer_vs_pike": 1.30,
+    "cavalry_vs_archer": 1.40,
+    "mage_vs_crowd": 1.25,
+    "shield_vs_archer": 0.60
+  },
+  "caps": {
+    "max_units_same_type": 30,
+    "max_total_units_per_side": 40,
+    "max_aoe_radius": 90
+  },
+  "spawn": {
+    "interval_ms": 0,
+    "max_count": 0,
+    "initial_count": 0
+  },
+  "network": {
+    "sync_rate_hz": 0,
+    "room_code_length": 0,
+    "max_players": 1,
+    "matchmaking_timeout_s": 0
+  },
+  "map": {
+    "width": 960,
+    "height": 540,
+    "boundary": "wall"
+  },
+  "render": {
+    "canvas_width": 1280,
+    "canvas_height": 720,
+    "fps_target": 60,
+    "fixed_dt_ms": 16.67,
+    "z_layers": [
+      "bg",
+      "terrain",
+      "shadows",
+      "entities",
+      "projectiles",
+      "particles",
+      "ui_world",
+      "hud",
+      "menu"
+    ],
+    "camera_zoom": 1.333,
+    "camera_smooth_pan": 0.1
+  },
+  "ui": {
+    "palette_slots": 6,
+    "budget_bar_flash_low_gold": true,
+    "unit_card_size_px": 72
+  },
+  "_comment": "TABS Lite 全局配置 · 所有数值从推导链导出"
+}
