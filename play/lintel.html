@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>LINTEL 玩法原型 · 承重与塌落</title>
+<!--
+  🔴 这是 throwaway spike(SHIP-QUEUE 纪律:小时级、明确一次性、禁止在它上面做美术打磨)。
+  存在的唯一理由:**塌落在 headless 里证不了好不好看**,得用眼睛看。
+  玩法一行都不在这里 —— 全部 import 自 core/sim.mjs,所以这个页面永远不会与杀线跑的那套逻辑分叉。
+  美术是占位色块,不要在这里投入;真正的表现层是第二周的 Unity view。
+-->
+<style>
+:root{
+  --soil:#2a2018; --soil2:#3a2c20; --ink:#f2ebdd; --muted:#a4967f; --line:#4a3b2c;
+  --panel:#1d1710; --gold:#d8a33f; --ok:#7ea86a; --warn:#c8734a;
+}
+@media (prefers-color-scheme:light){:root{
+  --soil:#e8dcc8; --soil2:#dbcbb0; --ink:#2b231a; --muted:#7a6c56; --line:#c4b193; --panel:#fffdf6;}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--soil);color:var(--ink);
+  font:16px/1.5 ui-rounded,'Hiragino Maru Gothic ProN','PingFang SC',system-ui,sans-serif;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+header{padding:10px 14px 8px;border-bottom:1px solid var(--line)}
+h1{margin:0;font-size:17px;letter-spacing:.04em}
+.sub{color:var(--muted);font-size:13px;margin-top:2px}
+.wrap{max-width:1100px;margin:0 auto;padding:10px 12px 40px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+/* 🔴 elder-contract:可点目标 ≥88px(≈14.6mm)。撤步尤其不能小 —— 误触是常态不是失误。 */
+button{font:inherit;font-size:19px;color:var(--ink);background:var(--panel);
+  border:1px solid var(--line);border-radius:13px;padding:10px 16px;
+  min-height:56px;min-width:88px;cursor:pointer}
+button.big{min-height:88px}
+button:disabled{opacity:.35;cursor:not-allowed}
+button.on{background:var(--gold);color:#241c10;border-color:var(--gold);font-weight:700}
+select{font:inherit;font-size:19px;min-height:56px;background:var(--panel);color:var(--ink);
+  border:1px solid var(--line);border-radius:13px;padding:0 10px}
+/* 探方:宽而浅的断面。地层背景说明「你在往里掏」,不是「从顶上揭」 */
+#trench{position:relative;width:100%;border:1px solid var(--line);border-radius:12px;
+  background:repeating-linear-gradient(180deg,var(--soil2) 0 14px,rgba(0,0,0,.06) 14px 28px);
+  overflow:hidden}
+.brick{position:absolute;display:flex;align-items:center;justify-content:center;
+  border-radius:6px;border:2px solid rgba(0,0,0,.28);font-size:20px;font-weight:700;
+  transition:left .26s cubic-bezier(.3,1.3,.5,1),top .3s cubic-bezier(.45,.05,.55,.95),opacity .18s;
+  user-select:none;color:#1a140c}
+.brick.can{cursor:pointer;box-shadow:0 0 0 2px var(--gold) inset}
+.brick.cant{filter:brightness(.62) saturate(.5)}
+.brick.willfall{outline:3px dashed var(--warn);outline-offset:-4px}
+.brick.gone{opacity:0;transform:scale(.8)}
+.tray{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.slot{width:56px;height:56px;border:2px dashed var(--line);border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#1a140c}
+.slot.empty{background:transparent;color:var(--muted);font-weight:400}
+.msg{margin-top:10px;padding:10px 13px;border:1px solid var(--line);border-radius:11px;
+  background:var(--panel);font-size:22px;min-height:52px}  /* 🔴 铁律:正文 ≥22px */
+.msg.win{border-color:var(--ok);color:var(--ok);font-weight:700}
+.msg.big{color:var(--warn);font-weight:700}
+.stats{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:15px;margin-top:8px}
+code{background:rgba(0,0,0,.25);padding:1px 5px;border-radius:4px;font-size:14px}
+</style>
+</head><body>
+<header>
+  <h1>LINTEL · 承重考古 <span style="color:var(--muted);font-weight:400">玩法原型</span></h1>
+  <div class="sub">从<b>断面侧壁</b>把砖抽出来。金框 = 能拿(侧面露出)。橙色虚线 = 拿了它会塌下来的那些。</div>
+</header>
+<div class="wrap">
+  <div class="bar">
+    <select id="lv"></select>
+    <button id="undo" class="big">↶ 撤一步</button>
+    <button id="put" class="big">↑ 放回一块</button>
+    <button id="peek" class="on">👁 承重预览：开</button>
+    <button id="reset">重来这一关</button>
+  </div>
+
+  <div id="trench"></div>
+
+  <div class="tray" id="tray"></div>
+  <div class="msg" id="msg">点一块金框的砖试试。</div>
+  <div class="stats">
+    <span>步数 <b id="mv">0</b></span>
+    <span>已消 <b id="cl">0</b></span>
+    <span>剩余 <b id="rm">0</b></span>
+    <span>最近一次塌落 <b id="ch">—</b> 块</span>
+    <span>状态哈希 <code id="hs">—</code></span>
+  </div>
+  <div class="stats" style="margin-top:6px">
+    <span>🔴 这是一次性 spike。玩法全部来自 <code>core/sim.mjs</code>,页面里零玩法代码。</span>
+  </div>
+</div>
+
+<script type="module">
+/* ── 内联自 core/sim.mjs ── */
+// ============================================================================
+// LINTEL — deterministic sim core. **引擎无关**(0 处引擎引用),契约同 digfall:
+// 导出 `createSim({levels})` 与 `replayLevel(sim, i) -> {hash,...}`,
+// 供 `clikit-v2/qa/replay-parity.mjs` 落基线。Phaser 原型与 Unity view 层共用本文件。
+//
+// ══ 这一款的论点,写成代码就是下面这一行 ══
+//
+//   Vita Mahjong 的自由判定是「未被覆盖」——**纯静态的覆盖查询**(拆解卷宗 A1)。
+//   本作把**同一个关系**同时用作**承重关系**:
+//
+//     covered(b)   := 有砖占据 (x, y+1) 或 (x+1, y+1)      → 不能拿
+//     supported(b) := y==0 或 有砖占据 (x, y-1) 或 (x+1, y-1) → 不会掉
+//
+//   压着你的那块正是你在撑着的那块。拿走一块 → 它撑着的失去支撑 → 落下 → 连锁。
+//   所以消除不是「移除」,是**物理事件**,棋盘每一步自演化。
+//   原版的架构在结构上表达不了这个:它的覆盖关系没有下游后果。
+//
+// ══ 砖是 2 宽的,这不是美术选择 ══
+//
+//   1 格的块堆成的柱子里,每块只压着正下方那一块 —— 承重图退化成 W 条独立链,
+//   没有「谁在撑着上面那堆」可读。2 宽让一块可以同时撑两块、也可以被两块分担,
+//   承重图才是真的图。**这是「结构」与「装饰」的分界线**,由 evaluate.mjs 的
+//   `load-bearing` 逐关验:每关必须存在一块,拿走它引发 ≥3 块连锁。
+//
+// ══ 🔴 为什么这里没有失败态,而且不是靠「关掉」失败态做到的 ══
+//
+//   45–70 铁律要求无失败、无重来、随时撤步。而塌落是不可逆的物理事件。
+//   两者的共存**不在 UI 层解决**(那会让 undo 变成万能药,把「读结构」这件事
+//   一起废掉),而在**规则层**解决:
+//
+//     覆盖关系严格 y 递减 ⇒ 覆盖图无环 ⇒ 永远可以从顶上逐层剥
+//     ⇒ 任何砖在有限步后必然变为自由 ⇒ **没有任何塌落能把一关变成死局**
+//
+//   重力落定保证了「严格 y 递减」这个前提(砖只会往下走,不会横插到别人下面)。
+//   于是 undo 从「救命稻草」降级为「点错了的礼貌」——它不再承重。
+//   🔴 但这是**定理**,不是**实现**。实现可能违反前提(比如塌落写出了横插)。
+//   所以 evaluate.mjs 不信这段推理,它去**实证搜反例**,并且带红对照证明搜得到。
+// ============================================================================
+
+const TRAY_CAP = 7;
+const MATCH_N = 3;
+
+/** 面向关卡生成的确定性 RNG(sim 本体运行时不用随机数)。 */
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * 格子键。**带层号 z** —— 探方是有深度的。
+ *
+ * ══ 🔴 为什么必须有深度(2026-08-13 的第三次订正)══
+ *
+ * 触控下限 84px 把竖屏的板锁死在 W≤9 / H≤6,而那么小的板**装不下谜题**:
+ * 实测 16 块砖里 15 块随时可拿(92%),`kinds` 从 3 加到 8 对贪心步数**零影响**
+ * (16 步通关,六档数字一模一样)—— 因为你能看到并够到几乎所有东西,不需要读任何结构。
+ *
+ * 绑定量是**可拿占比**,压低它要靠密度;而密度在固定屏幕上只有一条轴不吃屏幕面积:**深度**。
+ * D=3 时总砖数 ~72(与 tile-match 头部产品同量级),可拿占比落到 ~13%。
+ *
+ * 深度也正是这个题材本来的样子:探方是**往里挖**的,你看得见后面那层,但够不着。
+ */
+const key = (x, y, z = 0) => z * 65536 + y * 1024 + x;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 棋盘。纯数据 + 纯函数,方便求解器把它当值来用(clone/hash/比较)。
+// ─────────────────────────────────────────────────────────────────────────────
+function createBoard({ W, H, D = 1, bricks }) {
+  return {
+    W, H, D,
+    // bricks: [{id, x, y, kind, alive}]
+    bricks: bricks.map((b) => ({ ...b })),
+  };
+}
+
+function cloneBoard(bd) {
+  return { W: bd.W, H: bd.H, D: bd.D || 1, bricks: bd.bricks.map((b) => ({ ...b })) };
+}
+
+/** 占用表:按 (x, y, z) 索引。同层的砖才互相碰撞。 */
+function occupancy(bd) {
+  const occ = new Map();
+  for (const b of bd.bricks) {
+    if (!b.alive) continue;
+    occ.set(key(b.x, b.y, b.z | 0), b.id);
+    occ.set(key(b.x + 1, b.y, b.z | 0), b.id);
+  }
+  return occ;
+}
+
+/** 屏幕占用:忽略 z,记下每个屏幕格**最靠前**(z 最小)的砖 —— 遮挡判定用它。 */
+function frontMost(bd) {
+  const front = new Map();
+  for (const b of bd.bricks) {
+    if (!b.alive) continue;
+    for (const x of [b.x, b.x + 1]) {
+      const k = key(x, b.y);
+      const cur = front.get(k);
+      if (cur === undefined || (b.z | 0) < cur.z) front.set(k, { id: b.id, z: b.z | 0 });
+    }
+  }
+  return front;
+}
+
+/**
+ * 被挡住:同一个屏幕格上有更靠前的层压着它。挡住 = 够不着 = 不能拿。
+ * 🔴 遮挡关系严格 z 递减 ⇒ 无环 ⇒ 永远能从最前层往里剥,
+ *    所以加了深度**不会**引入新的死局来源。这条仍由 evaluate 的猎手实证,不靠这段话。
+ */
+function blocked(bd, b, front = frontMost(bd)) {
+  for (const x of [b.x, b.x + 1]) {
+    const f = front.get(key(x, b.y));
+    if (f && f.z < (b.z | 0)) return true;
+  }
+  return false;
+}
+
+/**
+ * 🔴 棋盘不变式:**任何一格最多被一块活砖占据。**
+ *
+ * 为什么必须显式查:`occupancy()` 用 Map,同一格被两块砖写就是**后写覆盖先写** ——
+ * 于是其中一块对碰撞与支撑判定**完全隐形**,棋盘悄悄变成非法状态而不报任何错。
+ * 实测代价:第一周的 12 关里有 7 关带重叠砖(合计 16 个格),
+ * 而杀线在那些棋盘上照样判了 12/12 绿 —— 一道对着非法输入判绿的门,
+ * 比没有门更坏(`clikit-gates-green-on-unmeasurable-input` 的原样重演)。
+ *
+ * 返回冲突清单(空 = 合法)。**不抛异常** —— 让调用方决定是判红还是修。
+ */
+function boardConflicts(bd) {
+  const seen = new Map();
+  const bad = [];
+  for (const b of bd.bricks) {
+    if (!b.alive) continue;
+    if (b.x < 0 || b.x + 1 > bd.W - 1 || b.y < 0 || b.y > bd.H - 1) {
+      bad.push({ kind: 'oob', brick: b.id, x: b.x, y: b.y });
+      continue;
+    }
+    for (const x of [b.x, b.x + 1]) {
+      const k = key(x, b.y, b.z | 0);          // 冲突是**同层**同格,不同层重叠是正常的(那是深度)
+      if (seen.has(k)) bad.push({ kind: 'overlap', cell: [x, b.y, b.z | 0], a: seen.get(k), b: b.id });
+      else seen.set(k, b.id);
+    }
+  }
+  return bad;
+}
+
+/** 支撑:落在基岩上,或正下方两格中任一格有砖。 */
+function supported(bd, b, occ = occupancy(bd)) {
+  if (b.y === 0) return true;
+  const z = b.z | 0;
+  return occ.has(key(b.x, b.y - 1, z)) || occ.has(key(b.x + 1, b.y - 1, z));
+}
+
+/** 覆盖:正上方两格中任一格有砖。**保留它是为了描述承重,不再用它判可拿。** */
+function covered(bd, b, occ = occupancy(bd)) {
+  const z = b.z | 0;
+  const a = occ.get(key(b.x, b.y + 1, z));
+  const c = occ.get(key(b.x + 1, b.y + 1, z));
+  return (a !== undefined && a !== b.id) || (c !== undefined && c !== b.id);
+}
+
+/**
+ * 🔴 可拿 = **侧面露出**(左边或右边同一行是空的 / 是边界),不是「未被覆盖」。
+ *
+ * ══ 为什么改掉「未被覆盖」——这是本款第一周最贵的一个发现 ══
+ *
+ * 第一版照搬 Vita Mahjong 的自由判定「未被覆盖」,扫描出来**每一种结构参数下
+ * 最大连锁都是 0**。那不是关卡没堆好,是一条定理:
+ *
+ *   砖 b 在 (x,y)。任何被 b 支撑的砖 a 必然在 y+1 且与 b 横向重叠,
+ *   而横向重叠 + 高一行 ⟺ a 覆盖 b。∴ 被 b 撑着 ⇒ 覆盖 b。
+ *   逆否:b 未被覆盖 ⇒ b 什么都没撑着 ⇒ 拿走 b 零后果。
+ *
+ * 也就是说**「未被覆盖才能拿」和「拿走会引发塌落」在数学上互斥** ——
+ * 沿用麻将的判定,承重就永远只能是装饰。这正是立项要证的那条差异,
+ * 而它在第一版实现里是**不成立的**。(穷举验证见 FINDINGS.md §2)
+ *
+ * 改成侧面露出之后,一块砖可以**一边扛着上面那堆、一边露着侧脸**——
+ * 于是「从探方壁面把它抽出来,上面的塌下来」成立。这也是真实考古探方与叠叠乐的样子:
+ * 你不是从顶上揭,你是**从断面往里掏**。
+ */
+function exposed(bd, b, occ = occupancy(bd)) {
+  const z = b.z | 0;
+  const leftFree = b.x - 1 < 0 || !occ.has(key(b.x - 1, b.y, z));
+  const rightFree = b.x + 2 > bd.W - 1 || !occ.has(key(b.x + 2, b.y, z));
+  return leftFree || rightFree;
+}
+
+/** 能拿 = **同层侧面露出** 且 **前面没有层压着**。 */
+function freeBricks(bd) {
+  const occ = occupancy(bd);
+  const front = frontMost(bd);
+  return bd.bricks.filter((b) => b.alive && exposed(bd, b, occ) && !blocked(bd, b, front));
+}
+
+/**
+ * 重力落定到不动点。返回**移动过的砖数**(= 连锁塌落规模)。
+ * 自底向上处理:低的砖先落,高的砖不会穿过它。
+ * 🔴 未被支撑 ⟺ 正下方两格都空 ⟺ 可以下落一格 —— 所以这里不需要额外的碰撞检查,
+ *    支撑判定本身就是碰撞判定。两者写成同一个谓词,省掉了「支撑说能落、碰撞说不能」
+ *    这一类不一致的整类 bug。
+ */
+function settle(bd) {
+  const movedIds = new Set();
+  let moved = true;
+  let guard = 0;
+  const budget = bd.H * bd.bricks.length + 64;
+  while (moved) {
+    moved = false;
+    if (++guard > budget) throw new Error('settle 不收敛 —— 重力规则有环');
+    const occ = occupancy(bd);
+    // 每一层各自落定(同层才互相支撑)。排序里带上 z,保证遍历顺序确定。
+    const order = bd.bricks.filter((b) => b.alive)
+      .sort((a, b) => a.y - b.y || (a.z | 0) - (b.z | 0) || a.x - b.x);
+    for (const b of order) {
+      if (supported(bd, b, occ)) continue;
+      const z = b.z | 0;
+      occ.delete(key(b.x, b.y, z));
+      occ.delete(key(b.x + 1, b.y, z));
+      b.y -= 1;
+      occ.set(key(b.x, b.y, z), b.id);
+      occ.set(key(b.x + 1, b.y, z), b.id);
+      movedIds.add(b.id);
+      moved = true;
+    }
+  }
+  return movedIds.size;
+}
+
+/**
+ * 一次「拿走」的后果预演(不改原棋盘):**哪些砖会动**,以及动了几块。
+ * 🔴 UI 的「承重预览」必须走这里,不许自己再写一份重力 ——
+ *    预览与真实结算一旦分叉,玩家看到的橙色虚线就是假的,而这种假是最难发现的一类。
+ */
+function collapsePreview(bd, brickId) {
+  const t = cloneBoard(bd);
+  const b = t.bricks.find((k) => k.id === brickId);
+  if (!b || !b.alive) return { count: 0, movedIds: [] };
+  const before = new Map(t.bricks.filter((k) => k.alive).map((k) => [k.id, k.y]));
+  b.alive = false;
+  const count = settle(t);
+  const movedIds = t.bricks.filter((k) => k.alive && before.get(k.id) !== k.y).map((k) => k.id);
+  return { count, movedIds };
+}
+
+/** 一次「拿走」的后果预演(不改原棋盘):返回连锁塌落的砖数。 */
+function collapseSizeIfTaken(bd, brickId) {
+  return collapsePreview(bd, brickId).count;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FNV-1a 状态哈希。replay-parity 靠它逐关比对;跨引擎要逐位一致,所以只吃整数。
+// ─────────────────────────────────────────────────────────────────────────────
+function fnv1a(h, b) { h ^= b & 0xff; return Math.imul(h, 0x01000193) >>> 0; }
+function fnvInt(h, n) {
+  let v = n | 0;
+  for (let i = 0; i < 4; i++) { h = fnv1a(h, v & 0xff); v >>>= 8; }
+  return h;
+}
+
+/** tray 是**砖 id 数组**(不是种类数组)—— putBack 要把「具体哪一块」放回去。 */
+function hashState(bd, tray, cleared) {
+  let h = 0x811c9dc5 >>> 0;
+  // 顺序无关性靠 id 排序保证 —— bricks 数组顺序不许影响哈希
+  const alive = bd.bricks.filter((b) => b.alive).sort((a, b) => a.id - b.id);
+  h = fnvInt(h, alive.length);
+  for (const b of alive) { h = fnvInt(h, b.id); h = fnvInt(h, b.x); h = fnvInt(h, b.y); h = fnvInt(h, b.z | 0); h = fnvInt(h, b.kind); }
+  h = fnvInt(h, tray.length);
+  for (const k of [...tray].sort((a, b) => a - b)) h = fnvInt(h, k);
+  return fnvInt(h, cleared) >>> 0;
+}
+
+/**
+ * 放回时的落点:目标列(x, x+1)当前最高占用行 + 1。
+ * 🔴 不能直接放 y=H-1 —— 那一格可能已经有砖,两块砖占同一格会让占用表互相覆盖,
+ *    而占用表是支撑判定的唯一依据,于是「支撑」会开始读到错的答案。
+ *    这类 bug 不会崩,只会让物理悄悄变错,所以宁可在这里算准落点。
+ *    返回 -1 表示这一列已经顶到天花板,放不回去。
+ */
+function dropRow(bd, x, z = 0) {
+  const occ = occupancy(bd);
+  let top = -1;
+  for (let y = 0; y < bd.H; y++) if (occ.has(key(x, y, z)) || occ.has(key(x + 1, y, z))) top = y;
+  return top + 1 <= bd.H - 1 ? top + 1 : -1;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// sim 本体
+// ─────────────────────────────────────────────────────────────────────────────
+function createSim({ levels, hooks = {} }) {
+  let bd = null, tray = [], cleared = 0, levelIdx = -1;
+  let history = [];          // 撤步栈:每项是**动作之前**的完整快照
+  let moveLog = [];          // 只记动作,供 replay 重算(与快照互为交叉验证)
+
+  function snapshot() {
+    return { bd: cloneBoard(bd), tray: [...tray], cleared };
+  }
+  function restore(s) {
+    bd = cloneBoard(s.bd); tray = [...s.tray]; cleared = s.cleared;
+  }
+
+  function loadLevel(i) {
+    const L = levels[i];
+    if (!L) throw new Error(`没有第 ${i} 关`);
+    levelIdx = i;
+    // 🔴 D 必须一起带进来。漏了它棋盘会退化成 D=1,而砖上的 z 还在 ——
+    //    玩法照跑(判定只看每块砖的 z),但任何按 D 算的东西(渲染留白、层数 HUD)都会算错。
+    bd = createBoard({ W: L.W, H: L.H, D: L.D || 1, bricks: L.bricks });
+    settle(bd);                 // 关卡数据可以是「未落定」的,由 sim 统一落定
+    tray = []; cleared = 0; history = []; moveLog = [];
+    hooks.onLevel?.(i);
+    return api;
+  }
+
+  const kindOf = (id) => bd.bricks.find((b) => b.id === id).kind;
+
+  /** 托盘满 3 同类即清除。返回清掉的组数。 */
+  function resolveTray() {
+    let groups = 0;
+    for (;;) {
+      const count = new Map();
+      for (const id of tray) { const k = kindOf(id); count.set(k, (count.get(k) || 0) + 1); }
+      let hit = -1;
+      for (const [k, n] of [...count.entries()].sort((a, b) => a[0] - b[0])) if (n >= MATCH_N) { hit = k; break; }
+      if (hit < 0) break;
+      let rm = MATCH_N;
+      for (let i = tray.length - 1; i >= 0 && rm > 0; i--) if (kindOf(tray[i]) === hit) { tray.splice(i, 1); rm--; }
+      cleared += MATCH_N; groups++;
+      hooks.onClear?.(hit);
+    }
+    return groups;
+  }
+
+  const api = {
+    get levelIndex() { return levelIdx; },
+    get board() { return bd; },
+    get tray() { return [...tray]; },
+    get cleared() { return cleared; },
+    get moves() { return moveLog.length; },
+    get moveLog() { return [...moveLog]; },
+    loadLevel,
+    snapshot,
+    hash: () => hashState(bd, tray, cleared),
+    free: () => freeBricks(bd),
+    done: () => bd.bricks.every((b) => !b.alive) && tray.length === 0,
+    canTake(id) {
+      if (tray.length >= TRAY_CAP) return false;
+      const b = bd.bricks.find((k) => k.id === id);
+      return !!b && b.alive && exposed(bd, b);
+    },
+
+    /** 拿走一块自由砖 → 落定 → 结算托盘。返回 {ok, collapsed, groups}。 */
+    take(id) {
+      if (!api.canTake(id)) return { ok: false, collapsed: 0, groups: 0 };
+      history.push(snapshot());
+      moveLog.push({ take: id });
+      const b = bd.bricks.find((k) => k.id === id);
+      b.alive = false;
+      tray.push(b.id);
+      const collapsed = settle(bd);
+      const groups = resolveTray();
+      hooks.onTake?.(id, collapsed);
+      return { ok: true, collapsed, groups };
+    },
+
+    /**
+     * 放回:把托盘里的一块**放回土堆顶上**(落回它原来的那一列,再落定)。
+     *
+     * 🔴 这个动作不是便利功能,是**铁律的承重件**。
+     *    托盘 7 格。装满 7 个互不成对的种类之后,`take` 全部非法 —— 那就是
+     *    消除类的经典卡死,而 45–70 铁律明确禁止「无路可走」。
+     *    靠 undo 逃出去不算数:被迫撤步在体验上就是失败态,只是换了个名字。
+     *    所以卡死必须在**规则层**不存在:托盘非空时 `putBack` 永远合法,
+     *    于是「托盘满且无对」永远有出路。
+     *    红对照 `no-putback` 会把它关掉,求解器必须当场搜到卡死状态 —— 那证明
+     *    这道保险不是摆设,而是真的在挡一个存在的死法。
+     */
+    canPutBack(slot = tray.length - 1) {
+      if (slot < 0 || slot >= tray.length) return false;
+      const b = bd.bricks.find((k) => k.id === tray[slot]);
+      return dropRow(bd, b.x, b.z | 0) >= 0;   // 放回原来那一层
+    },
+    putBack(slot = tray.length - 1) {
+      if (!api.canPutBack(slot)) return { ok: false, collapsed: 0 };
+      history.push(snapshot());
+      moveLog.push({ putBack: slot });
+      const b = bd.bricks.find((k) => k.id === tray[slot]);
+      tray.splice(slot, 1);
+      // 🔴 落点必须在**复活之前**算 —— 先 alive=true 的话,b 会以它的旧 y
+      //    出现在占用表里,dropRow 就把自己算进了「堆顶」。
+      const y = dropRow(bd, b.x, b.z | 0);
+      b.alive = true;
+      b.y = y;                     // 落在原来那一列的堆顶,再让重力接手
+      const collapsed = settle(bd);
+      hooks.onPutBack?.(b.id);
+      return { ok: true, collapsed };
+    },
+
+    /**
+     * 撤步。**恢复快照**,不是重放 —— 故意的:
+     * 重放实现的 undo 天然正确(它就是同一次计算),测它等于什么都没测。
+     * 快照实现会因为漏拷一个字段而错,而 evaluate.mjs 的 `reversible` 正是
+     * 拿「快照恢复」与「从头重放」逐位对哈希,让漏拷当场变红。
+     */
+    undo() {
+      if (!history.length) return false;
+      restore(history.pop());
+      moveLog.pop();
+      hooks.onUndo?.();
+      return true;
+    },
+    get canUndo() { return history.length > 0; },
+  };
+  return api;
+}
+
+/**
+ * 确定性重放:用一条**固定策略**把一关打到底,返回终局哈希。
+ * 策略必须无随机、无时间依赖 —— replay-parity 的基线就是它的输出。
+ *
+ * 🔴 第一版策略(「能凑 3 的优先,否则连锁最大」)在第 0 关就 7 步卡死:
+ *    托盘 7 格装了 2/2/2/1 四个种类,一个三连都凑不齐。**那不是策略调参失败,
+ *    是这一款真的存在托盘死锁** —— 也正是 `putBack` 存在的理由。
+ *    所以这里改成「只拿**当前真能凑齐三连**的那些种类」,并在托盘满时用 putBack 让路。
+ */
+function replayLevel(sim, idx, { maxMoves = 4000 } = {}) {
+  sim.loadLevel(idx);
+  let steps = 0;
+  // 🔴 环检测。take/putBack 可以互为逆操作,策略会在两个状态之间反复横跳。
+  //    没有这一条,基线会是「跑满 4000 步」这种既不是通关也不是卡死的假数字。
+  const seen = new Set();
+  let stalled = false;
+  // 🔴 基线必须吃**整条轨迹**,不能只吃终局。
+  //    终局永远是「棋盘空、托盘空、cleared=砖数」,所以砖数相同的两关终局哈希必然相同
+  //    (实测 L4/L5、L7/L8、L9/L10 三对撞了)。那样的基线对「玩法改了但仍能通关」
+  //    完全失明 —— 正是 `clikit-regression-test-false-green` 那一类。
+  let chain = 0x811c9dc5 >>> 0;
+  const mix = (n) => { let v = n >>> 0; for (let i = 0; i < 4; i++) { chain ^= v & 0xff; chain = Math.imul(chain, 0x01000193) >>> 0; v >>>= 8; } };
+  while (!sim.done() && steps < maxMoves) {
+    const h = sim.hash();
+    mix(h);
+    if (seen.has(h)) { stalled = true; break; }
+    seen.add(h);
+    const kindById = new Map(sim.board.bricks.map((b) => [b.id, b.kind]));
+    const inTray = new Map();
+    for (const id of sim.tray) { const k = kindById.get(id); inTray.set(k, (inTray.get(k) || 0) + 1); }
+    const free = sim.free().filter((b) => sim.canTake(b.id));
+
+    if (!free.length) {
+      // 没牌可拿:托盘满就放回一块(挑托盘里**同类最少**的那块,最不可能马上用到)
+      if (!sim.tray.length) break;
+      let slot = -1, worst = Infinity;
+      for (let i = 0; i < sim.tray.length; i++) {
+        const n = inTray.get(kindById.get(sim.tray[i])) || 0;
+        if (n < worst && sim.canPutBack(i)) { worst = n; slot = i; }
+      }
+      if (slot < 0 || !sim.putBack(slot).ok) break;
+      steps++;
+      continue;
+    }
+
+    // 每个种类当前「够不够凑齐一组三连」= 场上自由的 + 托盘里的
+    const freeByKind = new Map();
+    for (const b of free) freeByKind.set(b.kind, (freeByKind.get(b.kind) || 0) + 1);
+
+    let best = null, bestScore = null;
+    for (const b of free) {
+      const held = inTray.get(b.kind) || 0;
+      const assemblable = held + (freeByKind.get(b.kind) || 0) >= MATCH_N ? 1 : 0;
+      const completes = held === MATCH_N - 1 ? 1 : 0;
+      const chain = collapseSizeIfTaken(sim.board, b.id);
+      // 凑得齐的优先;都凑不齐时挑连锁最大的,靠塌落把新的砖翻上来
+      const score = [completes, assemblable, held, chain, -b.id];
+      if (!bestScore || cmp(score, bestScore) > 0) { bestScore = score; best = b; }
+    }
+    if (!sim.take(best.id).ok) break;
+    steps++;
+  }
+  mix(sim.hash());
+  mix(steps);
+  return { hash: chain >>> 0, terminalHash: sim.hash(), moves: steps, done: sim.done(), cleared: sim.cleared, stalled };
+}
+
+/**
+ * 规则容量探针 —— 回答一个比「难度曲线」更靠前的问题:
+ * **在这套结构参数下,三连到底凑不凑得起来?**
+ * 记忆 `clikit-rule-capacity-before-difficulty-curve` 就是这条:
+ * 先测规则容量,再谈难度曲线;顺序反了会把「规则根本跑不动」误判成「难度太高」。
+ *
+ * 返回同时自由的砖数(峰值/均值)与自由砖里**同类成对**的机会 —— 这两个数决定
+ * 托盘 7 格够不够用。
+ */
+function measureCapacity(sim, idx, { maxMoves = 600 } = {}) {
+  sim.loadLevel(idx);
+  const freeCounts = [];
+  let sameKindOpportunities = 0, steps = 0;
+  const seen = new Set();
+  while (!sim.done() && steps < maxMoves) {
+    const h = sim.hash();
+    if (seen.has(h)) break;
+    seen.add(h);
+    const free = sim.free();
+    freeCounts.push(free.length);
+    const byKind = new Map();
+    for (const b of free) byKind.set(b.kind, (byKind.get(b.kind) || 0) + 1);
+    if ([...byKind.values()].some((n) => n >= 2)) sameKindOpportunities++;
+    if (!free.length) break;
+    const pick = free.filter((b) => sim.canTake(b.id))[0];
+    if (!pick) break;
+    sim.take(pick.id);
+    steps++;
+  }
+  const avg = freeCounts.length ? freeCounts.reduce((a, b) => a + b, 0) / freeCounts.length : 0;
+  return {
+    steps,
+    avgFree: +avg.toFixed(2),
+    maxFree: freeCounts.length ? Math.max(...freeCounts) : 0,
+    pairChancePct: freeCounts.length ? Math.round((sameKindOpportunities / freeCounts.length) * 100) : 0,
+  };
+}
+
+function cmp(a, b) {
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
+  return 0;
+}
+
+/* ── 内联自 core/levels.mjs ── */
+// ============================================================================
+// LINTEL 关卡。**这里只声明结构,不声明难度。**
+//
+// 本仓的前科记在 `clikit-gates-green-on-unmeasurable-input`:
+// 手填 difficulty 再让门去读它,判绿只证明「我会写数字」。
+// 所以每一关只写 (W, H, D, 砖数, 种类数, 种子),棋盘由确定性生成器堆出来,
+// 承重结构 / 连锁规模 / 死局率全部由 proto/evaluate.mjs 从**堆出来的结果**算。
+// 想让曲线爬,只能真的去改结构参数,改不动数字。
+// ============================================================================
+
+/**
+ * 确定性堆料:一块一块投下,落定后再投下一块 —— 与玩家看到的物理同一套规则。
+ *
+ * 三条踩过的坑,都焊在下面:
+ * ① **落点必须问 `dropRow`**,不能一律放 y=H-1。旧写法在已堆到顶的列上照样放,
+ *    两块砖占同一格,而 `occupancy` 是 Map、后写覆盖先写 —— 其中一块对碰撞判定隐形。
+ *    实测第一周 12 关里 **7 关**中招,而杀线照样判 12/12 绿。
+ * ② **满列要换列,不是整关收工**。旧写法板还远没满就提前停,
+ *    请求 15→33 块只拿到 15,12,18,15,… 第 2 关比第 1 关还少,难度曲线根本没在爬。
+ * ③ **种类分配用数组下标,不能用砖 id**。层轮转时某层放不下会跳过,
+ *    id 于是出现空洞,再拿 id 当下标就会写到 undefined 上。
+ *
+ * 种类**在堆完之后**才发,严格按 3 的倍数 —— 「计数可解」是构造出来的,不是运气。
+ */
+function generateLevel({ W, H, D = 1, count, kinds, seed }) {
+  if (count % 3 !== 0) throw new Error(`砖数必须是 3 的倍数,给的是 ${count}`);
+  const rng = mulberry32(seed);
+  const bricks = [];
+  for (let i = 0; i < count; i++) {
+    const z = i % D;                          // 层号轮转,各层填得均匀
+    const bd = createBoard({ W, H, D, bricks });
+    const cand = [];
+    for (let x = 0; x <= W - 2; x++) {
+      const y = dropRow(bd, x, z);
+      if (y >= 0) cand.push({ x, y });
+    }
+    if (!cand.length) continue;               // 这一层满了,让别的层继续(坑②)
+    // 偏向堆得最低的几列,把板真正填满;留 +2 容差是故意的 ——
+    // 堆得齐整就没有悬挑,而悬挑正是承重结构的来源(全平的板 maxChain 会掉下去)
+    const lo = Math.min(...cand.map((c) => c.y));
+    const pool = cand.filter((c) => c.y <= lo + 2);
+    const pick = pool[Math.floor(rng() * pool.length)];
+    bricks.push({ id: bricks.length, x: pick.x, y: pick.y, z, kind: 0, alive: true });
+  }
+
+  {
+    const bd = createBoard({ W, H, D, bricks });
+    settle(bd);
+    for (let k = 0; k < bricks.length; k++) bricks[k].y = bd.bricks[k].y;
+  }
+
+  // 板可能装不下请求的块数,截到 3 的倍数;id 随之重排成连续的 0..n-1
+  const n = bricks.length - (bricks.length % 3);
+  if (!n) throw new Error(`W=${W} H=${H} D=${D} 放不下任何砖`);
+  bricks.length = n;
+  bricks.forEach((b, k) => { b.id = k; });
+
+  // 种类按 3 张一组发,再确定性洗牌 —— 洗的是**下标**,不是 id(坑③)
+  const idx = bricks.map((_, k) => k);
+  for (let i = idx.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [idx[i], idx[j]] = [idx[j], idx[i]];
+  }
+  for (let i = 0; i < idx.length; i++) bricks[idx[i]].kind = Math.floor(i / 3) % kinds;
+
+  const out = { W, H, D, bricks };
+  const chk = createBoard(out); settle(chk);
+  const bad = boardConflicts(chk);
+  if (bad.length) throw new Error(`生成器产出非法棋盘:${bad.length} 处冲突,首例 ${JSON.stringify(bad[0])}`);
+  return out;
+}
+
+/**
+ * 🔴 关卡形状的三次订正,每一次都是被实测推翻的,不是改主意:
+ *
+ * ① **宽而浅**(第一周)—— 因为窄板自由面只有 2–5 块,凑不齐三连。
+ *    ⚠️ 但那次用的是**已被推翻的旧规则**(「未被覆盖」判自由)。
+ * ② **窄而高**(8-13)—— `ui-floor-gate` 触控下限 **84 CSS px(14mm)**,
+ *    砖宽 = 2×屏宽/W、砖高 = (屏高−UI)/H,iPhone 竖屏 390×844 留 300 给 UI
+ *    ⇒ **W ≤ 9 且 H ≤ 6**。第一周的 W=32 只有 24px 宽,差 3.5 倍。
+ *    换成侧面露出后重测,窄板的自由面来自**堆的周长**,完全够用。
+ * ③ **加深度 D**(8-13)—— ②那么小的板**装不下谜题**:16 块里 15 块随时可拿(92%),
+ *    `kinds` 从 3 加到 8 对贪心步数**零影响**。绑定量是「可拿占比」,
+ *    而压低它只有一条轴不吃屏幕面积:**深度**。
+ *
+ * 竖屏砖尺寸(390×844,留 300):W=8 → 98px 宽 · W=9 → 87px · H=5 → 109px · H=6 → 91px。
+ * 内容深度靠**关数 + 层数**,不靠板面(卷宗 §4.2:Jigsaw Drop 1,029 关也是小板)。
+ */
+const LEVEL_SPECS = [
+  { W: 8, H: 5, D: 2, count: 24, kinds: 4, seed: 20260812 },
+  { W: 8, H: 5, D: 2, count: 30, kinds: 4, seed: 20260813 },
+  { W: 8, H: 6, D: 2, count: 36, kinds: 5, seed: 20260814 },
+  { W: 8, H: 6, D: 3, count: 42, kinds: 5, seed: 20260815 },
+  { W: 9, H: 6, D: 3, count: 48, kinds: 5, seed: 20260816 },
+  { W: 9, H: 6, D: 3, count: 54, kinds: 6, seed: 20260817 },
+  { W: 8, H: 6, D: 3, count: 54, kinds: 6, seed: 20260818 },
+  { W: 9, H: 6, D: 4, count: 60, kinds: 6, seed: 20260819 },
+  { W: 8, H: 6, D: 4, count: 60, kinds: 7, seed: 20260820 },
+  { W: 9, H: 6, D: 4, count: 66, kinds: 7, seed: 20260821 },
+  { W: 8, H: 6, D: 4, count: 66, kinds: 7, seed: 20260822 },
+  { W: 9, H: 6, D: 4, count: 72, kinds: 8, seed: 20260823 },
+];
+
+const LEVELS = LEVEL_SPECS.map(generateLevel);
+
+/* ── 页面 ── */
+
+// 占位色 —— 只为区分种类,不是美术方案(spike 纪律:不在这上面做美术)
+const PALETTE = ['#d8a33f','#7ea86a','#c8734a','#6f9ec4','#b38ac4','#d9c46a','#8fbfae','#c98fa0'];
+const GLYPH   = ['◆','●','▲','■','✦','⬟','✚','◗'];
+
+const sim = createSim({ levels: LEVELS });
+const $ = (id) => document.getElementById(id);
+let peek = true, lastChain = 0, hoverId = -1;
+const els = new Map();   // 砖 id → DOM 元素,跨帧复用(见 render 里那段说明)
+
+function resetEls() { els.forEach((e) => e.remove()); els.clear(); }
+
+const lvSel = $('lv');
+LEVELS.forEach((L, i) => {
+  const o = document.createElement('option');
+  o.value = i; o.textContent = `第 ${i + 1} 关 · ${L.W}×${L.H} · ${L.bricks.length} 块`;
+  lvSel.appendChild(o);
+});
+
+function load(i) { sim.loadLevel(i); lastChain = 0; hoverId = -1; resetEls(); render(); }
+
+/**
+ * 🔴 格子尺寸必须**同时**受宽和高约束。只按宽算的话,W=16 的关在桌面上得到 91px 的格子,
+ *    棋盘高 736px,把托盘和消息条整个挤出首屏 —— 而托盘是这一款的核心读数之一。
+ *    留 320px 给工具条/托盘/消息/统计。
+ */
+function cellSize(bd) {
+  // 🔴 必须量**父容器**的宽,不能量 trench 自己 —— render 会给 trench 设 style.width,
+  //    下一帧再读它的 clientWidth 就读到了上一关留下的宽度,于是每换一次更宽的关棋盘就缩一圈。
+  //    实测:第 10 关(W=28)拿到 448px 的可用宽 → 格子 16px → 砖挤成一团看不清。
+  const w = ($('trench').parentElement?.clientWidth || 900) - 4;
+  const hBudget = Math.max(220, (window.innerHeight || 800) - 320);
+  return Math.max(12, Math.min(Math.floor(w / bd.W), Math.floor(hBudget / bd.H)));
+}
+
+function render() {
+  const bd = sim.board;
+  const cs = cellSize(bd);
+  const trench = $('trench');
+  const padPx = Math.round(cs * 0.12) * ((bd.D || 1) - 1);
+  trench.style.height = `${cs * bd.H + padPx}px`;
+  // 高度受限时格子会变小,棋盘就窄于容器 —— 居中,免得探方黏在左边看着像没画完
+  trench.style.width = `${cs * bd.W + padPx}px`;
+  trench.style.margin = '0 auto';
+
+  const canTake = new Set(freeBricks(bd).filter((b) => sim.canTake(b.id)).map((b) => b.id));
+  // 承重预览:那一块拿走之后哪些砖会动 —— 由 sim 算,页面不复制重力逻辑
+  const willFall = new Set(
+    peek && hoverId >= 0 && canTake.has(hoverId) ? collapsePreview(bd, hoverId).movedIds : [],
+  );
+
+  // 🔴 **复用 DOM 元素,不许每帧 innerHTML=''**。
+  //    重建元素会让新元素直接出现在终点上,CSS transition 根本不触发 —— 塌落变成"瞬移"。
+  //    而"塌得好不好看"正是这个 spike 唯一存在的理由,清空重建等于把它要证的东西删掉了。
+  const live = new Set();
+  for (const b of bd.bricks) {
+    if (!b.alive) continue;
+    live.add(String(b.id));
+    let el = els.get(b.id);
+    if (!el) {
+      el = document.createElement('div');
+      el.dataset.id = b.id;               // 面板探针靠它精确点到某一块,不靠像素坐标
+      el.dataset.kind = b.kind;
+      el.style.background = PALETTE[b.kind % PALETTE.length];
+      el.textContent = GLYPH[b.kind % GLYPH.length];
+      el.onpointerenter = () => { if (sim.canTake(b.id)) { hoverId = b.id; render(); } };
+      el.onpointerleave = () => { if (hoverId === b.id) { hoverId = -1; render(); } };
+      // 🔴 用 pointerup 而不是 pointerdown/isDown 轮询(clikit-tap-pointerup-not-isdown-poll)
+      el.onpointerup = () => doTake(b.id);
+      trench.appendChild(el);
+      els.set(b.id, el);
+    }
+    // 深度:越靠后越往左上偏、越暗、层级越低 —— 看得见但够不着,像真的探方断面
+    const z = b.z | 0;
+    const step = Math.round(cs * 0.12);
+    // 整体右下平移 (D-1)*step,免得最深的层偏出画布左上角
+    const pad = step * ((bd.D || 1) - 1);
+    const off = pad - step * z;
+    const takeable = canTake.has(b.id);
+    el.className = 'brick ' + (takeable ? 'can' : 'cant') + (willFall.has(b.id) ? ' willfall' : '');
+    el.style.left = `${b.x * cs + off}px`;
+    el.style.top = `${(bd.H - 1 - b.y) * cs + off}px`;
+    el.style.width = `${cs * 2 - 3}px`;
+    el.style.height = `${cs - 3}px`;
+    el.style.zIndex = String(100 - z);            // 前层压后层
+    // 🔴 内联 filter 会盖掉 .cant 那条 CSS 规则,所以「够不着」的灰化必须一起算进来,
+    //    否则加了深度之后不能拿的砖看起来和能拿的一模一样。
+    const depth = `brightness(${(1 - z * 0.16).toFixed(2)})`;
+    el.style.filter = takeable ? depth : `${depth} brightness(.62) saturate(.5)`;
+    // 字号跟着格子走 —— 固定 20px 在窄板上会溢出砖面,砖看着像一团糊的色块
+    el.style.fontSize = `${Math.max(9, Math.min(22, Math.round(cs * 0.55)))}px`;
+  }
+  // 撤步会让砖复活,所以死掉的元素要真的移除(不能只是隐藏),否则复活时拿到的是旧节点
+  for (const [id, el] of els) {
+    if (!live.has(String(id))) { el.remove(); els.delete(id); }
+  }
+
+  const tray = $('tray');
+  tray.innerHTML = '';
+  const kindById = new Map(bd.bricks.map((b) => [b.id, b.kind]));
+  for (let i = 0; i < TRAY_CAP; i++) {
+    const s = document.createElement('div');
+    const id = sim.tray[i];
+    if (id === undefined) { s.className = 'slot empty'; s.textContent = '·'; }
+    else {
+      s.className = 'slot';
+      const k = kindById.get(id);
+      s.style.background = PALETTE[k % PALETTE.length];
+      s.style.borderStyle = 'solid';
+      s.textContent = GLYPH[k % GLYPH.length];
+    }
+    tray.appendChild(s);
+  }
+
+  $('undo').disabled = !sim.canUndo;
+  $('put').disabled = !sim.tray.length || !sim.canPutBack();
+  $('mv').textContent = sim.moves;
+  $('cl').textContent = sim.cleared;
+  $('rm').textContent = bd.bricks.filter((b) => b.alive).length;
+  $('ch').textContent = lastChain || '—';
+  $('hs').textContent = sim.hash();
+
+  const m = $('msg');
+  if (sim.done()) { m.className = 'msg win'; m.textContent = '✅ 这一关清空了。没有失败态 —— 你不可能把它玩死。'; }
+  else if (lastChain >= 3) { m.className = 'msg big'; m.textContent = `塌了 ${lastChain} 块 —— 上面那堆重排了,新的砖露出了侧脸。`; }
+  else if (sim.tray.length >= TRAY_CAP) { m.className = 'msg'; m.textContent = '暂存盘满了。用「放回一块」把一块放回堆顶 —— 规则保证这里永远有出路。'; }
+  else { m.className = 'msg'; m.textContent = '金框=侧面露出、能拿。悬停看橙色虚线:那些是它正扛着的。'; }
+}
+
+function doTake(id) {
+  lastChain = collapseSizeIfTaken(sim.board, id);
+  const r = sim.take(id);
+  if (!r.ok) return;
+  hoverId = -1;
+  render();
+}
+
+$('undo').onclick = () => { sim.undo(); lastChain = 0; render(); };
+$('put').onclick = () => { const r = sim.putBack(); lastChain = r.collapsed || 0; render(); };
+$('peek').onclick = () => { peek = !peek; $('peek').className = peek ? 'on' : ''; $('peek').textContent = `👁 承重预览：${peek ? '开' : '关'}`; render(); };
+$('reset').onclick = () => load(+lvSel.value);
+lvSel.onchange = () => load(+lvSel.value);
+addEventListener('resize', render);
+
+load(0);
+// 给面板探针用:暴露状态,方便无头断言(不参与玩法)
+window.__LINTEL = { sim, LEVELS, get state() { return { moves: sim.moves, cleared: sim.cleared, hash: sim.hash(), done: sim.done() }; } };
+</script>
+</body></html>
