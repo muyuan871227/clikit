@@ -12,7 +12,7 @@
       <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
       <section id="unity-loading" aria-live="polite">
         <strong>MOSAIC JOURNEY</strong>
-        <span>Preparing your postcards</span>
+        <span id="loading-status">Opening your travel album</span>
         <div id="progress-track"><div id="progress-fill"></div></div>
       </section>
       <div id="unity-warning"></div>
@@ -20,8 +20,29 @@
     <script>
       const canvas = document.querySelector('#unity-canvas');
       const loading = document.querySelector('#unity-loading');
+      const loadingStatus = document.querySelector('#loading-status');
       const progress = document.querySelector('#progress-fill');
       const warning = document.querySelector('#unity-warning');
+      const bootStartedAt = performance.now();
+      let lastMilestone = 0;
+
+      function reportBoot(phase, detail = '') {
+        const elapsedMs = Math.round(performance.now() - bootStartedAt);
+        console.log(`MOSAIC_BOOT phase=${phase} elapsedMs=${elapsedMs}${detail ? ` ${detail}` : ''}`);
+      }
+
+      function updateLoadingStatus(value) {
+        if (value < 0.2) loadingStatus.textContent = 'Opening your travel album';
+        else if (value < 0.65) loadingStatus.textContent = 'Collecting postcard pieces';
+        else if (value < 0.9) loadingStatus.textContent = 'Arranging the puzzle table';
+        else loadingStatus.textContent = 'Polishing the final details';
+
+        const milestone = Math.min(100, Math.floor(value * 4) * 25);
+        if (milestone > lastMilestone) {
+          lastMilestone = milestone;
+          reportBoot('progress', `progress=${milestone}`);
+        }
+      }
 
       function unityShowBanner(message, type) {
         const item = document.createElement('div');
@@ -36,9 +57,9 @@
       const loaderUrl = buildUrl + '/WebGL.loader.js';
       const config = {
         arguments: [],
-        dataUrl: buildUrl + '/WebGL.data',
-        frameworkUrl: buildUrl + '/WebGL.framework.js',
-        codeUrl: buildUrl + '/WebGL.wasm',
+        dataUrl: buildUrl + '/WebGL.data.unityweb',
+        frameworkUrl: buildUrl + '/WebGL.framework.js.unityweb',
+        codeUrl: buildUrl + '/WebGL.wasm.unityweb',
         streamingAssetsUrl: 'StreamingAssets',
         companyName: "Parity Lab",
         productName: "Mosaic Journey",
@@ -50,12 +71,20 @@
 
       const script = document.createElement('script');
       script.src = loaderUrl;
-      script.onload = () => createUnityInstance(canvas, config, value => {
-        progress.style.width = `${Math.round(value * 100)}%`;
-      }).then(() => {
-        loading.classList.add('hidden');
-        canvas.focus();
-      }).catch(message => unityShowBanner(message, 'error'));
+      script.onload = () => {
+        reportBoot('loader-ready');
+        createUnityInstance(canvas, config, value => {
+          progress.style.width = `${Math.round(value * 100)}%`;
+          updateLoadingStatus(value);
+        }).then(() => {
+          loading.classList.add('hidden');
+          canvas.focus();
+          reportBoot('interactive');
+        }).catch(message => {
+          reportBoot('failed');
+          unityShowBanner(message, 'error');
+        });
+      };
       document.body.appendChild(script);
     </script>
   </body>
