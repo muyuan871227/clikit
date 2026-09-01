@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
     <meta name="theme-color" content="#18383e">
     <title>Mosaic Journey</title>
-    <link rel="stylesheet" href="TemplateData/style.css">
+    <link rel="stylesheet" href="TemplateData/style.css?v=visual-phase4a-final-20260901">
   </head>
   <body>
     <main id="unity-container">
@@ -54,12 +54,14 @@
       }
 
       const buildUrl = 'Build';
-      const loaderUrl = buildUrl + '/WebGL.loader.js';
+      const releaseKey = 'visual-phase4a-final-20260901';
+      const versioned = path => `${path}?v=${releaseKey}`;
+      const loaderUrl = versioned(buildUrl + '/WebGL.loader.js');
       const config = {
         arguments: [],
-        dataUrl: buildUrl + '/WebGL.data.unityweb',
-        frameworkUrl: buildUrl + '/WebGL.framework.js.unityweb',
-        codeUrl: buildUrl + '/WebGL.wasm.unityweb',
+        dataUrl: versioned(buildUrl + '/WebGL.data.unityweb'),
+        frameworkUrl: versioned(buildUrl + '/WebGL.framework.js.unityweb'),
+        codeUrl: versioned(buildUrl + '/WebGL.wasm.unityweb'),
         streamingAssetsUrl: 'StreamingAssets',
         companyName: "Parity Lab",
         productName: "Mosaic Journey",

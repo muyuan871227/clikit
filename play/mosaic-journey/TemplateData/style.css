@@ -93,5 +93,14 @@ html, body {
 
 @media (max-width: 620px) {
   #unity-container { padding: 0; }
-  #unity-canvas { border-radius: 0; box-shadow: none; }
+  #unity-canvas {
+    width: 100vw;
+    width: 100dvw;
+    height: 100vh;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
 }
