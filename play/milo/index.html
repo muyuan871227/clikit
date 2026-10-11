@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#eef1e9"><meta name="description" content="Meet Milo, your little companion in a world of your own."><title>Milo · 你的小小宇宙</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='23' fill='%23c7d881'/%3E%3Cellipse cx='23' cy='30' rx='4' ry='7' fill='%23364432'/%3E%3Cellipse cx='41' cy='30' rx='4' ry='7' fill='%23364432'/%3E%3C/svg%3E"><link rel="stylesheet" href="./styles.css"></head>
+<body>
+<svg class="icon-defs" aria-hidden="true"><defs>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 2 2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5Z"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 11.5a8 8 0 0 1-8 8H4l1.3-4A8 8 0 1 1 20 11.5Z"/><path d="M8 10h8M8 14h5"/></symbol>
+<symbol id="i-planet" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><ellipse cx="12" cy="12" rx="12" ry="3.5" transform="rotate(-28 12 12)"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0l-1 1-1-1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></symbol>
+<symbol id="i-shirt" viewBox="0 0 24 24"><path d="m8 3-6 4 3 5 3-2v11h8V10l3 2 3-5-6-4c0 4-8 4-8 0Z"/></symbol>
+<symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M12 20V4m-6 6 6-6 6 6"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+<symbol id="i-volume" viewBox="0 0 24 24"><path d="m11 4-6 5H2v6h3l6 5ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></symbol>
+<symbol id="i-leaf" viewBox="0 0 24 24"><path d="M20 3C7 2 2 9 6 15s16 2 14-12ZM4 21 16 8"/></symbol>
+</defs></svg>
+<div id="app" data-world="meadow">
+  <div class="atmosphere" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="wordmark" href="./" aria-label="Milo 首页">milo<span>✳</span></a>
+    <nav class="topnav" aria-label="主导航">
+      <button class="nav-button active" data-action="home"><svg><use href="#i-chat"/></svg><span>陪伴</span></button>
+      <button class="nav-button" data-panel="planet"><svg><use href="#i-planet"/></svg><span>我的星球</span></button>
+      <button class="nav-button" data-panel="memories"><svg><use href="#i-heart"/></svg><span>我们的回忆</span></button>
+    </nav>
+    <button class="round-button settings" data-panel="settings" aria-label="设置"><svg><use href="#i-settings"/></svg></button>
+  </header>
+  <main>
+    <div class="scene-title"><div class="eyebrow"><span class="status-dot"></span><span id="presence">在这里，陪着你</span></div><h1 id="companion-name">Milo</h1><p>地球那么大，很开心遇见你。</p></div>
+    <div id="scene" role="img" aria-label="会呼吸、眨眼并回应触摸的外星朋友"><div class="scene-loading"><span></span>你的小宇宙正在醒来</div></div>
+    <button class="character-touch" aria-label="摸摸 Milo" id="touch-character"><span>轻轻碰我一下 <svg><use href="#i-spark"/></svg></span></button>
+    <aside class="scene-tools" aria-label="角色操作">
+      <button class="tool-button" data-panel="appearance"><svg><use href="#i-shirt"/></svg><span>装扮</span></button>
+      <button class="tool-button" id="voice-toggle" aria-label="开启朗读" aria-pressed="false"><svg><use href="#i-volume"/></svg><span>声音</span></button>
+    </aside>
+    <section class="conversation" aria-label="与 Milo 对话">
+      <div class="hello" id="hello"><span class="hello-spark">✧</span><p>今天过得怎么样？<br><span>小小的开心，或乱糟糟的心事，都可以告诉我。</span></p></div>
+      <div id="messages" class="messages" role="log" aria-live="polite" aria-label="聊天记录" hidden></div>
+      <div class="suggestions" id="suggestions"><button data-say="今天有点累，想找人聊聊">今天有点累</button><button data-say="今天发生了一件开心的事">分享一件小事</button><button data-say="我们一起探索星球吧">一起去探索 <span>↗</span></button></div>
+      <form id="chat-form" class="composer"><button type="button" class="mic-button" id="mic-button" aria-label="开始语音输入"><svg><use href="#i-mic"/></svg></button><input id="message-input" autocomplete="off" maxlength="2000" placeholder="和 Milo 说点什么…" aria-label="聊天内容"><button type="submit" class="send-button" aria-label="发送消息"><svg><use href="#i-arrow"/></svg></button></form>
+      <div class="conversation-footer"><span><span class="tiny-dot"></span> <span id="mode-label">交互体验 · AI 尚未连接</span></span><button id="stop-speaking" hidden>停止朗读</button><span id="save-label">只保存在此浏览器</span></div>
+    </section>
+  </main>
+  <div class="world-caption"><svg><use href="#i-planet"/></svg><span id="world-caption">一颗只属于我们的小星球</span></div>
+  <div id="toast" class="toast" role="status" hidden></div>
+</div>
+<dialog id="panel" class="panel"><div class="panel-head"><div><span class="eyebrow" id="panel-eyebrow">YOUR LITTLE UNIVERSE</span><h2 id="panel-title"></h2></div><button class="round-button" id="close-panel" aria-label="关闭面板"><svg><use href="#i-close"/></svg></button></div><div id="panel-content"></div></dialog>
+<script type="module" src="./app.js"></script>
+</body></html>
