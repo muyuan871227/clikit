@@ -1,0 +1,21 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Rotate Rings</title><style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f6f3ed;font-family:system-ui;color:#283b43}canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}#loading{position:absolute;inset:0;display:grid;place-content:center;text-align:center;pointer-events:none}h1{font-size:32px}button{min-height:48px;padding:12px 24px;border:0;border-radius:16px;background:#283b43;color:white;font:600 16px system-ui;cursor:pointer;pointer-events:auto}button:focus-visible{outline:3px solid #64c7d8;outline-offset:4px}p{font-size:15px;color:#6c7d82}</style></head><body><canvas id="unity-canvas" tabindex="0"></canvas><div id="loading"><h1>Rotate Rings</h1><p id="progress" role="status" aria-live="polite">Making a little space...</p><button id="retry" hidden onclick="location.reload()">Try again</button></div><script src="Build/rotate-rings-fullui-web-final-20261030.loader.js"></script><script>const c=document.querySelector('canvas');
+// Use the same DOM position for every mouse phase; mixing Unity's rounded
+// move coordinates with a precise release creates a small release-only turn.
+function trackMouse(e){c.ringsPointer={clientX:e.clientX,clientY:e.clientY};}
+window.addEventListener('mousemove',trackMouse,true);
+window.addEventListener('mousedown',e=>{if(e.button===0)trackMouse(e);},true);
+window.addEventListener('mouseup',e=>{if(e.button===0)trackMouse(e);},true);
+// Keep the phone's 2x edge quality without carrying its scale into a larger window.
+// Unity's documented manual canvas mode keeps input in the same visible CSS area.
+function resizeRenderTarget(){
+  const bounds=c.getBoundingClientRect();
+  if(bounds.width<=0 || bounds.height<=0)return;
+  const scale=Math.min(2,Math.sqrt(2000000/(bounds.width*bounds.height)));
+  const width=Math.max(1,Math.floor(bounds.width*scale));
+  const height=Math.max(1,Math.floor(bounds.height*scale));
+  if(c.width!==width)c.width=width;
+  if(c.height!==height)c.height=height;
+}
+resizeRenderTarget();
+new ResizeObserver(resizeRenderTarget).observe(c);
+createUnityInstance(c,{dataUrl:'Build/rotate-rings-fullui-web-final-20261030.data',frameworkUrl:'Build/rotate-rings-fullui-web-final-20261030.framework.js',codeUrl:'Build/rotate-rings-fullui-web-final-20261030.wasm',streamingAssetsUrl:'StreamingAssets',companyName:'PloofGames',productName:'Rotate Rings',productVersion:'1.0.0',matchWebGLToCanvasSize:false},p=>document.getElementById('progress').textContent='Opening your space... '+Math.round(p*100)+'%').then(instance=>{window.unityInstance=instance;resizeRenderTarget();document.getElementById('loading').remove();c.focus()}).catch(e=>{document.getElementById('progress').textContent='Your space could not open. Please try again.';document.getElementById('retry').hidden=false;console.error(e)});</script></body></html>
