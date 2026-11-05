@@ -1,0 +1,21 @@
+{
+  "files": [
+    "nina-portrait.png",
+    "dressing-room.png",
+    "wedding-atmosphere.mp4",
+    "maya-portrait.png",
+    "leo-portrait.png",
+    "theo-portrait.png",
+    "story-opening.png",
+    "story-private-alliance.png",
+    "story-public-boundary.png",
+    "story-evidence-challenge.png",
+    "story-repair.png",
+    "story-leo-reconsiders.png",
+    "story-theo-reconsiders.png",
+    "reaction-nina-withdrawn.png",
+    "reaction-leo-withdrawn.png",
+    "reaction-theo-withdrawn.png"
+  ],
+  "chapterReview": "chapter1-reviewed.json"
+}
