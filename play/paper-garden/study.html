@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Paper Garden — study launcher</title>
+<style>
+body{margin:0;background:#f5f2e9;color:#30433d;font:17px/1.5 system-ui,sans-serif}main{max-width:650px;margin:4vh auto;padding:28px}h1{font:32px Georgia,serif}label{display:block;margin-top:24px}input{box-sizing:border-box;width:100%;padding:12px;font:inherit;border:1px solid #809084;border-radius:8px}nav,.exports{display:flex;flex-wrap:wrap;gap:12px;margin:22px 0}a,button{padding:12px 18px;border:1px solid #607a69;border-radius:8px;background:#e1eadb;color:#213f30;font:inherit;text-decoration:none;cursor:pointer}button.secondary{background:transparent}#message{min-height:3em;overflow-wrap:anywhere}small{display:block;color:#56665d}code{overflow-wrap:anywhere}
+</style>
+<main>
+<h1>Paper Garden study launcher</h1>
+<p>Choose one order to open the existing Unity game. Each group and slot keeps a separate study save and event log on this browser.</p>
+<label for="slot">Study slot</label><input id="slot" maxlength="40" autocomplete="off" spellcheck="false" aria-describedby="slot-help">
+<small id="slot-help">A random slot is prepared below. Keep it to resume or export; use a new slot for a new observation. Letters, numbers, _ and - only.</small>
+<nav aria-label="Study order"><a id="current">Open current order</a><a id="candidate">Open candidate order</a></nav>
+<button id="new-slot" class="secondary">Create a new slot</button>
+<div class="exports"><button data-export="current">Export current log</button><button data-export="candidate">Export candidate log</button></div>
+<p id="message" role="status" aria-live="polite"></p>
+<p><small>Exports contain browser QA events, identity checks and recording errors. DOM pointer type and isTrusted are channel information, not proof of a person or physical touch. No participant names are requested. Storage limits or failures are marked in the export.</small></p>
+<p><small>Reviewed plan: <code id="plan"></code></small></p>
+</main>
+<script src="study-recorder.js"></script>
+<script>
+(function(){
+  const slot=document.getElementById('slot'),message=document.getElementById('message');
+  const randomSlot=()=>{const bytes=new Uint8Array(8);crypto.getRandomValues(bytes);return 'obs_'+Array.from(bytes,x=>x.toString(16).padStart(2,'0')).join('');};
+  const valid=()=>/^[A-Za-z0-9_-]{1,40}$/.test(slot.value);
+  function update(){
+    for(const group of ['current','candidate']){
+      const link=document.getElementById(group);
+      if(!valid()){link.removeAttribute('href');link.setAttribute('aria-disabled','true');continue;}
+      const url=new URL('index.html',location.href);url.search='';url.hash='';
+      url.searchParams.set('qa','1');url.searchParams.set('study',group);url.searchParams.set('slot',slot.value);
+      link.href=url.href;link.removeAttribute('aria-disabled');
+    }
+    if(valid()){const preserved=new URL(location.href);preserved.search='';preserved.searchParams.set('slot',slot.value);history.replaceState(null,'',preserved.href);}
+    message.textContent=valid()?'Ready. Slot: '+slot.value:'Enter 1–40 letters, numbers, underscores or hyphens.';
+  }
+  const supplied=new URL(location.href).searchParams.get('slot');slot.value=supplied&&/^[A-Za-z0-9_-]{1,40}$/.test(supplied)?supplied:randomSlot();
+  slot.addEventListener('input',update);document.getElementById('new-slot').onclick=()=>{slot.value=randomSlot();update();};
+  document.getElementById('plan').textContent=window.pgStudyRecorder.planHash;
+  for(const button of document.querySelectorAll('[data-export]'))button.onclick=()=>{
+    try{
+      if(!valid())throw new Error('Enter a valid slot first.');
+      const group=button.dataset.export,raw=window.pgStudyRecorder.exportJSON(group,slot.value),result=JSON.parse(raw);
+      const url=URL.createObjectURL(new Blob([raw],{type:'application/json'})),anchor=document.createElement('a');
+      anchor.href=url;anchor.download='paper-garden-'+group+'-'+slot.value+'-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      message.textContent=result.integrity.complete?'Exported the recorded log. This is QA evidence, not participant verification.':'Exported with recording warnings/errors. Review the integrity fields before using it.';
+    }catch(error){message.textContent=error.message;}
+  };
+  update();
+})();
+</script>
+</html>
