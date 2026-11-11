@@ -13,7 +13,9 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f7f3ec;ove
 iframe{position:absolute;border:0;display:block;transform-origin:top left;background:#f7f3ec;touch-action:none}
 #rotate{position:fixed;inset:0;display:none;place-content:center;text-align:center;padding:32px;background:#f7f3ec;color:#372b26;font:18px/1.6 Georgia,serif;z-index:2}
 #rotate span{font:13px/1.6 system-ui;color:#77675c;display:block;margin-top:12px}
+#loading{position:fixed;inset:0;z-index:3;display:grid;place-content:center;text-align:center;background:#f7f3ec;color:#372b26;font:24px/1.5 Georgia,serif;padding:32px}#loading span{display:block;margin:12px 0;color:#77675c;font:13px/1.7 system-ui}#loading button{border:1px solid #c9b8a8;border-radius:24px;background:transparent;padding:12px 28px;color:#372b26;cursor:pointer}
 </style>
+<div id="loading" role="status">TERRACE<span id="loading-copy">Preparing your afternoon…</span><button id="retry" hidden>Try again</button></div>
 <div id="safe" aria-hidden="true"></div>
 <main id="viewport"><iframe id="player" title="Terrace" allow="autoplay; fullscreen"></iframe></main>
 <div id="rotate" role="status">A moment, in portrait.<span>Turn your phone upright to continue.</span></div>
@@ -22,7 +24,21 @@ iframe{position:absolute;border:0;display:block;transform-origin:top left;backgr
  const params=new URLSearchParams(location.search), frame=document.querySelector('#player'), host=document.querySelector('#viewport'), safe=document.querySelector('#safe');
  const designWidth=Math.min(innerWidth,innerHeight)<=375?360:390, designHeight=844;
  const source=new URL('player.html',location.href);source.search='concept=C&view=home';
- frame.style.width=designWidth+'px';frame.style.height=designHeight+'px';frame.src=source.href;
+ frame.style.width=designWidth+'px';frame.style.height=designHeight+'px';
+ // Public delivery only: warm the existing video responses before starting the
+ // unchanged Cocos build, whose eight-second media guard assumes local readiness.
+ const media=['assets/resources/native/81/81a8844d-fa0c-439a-8ad1-a1595b9ca723.mp4','assets/resources/native/8a/8a05b894-028c-44cb-b545-a3c598194bea.mp4'];
+ const loading=document.querySelector('#loading'),copy=document.querySelector('#loading-copy'),retry=document.querySelector('#retry');
+ async function boot(){
+  retry.hidden=true;copy.textContent='Preparing your afternoon…';
+  const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),60000);
+  try{
+   await Promise.all(media.map(async url=>{const response=await fetch(url,{cache:'force-cache',signal:abort.signal});if(!response.ok)throw Error('media unavailable');await response.arrayBuffer();}));
+   frame.src=source.href;loading.style.display='none';
+  }catch{copy.textContent='The connection took a little longer. Try again when you’re ready.';retry.hidden=false;}
+  finally{clearTimeout(timer);}
+ }
+ retry.addEventListener('click',boot);boot();
  let previousLandscape=false;
  function fit(){
   const vv=window.visualViewport,css=getComputedStyle(safe),insets=['Top','Right','Bottom','Left'].map(k=>parseFloat(css['padding'+k])||0);
