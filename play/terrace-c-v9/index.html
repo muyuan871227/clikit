@@ -26,14 +26,22 @@ iframe{position:absolute;border:0;display:block;transform-origin:top left;backgr
  const source=new URL('player.html',location.href);source.search='concept=C&view=home';
  frame.style.width=designWidth+'px';frame.style.height=designHeight+'px';
  // Public delivery only: warm the existing video responses before starting the
- // unchanged Cocos build, whose eight-second media guard assumes local readiness.
+ // unchanged Cocos build. Explicit CacheStorage avoids large-file HTTP-cache eviction.
  const media=['assets/resources/native/81/81a8844d-fa0c-439a-8ad1-a1595b9ca723.mp4','assets/resources/native/8a/8a05b894-028c-44cb-b545-a3c598194bea.mp4'];
  const loading=document.querySelector('#loading'),copy=document.querySelector('#loading-copy'),retry=document.querySelector('#retry');
  async function boot(){
   retry.hidden=true;copy.textContent='Preparing your afternoon…';
   const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),60000);
   try{
-   await Promise.all(media.map(async url=>{const response=await fetch(url,{cache:'force-cache',signal:abort.signal});if(!response.ok)throw Error('media unavailable');await response.arrayBuffer();}));
+   await Promise.race([(async()=>{
+   if(!('serviceWorker' in navigator)||!('caches' in window))throw Error('offline cache unavailable');
+   await navigator.serviceWorker.register('media-cache.js',{scope:'./'});
+   await navigator.serviceWorker.ready;
+   if(!navigator.serviceWorker.controller)await new Promise((resolve,reject)=>{const ready=()=>{if(navigator.serviceWorker.controller){navigator.serviceWorker.removeEventListener('controllerchange',ready);resolve();}};navigator.serviceWorker.addEventListener('controllerchange',ready);abort.signal.addEventListener('abort',()=>reject(Error('timeout')),{once:true});ready();});
+   const cache=await caches.open('terrace-c-v9-media-v1');
+   await Promise.all(media.map(async url=>{if(await cache.match(url))return;const response=await fetch(url,{signal:abort.signal});if(!response.ok)throw Error('media unavailable');await cache.put(url,response);}));
+   if(abort.signal.aborted)throw Error('timeout');
+   })(),new Promise((_,reject)=>abort.signal.addEventListener('abort',()=>reject(Error('timeout')),{once:true}))]);
    frame.src=source.href;loading.style.display='none';
   }catch{copy.textContent='The connection took a little longer. Try again when you’re ready.';retry.hidden=false;}
   finally{clearTimeout(timer);}
