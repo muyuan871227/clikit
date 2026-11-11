@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#f7f3ec">
+<title>Terrace — The Afternoon Edition</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f7f3ec;overscroll-behavior:none}
+#safe{position:fixed;inset:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);pointer-events:none}
+#viewport{position:fixed;overflow:hidden;background:#f7f3ec;touch-action:none;overscroll-behavior:none}
+iframe{position:absolute;border:0;display:block;transform-origin:top left;background:#f7f3ec;touch-action:none}
+#rotate{position:fixed;inset:0;display:none;place-content:center;text-align:center;padding:32px;background:#f7f3ec;color:#372b26;font:18px/1.6 Georgia,serif;z-index:2}
+#rotate span{font:13px/1.6 system-ui;color:#77675c;display:block;margin-top:12px}
+</style>
+<div id="safe" aria-hidden="true"></div>
+<main id="viewport"><iframe id="player" title="Terrace" allow="autoplay; fullscreen"></iframe></main>
+<div id="rotate" role="status">A moment, in portrait.<span>Turn your phone upright to continue.</span></div>
+<script>
+(()=>{
+ const params=new URLSearchParams(location.search), frame=document.querySelector('#player'), host=document.querySelector('#viewport'), safe=document.querySelector('#safe');
+ const designWidth=Math.min(innerWidth,innerHeight)<=375?360:390, designHeight=844;
+ const source=new URL('player.html',location.href);source.search='concept=C&view=home';
+ frame.style.width=designWidth+'px';frame.style.height=designHeight+'px';frame.src=source.href;
+ let previousLandscape=false;
+ function fit(){
+  const vv=window.visualViewport,css=getComputedStyle(safe),insets=['Top','Right','Bottom','Left'].map(k=>parseFloat(css['padding'+k])||0);
+  // Test-only injected insets never enabled in the player URL shipped to a device.
+  if(params.get('testInsets')){const t=params.get('testInsets').split(',').map(Number);if(t.length===4&&t.every(n=>Number.isFinite(n)&&n>=0&&n<=100))insets.splice(0,4,...t);}
+  const [top,right,bottom,left]=insets,w=vv?.width||innerWidth,h=vv?.height||innerHeight;
+  const availableWidth=Math.max(1,w-left-right),availableHeight=Math.max(1,h-top-bottom),scale=Math.min(availableWidth/designWidth,availableHeight/designHeight);
+  host.style.left=(left+(vv?.offsetLeft||0))+'px';host.style.top=(top+(vv?.offsetTop||0))+'px';host.style.width=availableWidth+'px';host.style.height=availableHeight+'px';
+  frame.style.left=(availableWidth-designWidth*scale)/2+'px';frame.style.top=(availableHeight-designHeight*scale)/2+'px';frame.style.transform='scale('+scale+')';
+  const landscape=w>h;document.querySelector('#rotate').style.display=landscape?'grid':'none';
+  if(landscape!==previousLandscape){frame.contentWindow?.postMessage({type:'terrace-device-orientation',landscape},location.origin);previousLandscape=landscape;}
+  window.__TERRACE_DEVICE__={designWidth,designHeight,width:w,height:h,insets,scale,landscape,frame:frame.getBoundingClientRect().toJSON(),mode:'Cocos web-mobile device host'};
+ }
+ fit();addEventListener('resize',fit);visualViewport?.addEventListener('resize',fit);visualViewport?.addEventListener('scroll',fit);frame.addEventListener('load',fit);
+ // Keep one same-document guard: browser/system back dismisses the current layer
+ // before navigation. At home it releases the guard and allows browser exit.
+ history.replaceState({terraceDevice:true},'');history.pushState({terraceGuard:true},'');
+ addEventListener('popstate',()=>{let state;try{state=frame.contentWindow.__TERRACE__?.snapshot();}catch{}
+  if(state?.ready&&(state.page!=='home'||state.modal)){frame.contentWindow.postMessage({type:'terrace-device-back'},location.origin);history.pushState({terraceGuard:true},'');}
+ });
+})();
+</script>
+</html>
