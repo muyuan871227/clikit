@@ -1,0 +1,16 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="icon" href="data:,"><title>Pixel Flow! · Little Mail Workshop</title><style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#efd4af;font-family:system-ui,sans-serif}#unity-canvas{display:block;width:100vw;height:100vh;outline:none;touch-action:none}#loading{position:absolute;inset:0;display:grid;place-content:center;text-align:center;color:#573723;background:#efd4af;gap:14px}progress{width:220px;accent-color:#70a887}#problem{max-width:310px;white-space:pre-wrap;font-size:14px;line-height:1.6}#retry{min-height:44px;width:220px;margin:auto;border:1px solid #70a887;border-radius:12px;background:#afdcc0;color:#573723;font:600 16px system-ui,sans-serif;cursor:pointer;touch-action:manipulation}#retry:focus-visible{outline:3px solid #573723;outline-offset:4px}#retry[hidden]{display:none}
+</style></head><body><canvas id="unity-canvas" tabindex="0"></canvas><div id="loading"><strong>Little Mail Workshop</strong><progress id="progress" max="1" value="0"></progress><span id="problem" role="status" aria-live="polite">Getting your letters ready…</span><button id="retry" type="button" hidden>Retry</button></div><script>
+window.p03ObserveEnabled=new URLSearchParams(location.search).get('qa')==='1';window.__p03Trace=[];
+// Cancellation only: never turn a browser cancellation into a Unity button release.
+function cancelUnityTouches(){if(window.p03Unity)window.p03Unity.SendMessage('P03InputCancelRelay','CancelTouches','');}
+window.addEventListener('touchcancel',cancelUnityTouches,true);
+window.addEventListener('pointercancel',cancelUnityTouches,true);
+window.addEventListener('blur',cancelUnityTouches,true);
+document.addEventListener('visibilitychange',function(){if(document.hidden)cancelUnityTouches();},true);
+var canvas=document.getElementById('unity-canvas');var config={dataUrl:'Build/91c76461f473da0245a06fd72df7bcb7.data.unityweb',frameworkUrl:'Build/386a811bf110db8fa0aca686ef79ed6a.framework.js.unityweb',codeUrl:'Build/860732ee8bb494f521ab33954be9f7ec.wasm.unityweb',streamingAssetsUrl:'StreamingAssets',companyName:'Ploof Games',productName:'Pixel Flow!',productVersion:'0.3.0',matchWebGLToCanvasSize:true,devicePixelRatio:Math.min(devicePixelRatio,2)};
+var retry=document.getElementById('retry');
+retry.addEventListener('click',function(){location.reload();});
+function showLoadError(error){document.getElementById('progress').hidden=true;document.getElementById('problem').textContent="We couldn't open your letters. Check your connection, then try again. Your saved progress will be kept.";retry.hidden=false;retry.focus();console.error(error);}
+var script=document.createElement('script');script.src='Build/cb8f5a69750bb9580854d24327f32b28.loader.js';script.onerror=function(){showLoadError(new Error('Unity loader could not be loaded'));};script.onload=function(){Promise.resolve().then(function(){return createUnityInstance(canvas,config,function(p){document.getElementById('progress').value=p});}).then(function(instance){window.p03Unity=instance;document.getElementById('loading').remove();canvas.focus();}).catch(showLoadError);};document.body.appendChild(script);
+</script></body></html>
