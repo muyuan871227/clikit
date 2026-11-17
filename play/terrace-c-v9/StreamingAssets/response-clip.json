@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "clikit-motion-clip@1",
+  "durationMs": 540,
+  "loop": false,
+  "welcomeDecodedSeconds": 1.8,
+  "moveDecodedSeconds": 1.8,
+  "finishDelayMs": 850,
+  "tracks": {
+    "scale": [
+      {
+        "t": 0,
+        "v": 1,
+        "ease": "linear"
+      },
+      {
+        "t": 0.18,
+        "v": 1.012,
+        "ease": "linear"
+      },
+      {
+        "t": 0.54,
+        "v": 1,
+        "ease": "linear"
+      }
+    ]
+  },
+  "finishBoardFadeMs": 220,
+  "backgroundSource": {
+    "resource": "media/mia-afternoon-loop-v4",
+    "width": 720,
+    "height": 1280,
+    "duration": 4.5,
+    "audio": "silent",
+    "selection": "local-derived-eased-forward-reverse-microgesture",
+    "sha256": "68ac5657322ba78645b3b4c0fcc4c0b664231b08870c06d599deae754351a810",
+    "originalSha256": "8d437f57f0b3fb32ac8fb8e17816543c6cf0c96523c75c1f94a7bc990f3360b6",
+    "sourceIntervalSeconds": [
+      3,
+      4.5
+    ],
+    "provenance": "evidence/loop-study/candidate-c3-derivation.json"
+  }
+}

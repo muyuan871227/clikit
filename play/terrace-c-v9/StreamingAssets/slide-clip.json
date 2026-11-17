@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "clikit-motion-clip@1",
+  "durationMs": 160,
+  "loop": false,
+  "tracks": {
+    "progress": [
+      {
+        "t": 0,
+        "v": 0,
+        "ease": "cubicOut"
+      },
+      {
+        "t": 0.16,
+        "v": 1,
+        "ease": "cubicOut"
+      }
+    ]
+  }
+}

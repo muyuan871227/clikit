@@ -1,0 +1,31 @@
+{
+  "fonts": [
+    {
+      "file": "InterRegular.ttf",
+      "internalFamily": "Inter",
+      "sha256": "3127f0b873387ee37e2040135a06e9e9c05030f509eb63689529becf28b50384",
+      "license": "SIL OFL 1.1",
+      "licenseFile": "font-Inter-OFL.txt",
+      "licenseSha256": "40dfe0003dcd0bbde5a51ef5df205076e0e2921bd3ba190dae4ef783d74f919b",
+      "fontBytesModifiedInTerrace": false
+    },
+    {
+      "file": "InterSemiBold.ttf",
+      "internalFamily": "Inter SemiBold",
+      "sha256": "b0b540e69bf6717016e33874670e09acf4bffc2ca3f4c1cf174a4ff696308c65",
+      "license": "SIL OFL 1.1",
+      "licenseFile": "font-Inter-OFL.txt",
+      "licenseSha256": "40dfe0003dcd0bbde5a51ef5df205076e0e2921bd3ba190dae4ef783d74f919b",
+      "fontBytesModifiedInTerrace": false
+    },
+    {
+      "file": "TerraceSerif.ttf",
+      "internalFamily": "Paper Garden Serif (Gelasio derivative)",
+      "sha256": "bb22f4a8649073e03c631b878033da13bf295b18918a6a555555380ee0422544",
+      "license": "SIL OFL 1.1",
+      "licenseFile": "font-Gelasio-OFL.txt",
+      "licenseSha256": "b393cb01867c919b44381512120dc3e4c954c7b47e2035c405f3a324799a4d29",
+      "fontBytesModifiedInTerrace": false
+    }
+  ]
+}

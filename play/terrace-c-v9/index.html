@@ -1,72 +1,21 @@
-<!doctype html>
-<html lang="en">
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#f7f3ec">
-<title>Terrace — The Afternoon Edition</title>
-<style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f7f3ec;overscroll-behavior:none}
-#safe{position:fixed;inset:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);pointer-events:none}
-#viewport{position:fixed;overflow:hidden;background:#f7f3ec;touch-action:none;overscroll-behavior:none}
-iframe{position:absolute;border:0;display:block;transform-origin:top left;background:#f7f3ec;touch-action:none}
-#rotate{position:fixed;inset:0;display:none;place-content:center;text-align:center;padding:32px;background:#f7f3ec;color:#372b26;font:18px/1.6 Georgia,serif;z-index:2}
-#rotate span{font:13px/1.6 system-ui;color:#77675c;display:block;margin-top:12px}
-#loading{position:fixed;inset:0;z-index:3;display:grid;place-content:center;text-align:center;background:#f7f3ec;color:#372b26;font:24px/1.5 Georgia,serif;padding:32px}#loading span{display:block;margin:12px 0;color:#77675c;font:13px/1.7 system-ui}#loading button{border:1px solid #c9b8a8;border-radius:24px;background:transparent;padding:12px 28px;color:#372b26;cursor:pointer}
-</style>
-<div id="loading" role="status">TERRACE<span id="loading-copy">Preparing your afternoon…</span><button id="retry" hidden>Try again</button></div>
-<div id="safe" aria-hidden="true"></div>
-<main id="viewport"><iframe id="player" title="Terrace" allow="autoplay; fullscreen"></iframe></main>
-<div id="rotate" role="status">A moment, in portrait.<span>Turn your phone upright to continue.</span></div>
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>TERRACE · Unity WebGL web48</title>
+<style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#e9e2d8;color:#372b26;font:12px system-ui,sans-serif}header{height:40px;display:flex;align-items:center;justify-content:center;gap:12px;border-bottom:1px solid #d8cbbe;background:#f7f3ec}header strong{letter-spacing:1px}header span{color:#87776c}main{height:calc(100% - 40px);display:flex;align-items:center;justify-content:center}#frame{position:relative;background:#f7f3ec;box-shadow:0 8px 40px #372b2615}canvas{display:block;width:100%;height:100%;outline:none;touch-action:none}#loading{position:absolute;inset:0;display:flex;flex-direction:column;gap:16px;align-items:center;justify-content:center;background:#f7f3ec;text-align:center;padding:24px}progress{width:200px;accent-color:#ae6049}#loading.hidden{display:none}#message{white-space:pre-wrap;max-width:320px}</style></head>
+<body><header><strong>TERRACE</strong><span>Unity WebGL · web48</span></header><main><div id="frame"><canvas id="unity-canvas" tabindex="0" aria-label="TERRACE Unity 游戏"></canvas><div id="loading"><strong>正在打开 TERRACE</strong><progress max="1" value="0"></progress><div id="message">首次加载 Unity 资源…</div></div></div></main>
 <script>
-(()=>{
- const params=new URLSearchParams(location.search), frame=document.querySelector('#player'), host=document.querySelector('#viewport'), safe=document.querySelector('#safe');
- const designWidth=Math.min(innerWidth,innerHeight)<=375?360:390, designHeight=844;
- const source=new URL('player.html',location.href);source.search='concept=C&view=home';
- frame.style.width=designWidth+'px';frame.style.height=designHeight+'px';
- // Public delivery only: warm the existing video responses before starting the
- // unchanged Cocos build. Explicit CacheStorage avoids large-file HTTP-cache eviction.
- const media=['assets/resources/native/81/81a8844d-fa0c-439a-8ad1-a1595b9ca723.mp4','assets/resources/native/8a/8a05b894-028c-44cb-b545-a3c598194bea.mp4'];
- const loading=document.querySelector('#loading'),copy=document.querySelector('#loading-copy'),retry=document.querySelector('#retry');
- async function boot(){
-  retry.hidden=true;copy.textContent='Preparing your afternoon…';
-  const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),60000);
-  try{
-   await Promise.race([(async()=>{
-   if(!('serviceWorker' in navigator)||!('caches' in window))throw Error('offline cache unavailable');
-   await navigator.serviceWorker.register('media-cache.js',{scope:'./'});
-   await navigator.serviceWorker.ready;
-   if(!navigator.serviceWorker.controller)await new Promise((resolve,reject)=>{const ready=()=>{if(navigator.serviceWorker.controller){navigator.serviceWorker.removeEventListener('controllerchange',ready);resolve();}};navigator.serviceWorker.addEventListener('controllerchange',ready);abort.signal.addEventListener('abort',()=>reject(Error('timeout')),{once:true});ready();});
-   const cache=await caches.open('terrace-c-v9-media-v1');
-   await Promise.all(media.map(async url=>{if(await cache.match(url))return;const response=await fetch(url,{signal:abort.signal});if(!response.ok)throw Error('media unavailable');await cache.put(url,response);}));
-   if(abort.signal.aborted)throw Error('timeout');
-   })(),new Promise((_,reject)=>abort.signal.addEventListener('abort',()=>reject(Error('timeout')),{once:true}))]);
-   frame.src=source.href;loading.style.display='none';
-  }catch{copy.textContent='The connection took a little longer. Try again when you’re ready.';retry.hidden=false;}
-  finally{clearTimeout(timer);}
- }
- retry.addEventListener('click',boot);boot();
- let previousLandscape=false;
- function fit(){
-  const vv=window.visualViewport,css=getComputedStyle(safe),insets=['Top','Right','Bottom','Left'].map(k=>parseFloat(css['padding'+k])||0);
-  // Test-only injected insets never enabled in the player URL shipped to a device.
-  if(params.get('testInsets')){const t=params.get('testInsets').split(',').map(Number);if(t.length===4&&t.every(n=>Number.isFinite(n)&&n>=0&&n<=100))insets.splice(0,4,...t);}
-  const [top,right,bottom,left]=insets,w=vv?.width||innerWidth,h=vv?.height||innerHeight;
-  const availableWidth=Math.max(1,w-left-right),availableHeight=Math.max(1,h-top-bottom),scale=Math.min(availableWidth/designWidth,availableHeight/designHeight);
-  host.style.left=(left+(vv?.offsetLeft||0))+'px';host.style.top=(top+(vv?.offsetTop||0))+'px';host.style.width=availableWidth+'px';host.style.height=availableHeight+'px';
-  frame.style.left=(availableWidth-designWidth*scale)/2+'px';frame.style.top=(availableHeight-designHeight*scale)/2+'px';frame.style.transform='scale('+scale+')';
-  const landscape=w>h;document.querySelector('#rotate').style.display=landscape?'grid':'none';
-  if(landscape!==previousLandscape){frame.contentWindow?.postMessage({type:'terrace-device-orientation',landscape},location.origin);previousLandscape=landscape;}
-  window.__TERRACE_DEVICE__={designWidth,designHeight,width:w,height:h,insets,scale,landscape,frame:frame.getBoundingClientRect().toJSON(),mode:'Cocos web-mobile device host'};
- }
- fit();addEventListener('resize',fit);visualViewport?.addEventListener('resize',fit);visualViewport?.addEventListener('scroll',fit);frame.addEventListener('load',fit);
- // Keep one same-document guard: browser/system back dismisses the current layer
- // before navigation. At home it releases the guard and allows browser exit.
- history.replaceState({terraceDevice:true},'');history.pushState({terraceGuard:true},'');
- addEventListener('popstate',()=>{let state;try{state=frame.contentWindow.__TERRACE__?.snapshot();}catch{}
-  if(state?.ready&&(state.page!=='home'||state.modal)){frame.contentWindow.postMessage({type:'terrace-device-back'},location.origin);history.pushState({terraceGuard:true},'');}
- });
-})();
-</script>
-</html>
+function previewReport(event,data={}){if(!['127.0.0.1','localhost','[::1]'].includes(location.hostname))return;fetch('/__preview/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event,data,build:window.__terraceBuild||null,href:location.href,visibility:document.visibilityState}),keepalive:true}).catch(()=>{});}
+previewReport('html-loaded',{webgl2:!!window.WebGL2RenderingContext,wasm:typeof WebAssembly});
+addEventListener('error',e=>previewReport('error',{message:e.message,filename:e.filename}));
+addEventListener('unhandledrejection',e=>previewReport('unhandledrejection',{reason:String(e.reason)}));
+addEventListener('terrace-runtime',e=>{if(['startup','render','video-first-frame','video-failure'].includes(e.detail.event))previewReport('unity-'+e.detail.event,{page:e.detail.page,modal:e.detail.modal,data:e.detail.data});});
+function openPreviewChapter(){if(!window.unityInstance||!window.__previewHomeReady||window.__previewOpened||new URLSearchParams(location.search).get('chapter')!=='1')return;window.__previewOpened=true;setTimeout(()=>{window.unityInstance.SendMessage('TerraceApp','Navigate','game');previewReport('preview-chapter-open',{chapter:1});},0);}
+addEventListener('terrace-runtime',e=>{if(e.detail.event==='render'&&e.detail.page==='home'){window.__previewHomeReady=true;openPreviewChapter();}});
+const canvas=document.getElementById('unity-canvas'),frame=document.getElementById('frame');
+const width=new URLSearchParams(location.search).get('width')==='360'?360:390;
+function resize(){const scale=Math.min(innerWidth/width,(innerHeight-40)/844,1);frame.style.width=width*scale+'px';frame.style.height=844*scale+'px';}resize();addEventListener('resize',resize);
+window.__terraceBuild={"engine": "Unity", "target": "WebGL", "unity": "6000.5.6f1", "base": "macOS build06", "webRevision": "web48", "productVersion": "0.15.18", "developmentBuild": false, "il2CppCompilerConfiguration": "Release", "buildStartSha256": "5d26f5c3f01a84e8b70f33dff21ad84045a53191d9bcf727b7121ea0696be00a", "buildReportSha256": "f74b31b65a8c9f1a5d1a1f582835c374cd21fded0be0a716de5983f91f4dbe71", "stagingContractSha256": "5bd1ec848595175621c2a2fc5e91f42f727044785032f6f36a17f3188d19daef", "sourceSnapshot": "build-start.json:staged_source_hashes", "baseAppSourceSha256": "e8081680557275042fefb55871edd68412dde0e4ee8343ba0bf41e9d4864cf76", "webAppSourceSha256": "6221fbc846cfc3a8050c82e22bfe1ea6b1f145e8c335e829a1291458aa1f37c8", "wasmSha256": "f3a0bbc5b3cfd45887c2e681ff124afca1757018fe51fece5b04dc7a39c0a568", "puzzleModelSha256": "dcdb67ea0dd8b36182912bbfe672a6309efed2ef967430ea408f288047d9c782", "sourceModules": {"Assets/Editor/TerraceAndroidBuild.cs": "b2289e1c110d79a38f7dad693564f9215dbd80d072da3f55bf38b96e744711c9", "Assets/Editor/TerraceBuild.cs": "a800b35191f8da678b4a26266b1e9a04251e6488ad5ab90bdf29539f3daebce6", "Assets/Editor/TerraceOfflineAndroidManifest.cs": "80f9f8b24773d3b716f5e8bb7b6c2c0b4178b4208b7697c1b27b7c62096425e9", "Assets/Editor/TerraceWebBuild.cs": "46a8014420957f5f02f578f1a813149f94806d28ec55b2677c7c2dfde70554aa", "Assets/Plugins/WebGL/TerraceMotion.jslib": "1907586a02575b048b6829202bdf4cfbb81823c4ef282c69efcc8a6e4dd9959f", "Assets/Plugins/WebGL/TerraceProgress.jslib": "a68291e72abcb9098f96dec902c474a2467745b10cdaf5401fbe3c0b74b16f83", "Assets/Plugins/WebGL/TerraceSession.jslib": "89e645c95d2561c29cd79ef45f849f36b86c06ad28a7922d5e1d726cd50910ff", "Assets/Plugins/WebGL/TerraceTrace.jslib": "32b266a9c560b622d086580ac6f69334cf16f33ac22fe22db3e13e2dd8354cd5", "Assets/Scripts/DragReachability.cs": "03b1bf5ae046a0629c8e79aa2ad0092a0e990d3f3988c61dafd122d0bc6b1e81", "Assets/Scripts/PuzzleModel.cs": "dcdb67ea0dd8b36182912bbfe672a6309efed2ef967430ea408f288047d9c782", "Assets/Scripts/PuzzleParity.cs": "54c7e2c213cb6664cf63ed9ecb4acef9ff6602df81bd72c103dab8258ff7ce38", "Assets/Scripts/TerraceActorActionCatalog.cs": "080b7cc796ac8e1f2830937e9bef126a4664e18002a40bfff74a6a923fea56e0", "Assets/Scripts/TerraceAndroidMedia.cs": "a1e58f65d5fc771c459923a51bc5b3b6d2140c15898faabc919943cbe57df6d9", "Assets/Scripts/TerraceApp.cs": "6221fbc846cfc3a8050c82e22bfe1ea6b1f145e8c335e829a1291458aa1f37c8", "Assets/Scripts/TerraceCharacterMotion.cs": "0453aeecfbb4606b99b39ecdf1f40281b01d9713f4cd574d1b98786f7fde787f", "Assets/Scripts/TerraceCheckpoint.cs": "f97814e05babaeb57f4acd8c624048680b2a6fea10092986fd783fd16efdc9e8", "Assets/Scripts/TerraceCollection.cs": "1fcf2d24ebc0f837515c62bcbbd728f376c078d24ad82e27d6f2dfa17dc463af", "Assets/Scripts/TerraceContent.cs": "5f877e68d82075afb0aee79f9de2dce3486599a7635147e613351f8f4832fcdc", "Assets/Scripts/TerraceDialogue.cs": "f13a0f7ea79b35d43c06aa1c6289d111c5bdcf6116444dcaadb5b095c6ef81d7", "Assets/Scripts/TerraceDialoguePresentation.cs": "b862380b8fc602ff82893ab86801f7ff93af159c310b51947b7b32c44f4f0e4b", "Assets/Scripts/TerraceHintPresentation.cs": "468cef1c1139b747bb7c8f1a59b3cb0a092c95535293546edf7ddbe85e7f2bea", "Assets/Scripts/TerraceJourney.cs": "6714a0a2624a050174da0b37b08a9008605f6b62a69c889316dc2fb600711268", "Assets/Scripts/TerraceLevelDefinitions.cs": "7718fcd2d339cb17fd5b8b0fb8f7b96bad0d44753d845d42a33b67026504a576", "Assets/Scripts/TerraceMediaCatalog.cs": "da9bfce7791408cb97d0fe8222c3aeafcd56434f6b523dd2ec4f3ddbf00a2be2", "Assets/Scripts/TerraceNativeLifecycle.cs": "bfe4cd343cd1b9012c5a097a4ea74c1be4cd0c9f4163aaed8944dd8635caba7d", "Assets/Scripts/TerraceProgress.cs": "971c2722466d87a0f2b3e1563cc1008b254b75d84182d4779c8f0f679b6d41b6", "Assets/Scripts/TerraceRewardPause.cs": "2c39f6c35a079c8470d7f5813542fba677c0f72d34a1adfad36970463b394ba4", "Assets/Scripts/TerraceRewardPlayback.cs": "1ca64f874b45a982e00414207e0013d2c8689893baff1fe6034296295a3a86be", "Assets/Scripts/TerraceSessionCodec.cs": "338bed91c73ef6bf81ba168ed8d57e75a1f8c11fbf21145e66818928b9c7148c", "Assets/Scripts/TerraceSessionPersistence.cs": "297d77d912162dfe119177b518140be94370a1ee972bd59dbf19600e19ea26d3", "Assets/Scripts/TerraceUISymbol.cs": "8005c6b3bf1a967f6c471dc0a28424191eca856e7805e1dfec6f0dfd64300cca", "Assets/Scripts/TerraceWebPlatform.cs": "4237049cd9012636e35bcd4f0f1a36e7674f9dfebd574489c5f292003f462b04"}, "media": {"character-champagne.png": "25705e259e4604f25a77efd202b95958474bb85d3adcf00fe1cbfbe8d4beaddd", "character-coral.png": "db09f8e4fdd0198e1c4931a19a743c1605839af3fc6227f87ffe0c2dcf0fc68f", "character-mint.png": "4c3679e13d0de557c4ef50a642824fd230bfda759524e1034af80e889e464d69", "character-moonlight.png": "452adb6255d75ab7aca14711ff08d4b3b11bbc0e265643ee802668318eecfe84", "mia-action-close-gaze.mp4": "e51bdf4600f0d4849aec360039a545b205678a4d75eae50d976cdd8eb3a265bd", "mia-action-look-up.mp4": "806047c88378beed3aff7537dd9e096bd5c8bd5bf8a906b110ed838f918d2603", "mia-action-warm-smile.mp4": "017f087a349dfbfddda18f6d53b166ed5d2bdfc8f04a91645bd71e6bbfd2530a", "mia-afternoon-loop-v4.mp4": "68ac5657322ba78645b3b4c0fcc4c0b664231b08870c06d599deae754351a810", "mia-afternoon-poster.png": "d32acee320b113480b752225d88e4134de60a8c4af17bad6661aabadafeef800", "mia-afternoon-v2.mp4": "8d437f57f0b3fb32ac8fb8e17816543c6cf0c96523c75c1f94a7bc990f3360b6", "mia-r10-close-gaze-poster.jpg": "002322f1a67c4705784efa25dc8f4dedd8ce0091d95d9672ec1fe6b806b33723", "mia-r10-close-gaze.mp4": "175b1edd11dbe0b669630b8a463d226dd12814662fa6f3151bc6d6ba05f1d1ed"}};window.__terraceWebErrors=[];
+const config={"dataUrl": "Build/build-web48.data", "frameworkUrl": "Build/build-web48.framework.js", "codeUrl": "Build/build-web48.wasm", "streamingAssetsUrl": "StreamingAssets", "companyName": "PloofGames", "productName": "TERRACE Unity WebGL", "productVersion": "0.15.18", "autoSyncPersistentDataPath": true};config.devicePixelRatio=Math.min(devicePixelRatio,2);
+config.showBanner=(message,type)=>{if(type==='error'){window.__terraceWebErrors.push(message);previewReport('unity-banner-error',{message});document.getElementById('message').textContent=message;}};
+const script=document.createElement('script');script.src="Build/build-web48.loader.js";
+script.onload=()=>createUnityInstance(canvas,config,p=>document.querySelector('progress').value=p).then(instance=>{window.unityInstance=instance;window.__terraceReady=true;openPreviewChapter();previewReport('unity-ready',{canvasWidth:canvas.width,canvasHeight:canvas.height});document.getElementById('loading').classList.add('hidden');canvas.focus();}).catch(error=>{window.__terraceWebErrors.push(String(error));previewReport('unity-load-failed',{error:String(error)});document.getElementById('message').textContent='Unity 加载失败：'+error;});
+script.onerror=()=>document.getElementById('message').textContent='Unity 加载器读取失败';document.body.appendChild(script);
+</script></body></html>
