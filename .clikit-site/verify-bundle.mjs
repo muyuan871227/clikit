@@ -12,14 +12,25 @@
 // remove a marker from invariant.json (same commit) to retire a feature.
 // ─────────────────────────────────────────────────────────────────────────────
 import { execSync } from 'node:child_process';
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 
 const sh = (c) => execSync(c, { encoding: 'utf8' });
 const idsOf = (js) => new Set((js.match(/id:"[a-z0-9][a-z0-9-]+"/g) || []).map((s) => s.slice(4, -1)));
 
-const curBundle = (existsSync('assets') ? readdirSync('assets') : []).find((f) => /^index-.*\.js$/.test(f));
-if (!curBundle) { console.error('✗ no assets/index-*.js in this commit — broken deploy'); process.exit(1); }
-const cur = readFileSync(`assets/${curBundle}`, 'utf8');
+// Historical hashed bundles may coexist for cached HTML. Check the entry that
+// the CURRENT index.html actually loads, never an arbitrary directory entry.
+const index = existsSync('index.html') ? readFileSync('index.html', 'utf8') : '';
+const scripts = [...index.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<script\b[^>]*>/gi)];
+const entries = scripts.flatMap(([tag]) => {
+  const src = tag.match(/\ssrc\s*=\s*(["'])(.*?)\1/i)?.[2];
+  const path = src?.match(/^(?:\/clikit\/|\.\/)?(assets\/index-[A-Za-z0-9_-]+\.js)$/)?.[1];
+  return path ? [path] : [];
+});
+if (entries.length !== 1 || !existsSync(entries[0])) {
+  console.error('✗ index.html must reference one existing assets/index-*.js entry — broken deploy');
+  process.exit(1);
+}
+const cur = readFileSync(entries[0], 'utf8');
 const curIds = idsOf(cur);
 
 let prevIds = new Set();
