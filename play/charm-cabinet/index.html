@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Charm Cabinet</title>
+<style>
+  * { box-sizing: border-box; }
+  :root { --safe-top: env(safe-area-inset-top, 0px); --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px); --safe-left: env(safe-area-inset-left, 0px);
+    --scroll-gutter: 0px;
+    --game-width: min(calc(100vw - var(--safe-left) - var(--safe-right) - 2 * var(--scroll-gutter)), 480px); }
+  html, body { width: 100%; height: 100%; margin: 0; background: #43372c; }
+  body { height: auto; min-height: 100%; display: grid; justify-items: center; align-items: start; font-family: Georgia, serif;
+    padding: var(--safe-top) calc(var(--safe-right) + var(--scroll-gutter))
+      var(--safe-bottom) calc(var(--safe-left) + var(--scroll-gutter));
+    overscroll-behavior-y: contain; }
+  main { position: relative; width: var(--game-width);
+    height: calc(100vh - var(--safe-top) - var(--safe-bottom));
+    height: calc(100dvh - var(--safe-top) - var(--safe-bottom));
+    min-height: calc(var(--game-width) * 1.743589744); background: #f5e8ca; }
+  canvas { width: 100%; height: 100%; display: block; touch-action: none; outline: 0; }
+  #status { position: absolute; inset: 0; display: grid; place-content: center;
+    background: #f5e8ca; text-align: center; color: #553e2c; font-size: 1.1rem; }
+  #status[hidden] { display: none; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap; }
+  .scroll-rail { position: fixed; top: var(--safe-top); bottom: var(--safe-bottom); z-index: 5;
+    touch-action: pan-y; cursor: ns-resize; }
+  .scroll-rail[hidden] { display: none; }
+  .scroll-rail::after { content: ''; position: absolute; left: calc(50% - 1.5px); top: calc(50% - 22px);
+    width: 3px; height: 44px; border-radius: 2px; background: #b9a487; }
+  #scroll-left { left: 0; } #scroll-right { right: 0; }
+  button { font: inherit; padding: 10px 20px; margin: 16px auto 0; }
+</style>
+</head>
+<body>
+<main>
+  <p id="keyboard-help" class="sr-only">Tab or arrow keys choose a button or hanger. Enter or Space activates it. Escape returns. A to F choose hangers, Z undoes a move. On short screens, scroll the page to see all controls.</p>
+  <canvas id="game" tabindex="0" aria-label="Charm Cabinet sorting puzzle" aria-describedby="keyboard-help"></canvas>
+  <div id="status" role="status"><p id="message">Opening Charm Cabinet…</p><button id="retry" hidden>Try again</button></div>
+</main>
+<div id="scroll-left" class="scroll-rail" aria-hidden="true" title="Swipe to scroll" hidden></div>
+<div id="scroll-right" class="scroll-rail" aria-hidden="true" title="Swipe to scroll" hidden></div>
+<script id="viewport-layout">
+  // Use dimensions before adding gutters, so the overflow decision cannot oscillate.
+  function updateViewportLayout() {
+    const root = document.documentElement;
+    const css = getComputedStyle(root);
+    const inset = edge => parseFloat(css.getPropertyValue('--safe-' + edge)) || 0;
+    const rawWidth = Math.min(window.innerWidth - inset('left') - inset('right'), 480);
+    const availableHeight = window.innerHeight - inset('top') - inset('bottom');
+    const needsGutter = rawWidth * (680 / 390) > availableHeight + 0.5;
+    root.style.setProperty('--scroll-gutter', needsGutter ? '12px' : '0px');
+    const bounds = document.querySelector('main').getBoundingClientRect();
+    const overflow = document.documentElement.scrollHeight > window.innerHeight + 1;
+    const left = document.querySelector('#scroll-left'), right = document.querySelector('#scroll-right');
+    left.style.width = Math.max(0, bounds.left) + 'px';
+    right.style.width = Math.max(0, window.innerWidth - bounds.right) + 'px';
+    left.hidden = right.hidden = !needsGutter || !overflow;
+  }
+  // A click listener makes the rail a real hit-test candidate: Chrome otherwise
+  // redirects narrow-gutter touches to Unity's neighboring interactive canvas.
+  document.querySelectorAll('.scroll-rail').forEach(rail => rail.addEventListener('click', () => {}));
+  updateViewportLayout();
+  window.addEventListener('resize', updateViewportLayout);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', updateViewportLayout);
+</script>
+<script>
+  const started = performance.now();
+  const canvas = document.querySelector('#game');
+  const status = document.querySelector('#status');
+  const message = document.querySelector('#message');
+  const retry = document.querySelector('#retry');
+  const build = 'Build/';
+  const script = document.createElement('script');
+  function failed(error) {
+    status.hidden = false;
+    message.textContent = 'Charm Cabinet could not open.';
+    retry.hidden = false;
+    console.error(error);
+  }
+  retry.onclick = () => location.reload();
+  script.src = build + 'Web.loader.js';
+  script.onerror = failed;
+  script.onload = () => createUnityInstance(canvas, {
+    dataUrl: build + 'Web.data.unityweb',
+    frameworkUrl: build + 'Web.framework.js.unityweb',
+    codeUrl: build + 'Web.wasm.unityweb',
+    streamingAssetsUrl: 'StreamingAssets',
+    companyName: "PloofGames",
+    productName: "Charm Cabinet",
+    productVersion: "0.4.3",
+    devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+    showBanner: (message, type) => type === 'error' ? failed(message) : console.warn(message)
+  }, progress => {
+    message.textContent = 'Opening Charm Cabinet… ' + Math.round(progress * 100) + '%';
+  }).then(() => {
+    status.hidden = true;
+    canvas.focus({ preventScroll: true });
+    console.log('P05_WEB_READY ' + Math.round(performance.now() - started));
+  }).catch(failed);
+  document.body.append(script);
+</script>
+</body>
+</html>
